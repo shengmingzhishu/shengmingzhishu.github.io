@@ -34,18 +34,15 @@
 
 
     <!-- Custom styles for this template -->
-    <link href="LearnEnglish/cover.css" rel="stylesheet">
+    <link href="../LearnEnglish/cover.css" rel="stylesheet">
 
     <script src="../vue/vue.global.js"></script>
-    <!--书籍-->
-    <script src="LearnEnglish/phrase/罗马假日.js"></script>
-    <script src="LearnEnglish/phrase/早安英语.js"></script>
-    <script src="LearnEnglish/phrase/50句子700词.js"></script>
-    <script src="LearnEnglish/phrase/50短句.js"></script>
-    <!--工具-->
-    <script src="LearnEnglish/utils/BookUtils.js"></script>
-    <script src="LearnEnglish/utils/ReadUtils.js"></script>
-    <script src="LearnEnglish/utils/FileUtils.js"></script>
+    <script src="../LearnEnglish/utils/ReadUtils.js"></script>
+    <script src="../LearnEnglish/utils/FileUtils.js"></script>
+    <script src="../LearnEnglish/phrase/罗马假日.js"></script>
+    <script src="../LearnEnglish/phrase/早安英语.js"></script>
+    <script src="../LearnEnglish/utils/BookUtils.js"></script>
+    <script src="../LearnEnglish/phrase/50句子700词.js"></script>
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -71,62 +68,25 @@
                 <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousPhrase()">Prev</button>
                 <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextPhrase()">Next</button>
             </p>
-
             <template v-if="currentPhrase">
 
                 <p class="lead">
-                    <div class='picA'>
-                        <div class='picB'>
-                            <div readonly class='resizeElement'></div>
-                        </div>
-                    </div>
-                </p>
-                <!--直接显示英文语句-->
-                <!--<p class="lead">
                     <span class="englishColor">{{currentPhrase.EnglishPhrase}}</span>
-                </p>-->
-
-                <!--显示英文语句-->
-                 <p class="lead mb25">
-                      <template v-for="(word,index ) in currentPhrase.EnglishWordInfo.SuccessWords">
-                        <span :class="currentPhrase.EnglishWordInfo.SelectedWords[index] == currentPhrase.EnglishWordInfo.SuccessWords[index]?'englishColorYellow mr5 mb5':'englishColor mr5 mb5'">
-                            {{word}}
-                        </span>
-                     </template>
                 </p>
 
-                <!--显示中文语句-->
                 <p class="lead mb25">
                     <span class="chineseColor">{{currentPhrase.ChinesePhrase}}</span>
                 </p>
 
-
-                <!--显示英文语句，默认用下划线隐藏-->
-                <!--<p class="lead mb25">
-                      <template v-for="(word,index ) in currentPhrase.EnglishWordInfo.SelectedWords">
-                        <span :class="currentPhrase.EnglishWordInfo.SelectedWords[index] == currentPhrase.EnglishWordInfo.SuccessWords[index]?'fontSuccess mr5 mb5':'fontWarning mr5 mb5'">
-                            {{word}}
-                        </span>
-                     </template>
-                </p>-->
-
-
-
                 <p class="lead">
                      <template v-for="(word,index ) in currentPhrase.EnglishWordInfo.Words">
-                         <!--顺序显示，点击隐藏-->
-                         <button type="button"
-                                 :class="currentPhrase.EnglishWordInfo.WordsClass[index]"
-                                 :disabled="currentPhrase.EnglishWordInfo.WordsEnabled[index]"
-                                 @click="selectedWord(word,index)">{{word}}</button>
+                         <button type="button" :class="buttonColorClass(index)"
+                                 @click="changeShowHide(currentPhrase.EnglishWordInfo.ShowFlags,index)">{{currentPhrase.EnglishWordInfo.ShowFlags[index] ? currentPhrase.EnglishWordInfo.Words[index] : currentPhrase.EnglishWordInfo.HideWords[index]}}</button>
                      </template>
                 </p>
 
-
                 <p class="lead">
                      <template v-for="(word,index ) in currentPhrase.ChineseWordInfo.Words">
-
-                         <!--顺序显示，点击隐藏-->
                          <button type="button" :class="buttonColorClass(index)"
                                  @click="changeShowHide(currentPhrase.ChineseWordInfo.ShowFlags,index)">{{currentPhrase.ChineseWordInfo.ShowFlags[index] ? currentPhrase.ChineseWordInfo.Words[index] : currentPhrase.ChineseWordInfo.HideWords[index]}}</button>
                      </template>
@@ -170,6 +130,7 @@
                     , "btn mr5 mb5 btn-danger"
                     , "btn mr5 mb5 btn-warning"
                     , "btn mr5 mb5 btn-info"],
+                currColorIndex: 0,
                 /**
                  * 全局
                  * */
@@ -178,7 +139,7 @@
             }
         },
         mounted() {
-            this.changeBook(this.bookEnum.BOOK50Words)
+            this.changeBook(this.bookEnum.BOOK50TO700Words)
         },
         methods: {
             /**
@@ -189,6 +150,9 @@
                  * 建议一行英文、一行中文
                  * @type {string}
                  */
+                    // let englishParagraph = "From now on, I not only study harder but also try my best to get better grades."
+                    // let chineseParagraph = "从今以后，我不但要更加努力学习还要尽力取得更好的成绩。"
+                    // let phraseList = readParagraph(englishParagraph, chineseParagraph)
                 let phraseList = readParagraph(bookStr)
                 this.phraseList = phraseList
                 this.message = 'Hello Vue!CC'
@@ -197,7 +161,6 @@
             },
             resetShowPhrase() {
                 this.currentPhrase = this.phraseList[0]
-                this.randomPhrase(this.currentPhrase)
                 this.currentIndex = 0
             },
             /**
@@ -218,23 +181,13 @@
                 this.randomPhrase(this.currentPhrase)
             },
             randomPhrase(phrase) {
-                debugger
-                this.randomWordsSort(phrase.EnglishWordInfo)
+                this.randomWordsSort(phrase.EnglishWords)
+                this.randomWordsSort(phrase.ChineseWords)
             },
-            randomWordsSort(englishWordInfo) {
-                englishWordInfo.Words.sort(function () {
+            randomWordsSort(arr) {
+                arr.sort(function () {
                     return Math.random() - 0.5
                 })
-                for (let i = 0; i < englishWordInfo.Words.length; i++) {
-                    englishWordInfo.HideWords[i] = toLine(englishWordInfo.Words[i])
-                }
-            },
-            toLine(str) {
-                let ret = ''
-                for (let i = 0; i < str.length; i++) {
-                    ret = ret + '_'
-                }
-                return ret
             },
             /**
              * 書記切換
@@ -256,34 +209,6 @@
             },
             changeShowHide(arr, index) {
                 arr[index] = !arr[index]
-            },
-            selectedWord(word, index) {
-                const seccessIndex = this.changeItemGetIndex(word, index)
-                this.setButtonWordsClassAndDisabledBtn(word, index, seccessIndex)
-            },
-            changeItemGetIndex(word, index) {
-                // 添加到选择数组的最后一个元素中
-                const selectedWords = this.currentPhrase.EnglishWordInfo.SelectedWords
-                const successWords = this.currentPhrase.EnglishWordInfo.SuccessWords
-                for (let i = 0; i < selectedWords.length; i++) {
-                    if (successWords[i] == selectedWords[i]) {
-                        continue;
-                    } else {
-                        selectedWords[i] = word
-                        return i
-                    }
-                }
-                return -1
-            },
-            setButtonWordsClassAndDisabledBtn(word, index, seccessIndex) {
-                if (index == -1 || index == null) {
-                    return
-                }
-                const wordsClass = this.currentPhrase.EnglishWordInfo.WordsClass
-                if (this.currentPhrase.EnglishWordInfo.SelectedWords[seccessIndex] == this.currentPhrase.EnglishWordInfo.SuccessWords[seccessIndex]) {
-                    this.currentPhrase.EnglishWordInfo.WordsEnabled[index] = true
-                    return wordsClass[index] = 'btn mr5 mb5 btn-dark'
-                }
             },
             /**
              * 样式处理
@@ -336,15 +261,6 @@
         line-height: 1.2;
     }
 
-    .englishColorYellow {
-        color: #ffc107;
-        font-weight: bold;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, segoe ui, Roboto,
-        Helvetica, Arial,
-        sans-serif, apple color emoji, segoe ui emoji, segoe ui symbol;
-        line-height: 1.2;
-    }
-
     .chineseColor {
         line-height: 1.2;
         font-size: 70%;
@@ -353,97 +269,6 @@
 
     .cover-container {
         max-width: 442em;
-    }
-
-    html {
-        background: #ddd;
-        height: 100%;
-        width: 100%;
-    }
-
-    .picA {
-        background-image: url(img/image01.jpg);
-        background-size: cover;
-        width: 650px;
-        height: 340px;
-        border: 5px solid #f0e5ab;
-        border-radius: 3px;
-        box-shadow: 0 0 1px #999, -2px 2px 3px rgba(0, 0, 0, 0.2);
-        padding: 0;
-        margin: 1rem auto;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .picB {
-        background-image: url(img/image02.jpg);
-        background-size: cover;
-        height: 340px;
-        position: absolute;
-        top: 0;
-        left: 0;
-        min-width: 0;
-        max-width: 650px;
-        box-sizing: border-box;
-    }
-
-    .picB:before {
-        content: "↔";
-        position: absolute;
-        background: rgba(0, 0, 0, 0.5);
-        font-size: 16px;
-        color: white;
-        top: 0;
-        right: 0;
-        height: 100%;
-        line-height: 340px;
-    }
-
-    .resizeElement {
-        resize: horizontal;
-        overflow: scroll;
-        opacity: 0;
-        position: relative;
-        top: 50%;
-        left: 0px;
-        height: 15px;
-        max-width: 650px;
-        min-width: 15px;
-        width: 0;
-        cursor: move;
-        transform: scaleY(35);
-        transform-origin: center center;
-        animation: delta 5s normal ease-in-out 1s;
-    }
-
-    .picAfont {
-        position: absolute;
-        border: 1px solid #0b2e13;
-        width: 100%;
-    }
-
-    .picBfont {
-        position: absolute;
-    }
-
-    @keyframes delta {
-        30% {
-            width: 0;
-        }
-        60% {
-            width: 350px;
-        }
-        100% {
-            width: 0;
-        }
-    }
-
-    .fontSuccess {
-        color: #FFFFFF;
-    }
-
-    .fontWarning {
-        color: #dc3545;
     }
 </style>
 </body>

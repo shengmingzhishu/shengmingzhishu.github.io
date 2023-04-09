@@ -34,18 +34,15 @@
 
 
     <!-- Custom styles for this template -->
-    <link href="LearnEnglish/cover.css" rel="stylesheet">
+    <link href="../LearnEnglish/cover.css" rel="stylesheet">
 
     <script src="../vue/vue.global.js"></script>
-    <!--书籍-->
-    <script src="LearnEnglish/phrase/罗马假日.js"></script>
-    <script src="LearnEnglish/phrase/早安英语.js"></script>
-    <script src="LearnEnglish/phrase/50句子700词.js"></script>
-    <script src="LearnEnglish/phrase/50短句.js"></script>
-    <!--工具-->
-    <script src="LearnEnglish/utils/BookUtils.js"></script>
-    <script src="LearnEnglish/utils/ReadUtils.js"></script>
-    <script src="LearnEnglish/utils/FileUtils.js"></script>
+    <script src="../LearnEnglish/utils/ReadUtils.js"></script>
+    <script src="../LearnEnglish/utils/FileUtils.js"></script>
+    <script src="../LearnEnglish/phrase/罗马假日.js"></script>
+    <script src="../LearnEnglish/phrase/早安英语.js"></script>
+    <script src="../LearnEnglish/utils/BookUtils.js"></script>
+    <script src="../LearnEnglish/phrase/50句子700词.js"></script>
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -178,7 +175,7 @@
             }
         },
         mounted() {
-            this.changeBook(this.bookEnum.BOOK50Words)
+            this.changeBook(this.bookEnum.BOOK50TO700Words)
         },
         methods: {
             /**
@@ -362,7 +359,7 @@
     }
 
     .picA {
-        background-image: url(img/image01.jpg);
+        background-image: url(../img/image01.jpg);
         background-size: cover;
         width: 650px;
         height: 340px;
@@ -376,7 +373,7 @@
     }
 
     .picB {
-        background-image: url(img/image02.jpg);
+        background-image: url(../img/image02.jpg);
         background-size: cover;
         height: 340px;
         position: absolute;
