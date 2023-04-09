@@ -65,15 +65,10 @@
             <h1 class="cover-heading">Practice in English.</h1>
             <p class="lead">Switch cards and sort them correctly, Switching phrases can help you learn more.</p>
             <p class="lead">
-<!--                <a href="#" class="btn btn-lg btn-secondary">Learn more</a>-->
                 <button type="button" class="btn btn-warning mr5 width50" @click="previousPhrase()">Prev</button>
                 <button type="button" class="btn btn-warning mr5 width50" @click="nextPhrase()">Next</button>
             </p>
-            {{currentIndex}}
             <template v-if="currentPhrase">
-<!--                <p class="lead">-->
-                <!--                    {{currentPhrase}}-->
-                <!--                </p>-->
 
                 <p class="lead">
                     {{currentPhrase.EnglishPhrase}}
