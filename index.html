@@ -47,8 +47,7 @@
 <body class="text-center">
 <span id="app" class="langWithe">
 
-    <button type="button" class="btn btn-link">Link</button>
-    <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column" v-if="initFinish">
+    <div class="cover-container d-flex w-100 h-100 h3000 p-3 mx-auto flex-column" v-if="initFinish">
         <header class="masthead mb-auto">
             <div class="inner">
                 <h3 class="masthead-brand">Cover</h3>
@@ -62,20 +61,20 @@
         </header>
 
         <main role="main" class="inner cover">
-            <h1 class="cover-heading">Practice in English.</h1>
-            <p class="lead">Switch cards and sort them correctly, Switching phrases can help you learn more.</p>
+            <h1 class="cover-heading hide70">Practice in English.</h1>
+            <p class="lead hide70">Displaying hidden words on a single card can better aid memory.</p>
             <p class="lead">
-                <button type="button" class="btn btn-warning mr5 width50" @click="previousPhrase()">Prev</button>
-                <button type="button" class="btn btn-warning mr5 width50" @click="nextPhrase()">Next</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousPhrase()">Prev</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextPhrase()">Next</button>
             </p>
             <template v-if="currentPhrase">
 
                 <p class="lead">
-                    {{currentPhrase.EnglishPhrase}}
+                    <span class="englishColor">{{currentPhrase.EnglishPhrase}}</span>
                 </p>
 
-                <p class="lead">
-                    {{currentPhrase.ChinesePhrase}}
+                <p class="lead mb25">
+                    <span class="chineseColor">{{currentPhrase.ChinesePhrase}}</span>
                 </p>
 
                 <p class="lead">
@@ -99,6 +98,7 @@
             <div class="inner">
                 <p>Cover template for <a href="https://getbootstrap.com/">Bootstrap</a>, by <a
                         href="https://twitter.com/mdo">@mdo</a>.</p>
+                <br>
             </div>
         </footer>
     </div>
@@ -124,11 +124,11 @@
                  * 颜色
                  * */
                 colorList: [
-                    "btn mr5 btn-primary"
-                    , "btn mr5 btn-success"
-                    , "btn mr5 btn-danger"
-                    , "btn mr5 btn-warning"
-                    , "btn mr5 btn-info"],
+                    "btn mr5 mb5 btn-primary"
+                    , "btn mr5 mb5 btn-success"
+                    , "btn mr5 mb5 btn-danger"
+                    , "btn mr5 mb5 btn-warning"
+                    , "btn mr5 mb5 btn-info"],
                 currColorIndex: 0,
                 /**
                  * 全局
@@ -223,17 +223,48 @@
 <style>
     .langWithe {
         width: 100%;
+        min-height: 800px;
         border: #7abaff 1px solid;
+    }
+
+    .h3000 {
+        height: 3000px;
+    }
+
+    .hide70 {
+        opacity: 0.5;
     }
 
     .mr5 {
         margin-right: 5px;
     }
 
+    .mb5 {
+        margin-bottom: 5px;
+    }
+
+    .mb25 {
+        margin-bottom: 25px;
+    }
+
     .width50 {
         width: 80px;
     }
 
+    .englishColor {
+        color: #FFFFFF;
+        font-weight: bold;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, segoe ui, Roboto,
+        Helvetica, Arial,
+        sans-serif, apple color emoji, segoe ui emoji, segoe ui symbol;
+        line-height: 1.2;
+    }
+
+    .chineseColor {
+        line-height: 1.2;
+        font-size: 70%;
+        color: #00FFFF;
+    }
 
     .cover-container {
         max-width: 442em;
