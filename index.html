@@ -74,13 +74,14 @@
 
             <template v-if="currentPhrase">
 
-                <p class="lead">
+                <!--图片切换功能-->
+                <!--<p class="lead">
                     <div class='picA'>
                         <div class='picB'>
                             <div readonly class='resizeElement'></div>
                         </div>
                     </div>
-                </p>
+                </p>-->
                 <!--直接显示英文语句-->
                 <!--<p class="lead">
                     <span class="englishColor">{{currentPhrase.EnglishPhrase}}</span>
@@ -355,96 +356,96 @@
         max-width: 442em;
     }
 
-    html {
-        background: #ddd;
-        height: 100%;
-        width: 100%;
-    }
+    /*html {*/
+    /*    background: #ddd;*/
+    /*    height: 100%;*/
+    /*    width: 100%;*/
+    /*}*/
 
-    .picA {
-        background-image: url(img/image01.jpg);
-        background-size: cover;
-        width: 650px;
-        height: 340px;
-        border: 5px solid #f0e5ab;
-        border-radius: 3px;
-        box-shadow: 0 0 1px #999, -2px 2px 3px rgba(0, 0, 0, 0.2);
-        padding: 0;
-        margin: 1rem auto;
-        position: relative;
-        overflow: hidden;
-    }
+    /*.picA {*/
+    /*    background-image: url(img/image01.jpg);*/
+    /*    background-size: cover;*/
+    /*    width: 650px;*/
+    /*    height: 340px;*/
+    /*    border: 5px solid #f0e5ab;*/
+    /*    border-radius: 3px;*/
+    /*    box-shadow: 0 0 1px #999, -2px 2px 3px rgba(0, 0, 0, 0.2);*/
+    /*    padding: 0;*/
+    /*    margin: 1rem auto;*/
+    /*    position: relative;*/
+    /*    overflow: hidden;*/
+    /*}*/
 
-    .picB {
-        background-image: url(img/image02.jpg);
-        background-size: cover;
-        height: 340px;
-        position: absolute;
-        top: 0;
-        left: 0;
-        min-width: 0;
-        max-width: 650px;
-        box-sizing: border-box;
-    }
+    /*.picB {*/
+    /*    background-image: url(img/image02.jpg);*/
+    /*    background-size: cover;*/
+    /*    height: 340px;*/
+    /*    position: absolute;*/
+    /*    top: 0;*/
+    /*    left: 0;*/
+    /*    min-width: 0;*/
+    /*    max-width: 650px;*/
+    /*    box-sizing: border-box;*/
+    /*}*/
 
-    .picB:before {
-        content: "↔";
-        position: absolute;
-        background: rgba(0, 0, 0, 0.5);
-        font-size: 16px;
-        color: white;
-        top: 0;
-        right: 0;
-        height: 100%;
-        line-height: 340px;
-    }
+    /*.picB:before {*/
+    /*    content: "↔";*/
+    /*    position: absolute;*/
+    /*    background: rgba(0, 0, 0, 0.5);*/
+    /*    font-size: 16px;*/
+    /*    color: white;*/
+    /*    top: 0;*/
+    /*    right: 0;*/
+    /*    height: 100%;*/
+    /*    line-height: 340px;*/
+    /*}*/
 
-    .resizeElement {
-        resize: horizontal;
-        overflow: scroll;
-        opacity: 0;
-        position: relative;
-        top: 50%;
-        left: 0px;
-        height: 15px;
-        max-width: 650px;
-        min-width: 15px;
-        width: 0;
-        cursor: move;
-        transform: scaleY(35);
-        transform-origin: center center;
-        animation: delta 5s normal ease-in-out 1s;
-    }
+    /*.resizeElement {*/
+    /*    resize: horizontal;*/
+    /*    overflow: scroll;*/
+    /*    opacity: 0;*/
+    /*    position: relative;*/
+    /*    top: 50%;*/
+    /*    left: 0px;*/
+    /*    height: 15px;*/
+    /*    max-width: 650px;*/
+    /*    min-width: 15px;*/
+    /*    width: 0;*/
+    /*    cursor: move;*/
+    /*    transform: scaleY(35);*/
+    /*    transform-origin: center center;*/
+    /*    animation: delta 5s normal ease-in-out 1s;*/
+    /*}*/
 
-    .picAfont {
-        position: absolute;
-        border: 1px solid #0b2e13;
-        width: 100%;
-    }
+    /*.picAfont {*/
+    /*    position: absolute;*/
+    /*    border: 1px solid #0b2e13;*/
+    /*    width: 100%;*/
+    /*}*/
 
-    .picBfont {
-        position: absolute;
-    }
+    /*.picBfont {*/
+    /*    position: absolute;*/
+    /*}*/
 
-    @keyframes delta {
-        30% {
-            width: 0;
-        }
-        60% {
-            width: 350px;
-        }
-        100% {
-            width: 0;
-        }
-    }
+    /*@keyframes delta {*/
+    /*    30% {*/
+    /*        width: 0;*/
+    /*    }*/
+    /*    60% {*/
+    /*        width: 350px;*/
+    /*    }*/
+    /*    100% {*/
+    /*        width: 0;*/
+    /*    }*/
+    /*}*/
 
-    .fontSuccess {
-        color: #FFFFFF;
-    }
+    /*.fontSuccess {*/
+    /*    color: #FFFFFF;*/
+    /*}*/
 
-    .fontWarning {
-        color: #dc3545;
-    }
+    /*.fontWarning {*/
+    /*    color: #dc3545;*/
+    /*}*/
 </style>
 </body>
 </html>
