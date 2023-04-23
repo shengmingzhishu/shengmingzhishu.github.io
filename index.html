@@ -55,7 +55,6 @@
             <div class="inner">
                 <h3 class="masthead-brand">Learning English</h3>
                 <nav class="nav nav-masthead justify-content-center">
-                    <a class="nav-link active" href="#">Home</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.BOOK50TO700Words)">50句子7000词</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.BOOK50Words)">50短句</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.LuoMaJiaRi)">罗马假日</a>
@@ -123,15 +122,15 @@
                      </template>
                 </p>
 
-
-                <p class="lead">
-                     <template v-for="(word,index ) in currentPhrase.ChineseWordInfo.Words">
-
-                         <!--顺序显示，点击隐藏-->
-                         <button type="button" :class="buttonColorClass(index)"
-                                 @click="changeShowHide(currentPhrase.ChineseWordInfo.ShowFlags,index)">{{currentPhrase.ChineseWordInfo.ShowFlags[index] ? currentPhrase.ChineseWordInfo.Words[index] : currentPhrase.ChineseWordInfo.HideWords[index]}}</button>
-                     </template>
-                </p>
+                <!--
+                    <p class="lead">
+                         <template v-for="(word,index ) in currentPhrase.ChineseWordInfo.Words">
+                             顺序显示，点击隐藏
+                             <button type="button" :class="buttonColorClass(index)"
+                                     @click="changeShowHide(currentPhrase.ChineseWordInfo.ShowFlags,index)">{{currentPhrase.ChineseWordInfo.ShowFlags[index] ? currentPhrase.ChineseWordInfo.Words[index] : currentPhrase.ChineseWordInfo.HideWords[index]}}</button>
+                         </template>
+                    </p>
+                -->
             </template>
 
         </main>
@@ -219,7 +218,7 @@
                 this.randomPhrase(this.currentPhrase)
             },
             randomPhrase(phrase) {
-                this.randomWordsSort(phrase.EnglishWordInfo)
+                // this.randomWordsSort(phrase.EnglishWordInfo)
             },
             randomWordsSort(englishWordInfo) {
                 englishWordInfo.Words.sort(function () {
@@ -328,7 +327,7 @@
     }
 
     .englishColor {
-        color: #FFFFFF;
+        color: #ffc107;
         font-weight: bold;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, segoe ui, Roboto,
         Helvetica, Arial,
@@ -338,7 +337,7 @@
     }
 
     .englishColorYellow {
-        color: #ffc107;
+        color: #FFFFFF;
         font-weight: bold;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, segoe ui, Roboto,
         Helvetica, Arial,
@@ -349,7 +348,7 @@
 
     .chineseColor {
         line-height: 1.2;
-        font-size: 70%;
+        font-size: 85%;
         color: #00FFFF;
     }
 
