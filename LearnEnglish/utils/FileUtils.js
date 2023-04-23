@@ -9,7 +9,6 @@ const colorList = [
  * 段落拆分
  * */
 function readParagraph(paragraph) {
-    debugger
     paragraphArr = paragraph.replaceAll("\n\n", "\n").replaceAll("\n\n", "\n").split("\n");
     paragraphArr = paragraphArr.map(item => item.trim()).filter(item => item !== '')
     let len = paragraphArr.length % 2 == 0 ? paragraphArr.length : paragraphArr.length - 1
