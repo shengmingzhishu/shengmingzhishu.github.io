@@ -12,7 +12,7 @@
 
 
     <!-- Bootstrap core CSS -->
-    <link href="assets/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/assets/dist/css/bootstrap.min.css" rel="stylesheet">
 
 
     <style>
@@ -34,18 +34,18 @@
 
 
     <!-- Custom styles for this template -->
-    <link href="LearnEnglish/cover.css" rel="stylesheet">
+    <link href="/LearnEnglish/common/css/cover.css" rel="stylesheet">
 
-    <script src="vue/vue.global.js"></script>
+    <script src="/vue/vue.global.js"></script>
     <!--书籍-->
-    <script src="LearnEnglish/phrase/罗马假日.js"></script>
-    <script src="LearnEnglish/phrase/早安英语.js"></script>
-    <script src="LearnEnglish/phrase/50句子700词.js"></script>
-    <script src="LearnEnglish/phrase/50短句.js"></script>
+    <script src="/LearnEnglish/common/js/phrase/罗马假日.js"></script>
+    <script src="/LearnEnglish/common/js/phrase/早安英语.js"></script>
+    <script src="/LearnEnglish/common/js/phrase/50句子700词.js"></script>
+    <script src="/LearnEnglish/common/js/phrase/50短句.js"></script>
     <!--工具-->
-    <script src="LearnEnglish/utils/BookUtils.js"></script>
-    <script src="LearnEnglish/utils/ReadUtils.js"></script>
-    <script src="LearnEnglish/utils/FileUtils.js"></script>
+    <script src="/LearnEnglish/common/js/utils/BookUtils.js"></script>
+    <script src="/LearnEnglish/common/js/utils/ReadUtils.js"></script>
+    <script src="/LearnEnglish/common/js/utils/FileUtils.js"></script>
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -55,6 +55,7 @@
             <div class="inner">
                 <h3 class="masthead-brand">Learning English</h3>
                 <nav class="nav nav-masthead justify-content-center">
+                    <a class="nav-link" href="./PlayGame/GameWordLink/index.html">消消乐</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.BOOK50TO700Words)">50句子7000词</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.BOOK50Words)">50短句</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.LuoMaJiaRi)">罗马假日</a>
@@ -291,6 +292,12 @@
             buttonColorClass(index) {
                 let arr = this.colorList
                 return arr[parseInt(index % arr.length)]
+            },
+            /**
+             * 页面跳转
+             */
+            toWordLink(){
+
             }
         }
     }).mount('#app')

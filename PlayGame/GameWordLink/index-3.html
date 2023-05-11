@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
+    <meta name="generator" content="Hugo 0.101.0">
+    <title>Learning English</title>
+
+    <link rel="canonical" href="https://getbootstrap.com/docs/4.6/examples/cover/">
+
+
+    <!-- Bootstrap core CSS -->
+    <link href="/assets/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+    <style>
+        .bd-placeholder-img {
+            font-size: 1.125rem;
+            text-anchor: middle;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        @media (min-width: 768px) {
+            .bd-placeholder-img-lg {
+                font-size: 3.5rem;
+            }
+        }
+        .box {
+            position: absolute;
+            background-color: #666;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 150px;
+            text-align: center;
+            font-size: 20px;
+        }
+
+    </style>
+
+
+    <!-- Custom styles for this template -->
+    <script src="/vue/vue.global.js"></script>
+    <!--字典-->
+    <script src="/PlayGame/common/dict/dict.js"></script>
+</head>
+<body class="text-center">
+<span id="app" class="langWithe">
+
+    <div class="cover-container d-flex w-100 h-100 h3000 p-3 mx-auto flex-column" v-if="initFinish">
+        <header class="masthead mb-auto">
+            <div class="inner">
+                <h3 class="masthead-brand">Learning English</h3>
+                <nav class="nav nav-masthead justify-content-center">
+                    <a class="nav-link" href="#" @click="toLearningEnglish()">50句子7000词</a>
+                </nav>
+            </div>
+        </header>
+
+        <main role="main" class="inner cover">
+            <h1 class="cover-heading hide70">Practice in English.</h1>
+             <p class="lead">Switch cards and sort them correctly, Help you learn more.</p>
+            <p class="lead">
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousPhrase()">Prev</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextPhrase()">Next</button>
+            </p>
+
+
+
+        </main>
+
+        <footer class="mastfoot mt-auto">
+            <div class="inner">
+                <p>Learning English <a href="https://shengmingzhishu.github.io/">Link</a>, by <a
+                        href="https://shengmingzhishu.github.io"></a>@Lyon</p>
+                <br>
+            </div>
+        </footer>
+    </div>
+</span>
+
+<script>
+    const {createApp} = Vue
+    createApp({
+        data() {
+            return {
+                message: 'Hello Vue!',
+
+                /**
+                 * 全局
+                 * */
+                initFinish: false,
+                that: this
+            }
+        },
+        mounted() {
+            this.changeBook(this.bookEnum.BOOK50Words)
+        },
+        methods: {
+            /**
+             * 数据加载
+             * */
+
+            /**
+             * 播放处理
+             * */
+
+
+            /**
+             * 样式处理
+             * */
+            // 按长度取模
+            toLearningEnglish() {
+                window.location = "http://shengmingzhishu.github.io";
+            }
+        }
+    }).mount('#app')
+</script>
+<style>
+    .langWithe {
+        width: 100%;
+        min-height: 800px;
+        /*border: #7abaff 1px solid;*/
+    }
+
+    .h3000 {
+        height: 3000px;
+    }
+
+    .hide70 {
+        opacity: 0.5;
+    }
+
+    .mr5 {
+        margin-right: 5px;
+    }
+
+    .mb5 {
+        margin-bottom: 5px;
+    }
+
+    .width50 {
+        width: 80px;
+    }
+
+
+    .cover-container {
+        max-width: 442em;
+    }
+
+</style>
+</body>
+</html>
