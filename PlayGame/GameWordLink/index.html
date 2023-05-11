@@ -30,22 +30,25 @@
                 font-size: 3.5rem;
             }
         }
+        .box {
+			position: absolute;
+			background-color: #666;
+			color: #fff;
+			padding: 10px;
+			border-radius: 5px;
+			cursor: pointer;
+			width: 150px;
+			text-align: center;
+			font-size: 20px;
+		}
+
     </style>
 
 
     <!-- Custom styles for this template -->
-    <link href="LearnEnglish/cover.css" rel="stylesheet">
-
     <script src="vue/vue.global.js"></script>
-    <!--书籍-->
-    <script src="LearnEnglish/phrase/罗马假日.js"></script>
-    <script src="LearnEnglish/phrase/早安英语.js"></script>
-    <script src="LearnEnglish/phrase/50句子700词.js"></script>
-    <script src="LearnEnglish/phrase/50短句.js"></script>
-    <!--工具-->
-    <script src="LearnEnglish/utils/BookUtils.js"></script>
-    <script src="LearnEnglish/utils/ReadUtils.js"></script>
-    <script src="LearnEnglish/utils/FileUtils.js"></script>
+    <!--字典-->
+
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -447,5 +450,55 @@
     /*    color: #dc3545;*/
     /*}*/
 </style>
+</body>
+</html>
+
+---------------------------------
+
+
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<style type="text/css">
+		.box {
+			position: absolute;
+			background-color: #666;
+			color: #fff;
+			padding: 10px;
+			border-radius: 5px;
+			cursor: pointer;
+			width: 150px;
+			text-align: center;
+			font-size: 20px;
+		}
+	</style>
+</head>
+<body>
+	<script type="text/javascript">
+		var ziduan = [
+			{cn: '一个', en: 'one'},
+			{cn: '二个', en: 'two'}
+		];
+
+		function removeBox(event) {
+			event.target.remove();
+		}
+
+		for (var i = 0; i < ziduan.length; i++) {
+			var box = document.createElement('div');
+			var positionX = Math.floor(Math.random() * 900) + 1;
+			var positionY = Math.floor(Math.random() * 600) + 1;
+
+			box.innerHTML = ziduan[i].cn + '<br>' + ziduan[i].en;
+			box.classList.add('box');
+			box.style.left = positionX + 'px';
+			box.style.top = positionY + 'px';
+
+			box.addEventListener('click', removeBox);
+
+			document.body.appendChild(box);
+		}
+	</script>
 </body>
 </html>
