@@ -7,12 +7,13 @@
     <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
     <meta name="generator" content="Hugo 0.101.0">
     <title>Learning English</title>
+    <base :href="rootPath">
 
     <link rel="canonical" href="https://getbootstrap.com/docs/4.6/examples/cover/">
 
 
     <!-- Bootstrap core CSS -->
-    <link href="/assets/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../../assets/dist/css/bootstrap.min.css" rel="stylesheet">
 
 
     <style>
@@ -45,12 +46,12 @@
     </style>
 
 
-    <link href="/PlayGame/common/css/cover.css" rel="stylesheet">
+    <link href="../common/css/cover.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <script src="/vue/vue.global.js"></script>
+    <script src="../../vue/vue.global.js"></script>
     <!--字典-->
-    <script src="/PlayGame/common/dict/dict.js"></script>
+    <script src="../common/dict/dict.js"></script>
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -74,6 +75,8 @@
                 233432    arr:{{arr}}
 
             </p>
+
+            rootPath:{{rootPath}}
 
              <div v-for="(item, index) in arr" class="box" :style="getPosition()" @click="handleClick(item)">
                 {{ item }}
@@ -103,6 +106,7 @@
         data() {
             return {
                 message: 'Hello Vue!',
+                rootPath: '',
                 // 单词列表
                 currentWordList: [],
                 /**
@@ -125,6 +129,7 @@
             }
         },
         mounted() {
+            this.rootPath = window.location.protocol + "//" + window.location.host
             this.initCurrPage()
         },
         methods: {
