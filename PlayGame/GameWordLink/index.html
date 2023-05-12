@@ -52,6 +52,8 @@
     <script src="../../vue/vue.global.js"></script>
     <!--字典-->
     <script src="../common/dict/dict.js"></script>
+    <!--工具-->
+    <script src="../common/js/PageUril.js"></script>
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -72,22 +74,21 @@
             <p class="lead">
                 <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousPhrase()">Prev</button>
                 <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextPhrase()">Next</button>
-                233432    arr:{{arr}}
-
+                arr:{{arr}}
             </p>
 
-            rootPath:{{rootPath}}
-
-             <div v-for="(item, index) in arr" class="box" :style="getPosition()" @click="handleClick(item)">
-                {{ item }}
-                   {{getPosition()}}
-              </div>
-
-             <div v-for="(item, index) in arr" class="box" :style="getPosition()" @click="handleClick(item)">
-                {{ item }}
-                   {{getPosition()}}
-              </div>
-
+            rootPath:{{rootPath}}<br>
+            wordBookList:{{wordBookList}}<br>
+            currWordList:{{currWordList}}<br>
+         
+            <div  v-for="(item, index) in currWordList" @click="checkWord(item)" class="box" :style="{top: item.position.cnTtop+'px', left:item.position.cnLeft+'px' }" v-show="item.showFlag" >
+                {{ item.cn }}
+            </div>
+            <div  v-for="(item, index) in currWordList" @click="checkWord(item)" class="box" :style="{top: item.position.enTtop+'px', left:item.position.enLeft+'px' }" v-show="item.showFlag" >
+                {{ item.en }}
+            </div>
+        
+ 
         </main>
 
         <footer class="mastfoot mt-auto">
@@ -105,15 +106,16 @@
     createApp({
         data() {
             return {
-                message: 'Hello Vue!',
-                rootPath: '',
-                // 单词列表
-                currentWordList: [],
                 /**
                  * 全局
                  * */
                 initFinish: false,
                 that: this,
+                /**
+                 * 基本信息
+                 */ 
+                message: 'Hello Vue!',
+                rootPath: '', 
                 /**
                  * AI code
                  * */
@@ -125,7 +127,20 @@
                 /**
                  * ai code 2
                  * */
-                currPositions: []
+                currPositions: [],
+                /**
+                 * 分页工具
+                 */ 
+                 currentPage :1,
+                 pageSize: 3,
+                /**
+                 * 字典集合
+                 */ 
+                wordBookList: [],
+                currWordList: [],
+                /**
+                 * 随机位置
+                 */ 
             }
         },
         mounted() {
@@ -137,27 +152,34 @@
              * 数据加载
              * */
             initCurrPage(){
-                this.message = 'Hello Vue!CC'
+                // 初始化页面
+                this.message = 'Hello Vue!'
                 this.initFinish = true
-
-                this.createWordList()
+                // 获取字典集合元素
+                this.initWordBookList()
+                this.getCurrWordList()
+                this.resetCurrWordPositon()
             },
-            createWordList() {
-                // 将数组元素复制一份放在数组末尾，达到每个元素都放置两次的效果
-                // this.changePage(0); // 设置默认显示第一页
+            // 初始化当前单词书
+            initWordBookList() {
+                this.wordBookList = getDictList()
             },
+            getCurrWordList(){
+               this.currWordList = getPageData(this.wordBookList, this.currentPage, this.pageSize)
+            },
+            /**
+             * 分页切换
+             */ 
             previousPage(){
-
+                this.currWordList = previousPage(this.wordBookList, this.currentPage, this.pageSize)
             },
-            previousPage(){
-
+            nextPage(){
+                this.currWordList = nextPage(this.wordBookList, this.currentPage, this.pageSize)
             },
-
             /**
              * AI code
              * */
             handleClick(item) {
-                debugger
                 this.selectedItems.push(item); // 将当前点击的元素添加到已选中数组中
                 if (this.selectedItems.length === 2) {
                     if (this.selectedItems[0] === this.selectedItems[1]) {
@@ -176,36 +198,54 @@
             },
 
             /**
-             * 播放处理
+             * 位置管理
              * */
+            resetCurrWordPositon(){
+                if(this.currWordList&& this.currWordList.length>0){
+                    for (let i = 0; i < this.currWordList.length; i++) {
+                        let word = this.currWordList[i]
+
+                        word['position'] = {}
+                        // 显示标记
+                        word['showFlag'] = true
+                        // 中文位置
+                        let cnPosition = this.getRandomPosition(this.currPositions)
+                        word['position']['cnTop'] = cnPosition.top 
+                        word['position']['cnLeft'] = cnPosition.left 
+                        // 英文位置
+                        let enPsition = this.getRandomPosition(this.currPositions)
+                        word['position']['enTop'] = enPsition.top 
+                        word['position']['enLeft'] = enPsition.left 
+                    } 
+                }
+            },
             resetCurrPositions(){
                 this.currPositions = []
             },
-            getPosition(){
+            getRamdomPositionXX(){
                 // 创建一个存储已经随机过的位置的数组，用来避免重复
                 let position = this.getRandomPosition(this.currPositions);
-                return { top: position.top + 'px', left: position.left + 'px' }
+                // return { top: position.top + 'px', left: position.left + 'px' }
+                return position
             },
-            getRandomPosition(positions) {
+            getRandomPosition(currPositions) {
                 // 计算可用的位置范围
                 let leftRange = window.innerWidth - 300;
-                let topRange = window.innerHeight - 400;
+                let topRange = window.innerHeight - 300;
                 let position = { top: 0, left: 0 };
-                position.top = Math.floor(Math.random() * topRange) + 200;
-                position.left = Math.floor(Math.random() * leftRange) + 200;
                 // 随机生成位置，直到找到一个不与已有位置重复的位置
-                // let position = { top: 0, left: 0 };
-                // do {
-                //     position.top = Math.floor(Math.random() * topRange) + 50;
-                //     position.left = Math.floor(Math.random() * leftRange) + 50;
-                // } while (this.isPositionDuplicate(positions, position));
-                // this.currPositions.push(position);
+                do {
+                    position.top = Math.floor(Math.random() * topRange);
+                    position.left = Math.floor(Math.random() * leftRange);
+                } while (this.isPositionDuplicate(currPositions, position));
+                // 创建成功，则添加到占用列表
+                this.currPositions.push(position);
                 return position;
             },
-            isPositionDuplicate(positions, position) {
+            isPositionDuplicate(currPositions, position) {
                 // 检查已经随机过的位置数组中是否有与给定位置重复的位置
-                return positions.some(p => {
-                    return Math.abs(p.top - position.top) < 100 && Math.abs(p.left - position.left) < 100;
+                return currPositions.some(p => {
+                    return Math.abs(p.top - position.top) < 200 && Math.abs(p.left - position.left) < 200;
                 });
             },
 
