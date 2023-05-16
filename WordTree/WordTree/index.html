@@ -79,12 +79,14 @@
                 <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextBtn()">Next</button>
                 <input type="text" v-model="currentPage" maxlength="10" size="1"/>
             </p>
+currWordList{{currWordList}}<br>
+currWordRelationList{{currWordRelationList}}<br>
 
-            <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs.cn)" class="box" :style="{top: item.plugs.cn.position.top+'px', left:item.plugs.cn.position.left+'px',backgroundColor: item.plugs.cn.color.color }" v-show="item.plugs.cn.visible.showFlag" >
-                {{ item.cn }}
+            <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs.old)" class="box" :style="{top: item.plugs.old.position.top+'px', left:item.plugs.old.position.left+'px',backgroundColor: item.plugs.old.color.color }" v-show="item.plugs.old.visible.showFlag" >
+                <h3>{{ item.en }}</h3>  {{ item.cn }}
             </div>
-             <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs.en)" class="box" :style="{top: item.plugs.en.position.top+'px', left:item.plugs.en.position.left+'px',backgroundColor: item.plugs.en.color.color }" v-show="item.plugs.en.visible.showFlag" >
-                {{ item.en }}
+            <div  v-for="(item, index) in currWordRelationList" @click="checkWord(item,item.plugs.new)" class="box" :style="{top: item.plugs.new.position.top+'px', left:item.plugs.new.position.left+'px',backgroundColor: item.plugs.new.color.color }" v-show="item.plugs.new.visible.showFlag" >
+                <h3>{{ item.en }}</h3>  {{ item.cn }}
             </div>
 
         </main>
@@ -129,7 +131,7 @@
                  * 分页工具
                  * */
                 currentPage: 1, // 当前页码
-                pageSize: 3, // 每页数量
+                pageSize: 1, // 每页数量
                 /**
                  * ai code 2
                  * */
@@ -142,10 +144,13 @@
                  */ 
                 wordBookList: [],
                 currWordList: [],
+                currWordRelationList: [],
                 selectedWordList: [],
                 /**
                  * 随机位置
-                 */ 
+                 */
+                topDistance: 200,
+                topDistanceSum: 0
             }
         },
         mounted() {
@@ -160,10 +165,12 @@
                 // 初始化页面
                 this.message = 'Hello Vue!'
                 this.initFinish = true
+                debugger
                 // 获取字典集合元素
                 this.initWordBookList()
                 this.getCurrWordList()
-                this.resetCurrWordPositon(this.currWordList)
+                this.getCurrWordRelationList(this.currWordList[0].en.substring(0,1))
+                this.resetCurrWordPositon(this.currWordList,this.currWordRelationList)
             },
             // 初始化当前单词书
             initWordBookList() {
@@ -173,6 +180,11 @@
             getCurrWordList(){
                this.currWordList = this.getPageData(this.wordBookList)
                 return this.currWordList
+            },
+            getCurrWordRelationList(likeCode){
+                let arr = this.wordBookList.filter(item=> item.en.includes(likeCode))
+                this.currWordRelationList = arr.slice(0,5)
+                return this.currWordRelationList
             },
 
             /**
@@ -198,27 +210,27 @@
                 }
             },
             hideSelectWordShowFlag(item){
-                item.plugs.cn.visible.showFlag = false
-                item.plugs.en.visible.showFlag = false
+                item.plugs.old.visible.showFlag = false
             },
             resetWordShowFlag(item){
-                item.plugs.cn.color.color = this.gray
-                item.plugs.en.color.color = this.gray
+                item.plugs.old.color.color = this.gray
             },
             /**
              * 分页切换
              */
             previousBtn(){
                 let itemCurrWordList = this.previousPage(this.wordBookList)
-                this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
+                let itemRelationWordList = this.getCurrWordRelationList( itemCurrWordList[0].en.substring(0,1))
+                this.currWordList = this.resetCurrWordPositon(itemCurrWordList,itemRelationWordList)
             },
             nextBtn(){
                 let itemCurrWordList = this.nextPage(this.wordBookList)
-                this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
+                let itemRelationWordList = this.getCurrWordRelationList( itemCurrWordList[0].en.substring(0,1))
+                this.currWordList = this.resetCurrWordPositon(itemCurrWordList, itemRelationWordList)
             },
             aotuNextBtn(){
               let arr = this.currWordList.filter(item=>{
-                    return item.plugs.cn.visible.showFlag ||  item.plugs.en.visible.showFlag
+                    return item.plugs.old.visible.showFlag
                 })
               if(arr && arr.length==0){
                   this.nextBtn()
@@ -227,24 +239,18 @@
             /**
              * 位置管理
              * */
-            resetCurrWordPositon(currWordList){
+            resetCurrWordPositon(list,relationList){
+                let currWordList = this.resetCurrMainWordPositon(list)
+                this.resetCurrRelationWordPositon(relationList)
+                return currWordList
+            },
+
+            resetCurrMainWordPositon(currWordList){
                     this.currPositions = []
                     for (let i = 0; i < currWordList.length; i++) {
                         let word = currWordList[i]
                         word['plugs'] = {
-                            cn: {
-                                position:{
-                                    top: 0,
-                                    left: 0,
-                                },
-                                visible:{
-                                    showFlag: true
-                                },
-                                color:{
-                                    color: this.gray
-                                }
-                            },
-                            en: {
+                            old: {
                                 position:{
                                     top: 0,
                                     left: 0,
@@ -259,22 +265,92 @@
                         }
                         // 显示标记
                         // 中文位置
-                        let cnPosition = this.getRandomPosition(this.currPositions)
-                        word['plugs'].cn.position.top= cnPosition.top
-                        word['plugs'].cn.position.left = cnPosition.left
-                        // 英文位置
-                        let enPsition = this.getRandomPosition(this.currPositions)
-                        word['plugs'].en.position.top = enPsition.top
-                        word['plugs'].en.position.left  = enPsition.left
+                        let cnPosition = this.getMainRandomPosition(this.currPositions)
+                        word['plugs'].old.position.top= cnPosition.top
+                        word['plugs'].old.position.left = cnPosition.left
                     }
                     return currWordList
             },
-            getRandomPosition(currPositions) {
+            resetCurrRelationWordPositon(currWordList){
+                    this.currPositions = []
+                    this.topDistance = 200
+                    this.topDistanceSum = 0
+                    for (let i = 0; i < currWordList.length; i++) {
+                        let word = currWordList[i]
+                        if(!!word['plugs']){
+                            word['plugs']['new'] = {
+                                position:{
+                                    top: 0,
+                                    left: 0,
+                                },
+                                visible:{
+                                    showFlag: true
+                                },
+                                color:{
+                                    color: this.gray
+                                }
+                            }
+                        }else{
+                            word['plugs'] = {
+                                new: {
+                                    position: {
+                                        top: 0,
+                                        left: 0,
+                                    },
+                                    visible: {
+                                        showFlag: true
+                                    },
+                                    color: {
+                                        color: this.gray
+                                    }
+                                }
+                            }
+                        }
+
+                        // 显示标记
+                        let enPsition = this.getRelationRandomPosition(this.currPositions)
+                        word['plugs'].new.position.top = enPsition.top
+                        word['plugs'].new.position.left  = enPsition.left
+                    }
+                    return currWordList
+            },
+            getMainRandomPosition(currPositions) {
                 // 计算可用的位置范围
-                let leftRange = window.innerWidth - 300;
                 let topRange = window.innerHeight - 300;
+                let leftRange = window.innerWidth - 300;
                 let position = { top: 0, left: 0 };
                 // 随机生成位置，直到找到一个不与已有位置重复的位置
+                do {
+                    position.top = Math.floor(Math.random() * topRange);
+                    position.left = leftRange* 0.35;
+                } while (this.isPositionDuplicate(currPositions, position));
+                // 创建成功，则添加到占用列表
+                this.currPositions.push(position);
+                return position;
+            },
+            getRelationRandomPosition(currPositions) {
+                // 计算可用的位置范围
+                let topRange = window.innerHeight - 300;
+                let leftRange = window.innerWidth - 300;
+                let position = { top: 0, left: 0 };
+
+                this.topDistanceSum =  this.topDistanceSum + this.topDistance
+                position.top = this.topDistanceSum;
+                position.left = leftRange* 0.75;
+                // // 随机生成位置，直到找到一个不与已有位置重复的位置
+                // do {
+                //     debugger
+                // } while (this.isPositionDuplicate(currPositions, position));
+                // 创建成功，则添加到占用列表
+                this.currPositions.push(position);
+                return position;
+            },
+            getRandomPosition(currPositions) {
+                // 计算可用的位置范围
+                let topRange = window.innerHeight - 300;
+                let leftRange = window.innerWidth - 300;
+                let position = { top: 0, left: 0 };
+                // // 随机生成位置，直到找到一个不与已有位置重复的位置
                 do {
                     position.top = Math.floor(Math.random() * topRange);
                     position.left = Math.floor(Math.random() * leftRange);

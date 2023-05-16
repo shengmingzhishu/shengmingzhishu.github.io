@@ -86,7 +86,7 @@
             {{this.selectedWordList.length}}<br>
 
             <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs)" class="box" :style="{top: item.plugs.position.top+'px', left:item.plugs.position.left+'px',backgroundColor: item.plugs.color.color }" v-show="item.plugs.visible.showFlag" >
-               <h3>{{ item.cn }}</h3> <span v-show="item.plugs.word.showFlag">{{ item.en }}</span>
+               <h3>{{ item.en }}</h3> <span v-show="item.plugs.word.showFlag">{{ item.cn }}</span>
             </div>
 
         </main>
