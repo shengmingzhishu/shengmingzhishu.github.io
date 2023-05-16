@@ -63,6 +63,9 @@
             <div class="inner">
                 <h3 class="masthead-brand">Learning English</h3>
                 <nav class="nav nav-masthead justify-content-center">
+                    <a class="nav-link" href="../../WordTree/WordTree/index.html">单词树</a>
+                    <a class="nav-link" href="../../WordList/WordList/index.html">消消乐</a>
+                    <a class="nav-link" href="../../TimerWord/TimerWord/index.html">记忆力</a>
                     <a class="nav-link" href="../../index.html">英语句子</a>
                 </nav>
             </div>
@@ -72,8 +75,9 @@
             <h1 class="cover-heading hide70">Practice in English.</h1>
              <p class="lead">Switch cards and sort them correctly, Help you learn more. currPage：{{this.currentPage}}</p>
             <p class="lead">
-                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previous()">Prev</button>
-                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="next()">Next</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousBtn()">Prev</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextBtn()">Next</button>
+                <input type="text" v-model="currentPage" maxlength="10" size="1"/>
             </p>
 
 <!--            rootPath:{{rootPath}}<br>-->
@@ -181,7 +185,7 @@
             checkWord(item, plugs){
                 plugs.color.color = this.yellow
                 this.checkSelectWordList(item)
-                this.aotuChangePage()
+                this.aotuNextBtn()
             },
             checkSelectWordList(item){
                 if(this.selectedWordList && this.selectedWordList.length===1){
@@ -208,20 +212,20 @@
             /**
              * 分页切换
              */
-            previous(){
+            previousBtn(){
                 let itemCurrWordList = this.previousPage(this.wordBookList)
                 this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
             },
-            next(){
+            nextBtn(){
                 let itemCurrWordList = this.nextPage(this.wordBookList)
                 this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
             },
-            aotuChangePage(){
+            aotuNextBtn(){
               let arr = this.currWordList.filter(item=>{
                     return item.plugs.cn.visible.showFlag ||  item.plugs.en.visible.showFlag
-                })
+              })
               if(arr && arr.length==0){
-                  this.nextPage(this.wordBookList)
+                this.nextBtn()
               }
             },
             /**

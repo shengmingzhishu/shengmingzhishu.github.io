@@ -51,9 +51,9 @@
     <!-- Custom styles for this template -->
     <script src="../../vue/vue.global.js"></script>
     <!--字典-->
-    <script src="../common/dict/dict.js"></script>
+    <script src="../common/dict/dict-cet6.js"></script>
+    <script src="../common/dict/dict-gre-redbook.js"></script>
     <!--工具-->
-    <script src="../common/js/PageUril.js"></script>
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -63,6 +63,9 @@
             <div class="inner">
                 <h3 class="masthead-brand">Learning English</h3>
                 <nav class="nav nav-masthead justify-content-center">
+                    <a class="nav-link" href="../../WordTree/WordTree/index.html">单词树</a>
+                    <a class="nav-link" href="../../WordList/WordList/index.html">消消乐</a>
+                    <a class="nav-link" href="../../TimerWord/TimerWord/index.html">记忆力</a>
                     <a class="nav-link" href="../../index.html">英语句子</a>
                 </nav>
             </div>
@@ -72,18 +75,16 @@
             <h1 class="cover-heading hide70">Practice in English.</h1>
              <p class="lead">Switch cards and sort them correctly, Help you learn more. currPage：{{this.currentPage}}</p>
             <p class="lead">
-                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previous()">Prev</button>
-                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="next()">Next</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousBtn()">Prev</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextBtn()">Next</button>
+                <input type="text" v-model="currentPage" maxlength="10" size="1"/>
             </p>
 
-            <!--            rootPath:{{rootPath}}<br>-->
-            <!--            wordBookList:{{wordBookList}}<br>-->
-<!--                        currWordList:{{currWordList}}<br>-->
-<!--            {{this.currWordList.length}}<br>-->
-<!--            {{this.selectedWordList.length}}<br>-->
-
-            <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs)" class="box" :style="{top: item.plugs.position.top+'px', left:item.plugs.position.left+'px',backgroundColor: item.plugs.color.color }" v-show="item.plugs.visible.showFlag" >
-               <h3>{{ item.cn }}</h3> <span v-show="item.plugs.word.showFlag">{{ item.en }}</span>
+            <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs.cn)" class="box" :style="{top: item.plugs.cn.position.top+'px', left:item.plugs.cn.position.left+'px',backgroundColor: item.plugs.cn.color.color }" v-show="item.plugs.cn.visible.showFlag" >
+                {{ item.cn }}
+            </div>
+             <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs.en)" class="box" :style="{top: item.plugs.en.position.top+'px', left:item.plugs.en.position.left+'px',backgroundColor: item.plugs.en.color.color }" v-show="item.plugs.en.visible.showFlag" >
+                {{ item.en }}
             </div>
 
         </main>
@@ -110,7 +111,7 @@
                 that: this,
                 /**
                  * 基本信息
-                 */
+                 */ 
                 message: 'Hello Vue!',
                 rootPath: '',
                 /**
@@ -118,7 +119,12 @@
                  */
                 gray: '#666',
                 yellow: '#c88',
-                blue: '#a95',
+                /**
+                 * AI code
+                 * */
+                arr: [1, 2],
+                displayArr: [], // 当前页面显示的数组元素
+                selectedItems: [], // 已选中的元素
                 /**
                  * 分页工具
                  * */
@@ -133,15 +139,13 @@
                  */
                 /**
                  * 字典集合
-                 */
+                 */ 
                 wordBookList: [],
                 currWordList: [],
                 selectedWordList: [],
                 /**
-                 * 定时器
-                 */
-                timer: undefined,
-                timerIndex: 0
+                 * 随机位置
+                 */ 
             }
         },
         mounted() {
@@ -159,8 +163,7 @@
                 // 获取字典集合元素
                 this.initWordBookList()
                 this.getCurrWordList()
-                this.currWordList = this.resetCurrWordPositon(this.currWordList)
-                this.showWordList()
+                this.resetCurrWordPositon(this.currWordList)
             },
             // 初始化当前单词书
             initWordBookList() {
@@ -168,122 +171,103 @@
                 return this.wordBookList
             },
             getCurrWordList(){
-                this.currWordList = this.getPageData(this.wordBookList)
+               this.currWordList = this.getPageData(this.wordBookList)
                 return this.currWordList
             },
+
             /**
              * 单击单词
              */
             checkWord(item, plugs){
-                this.checkSelectWordList(item, plugs)
-                this.aotuNextPage()
+                plugs.color.color = this.yellow
+                this.checkSelectWordList(item)
+                this.aotuNextBtn()
             },
-            checkSelectWordList(item, plugs){
-                this.selectedWordList.push(item)
-                if(this.currWordList[this.selectedWordList.length-1] == item){
-                    plugs.color.color = this.yellow
-                    plugs.word.showFlag = true
+            checkSelectWordList(item){
+                if(this.selectedWordList && this.selectedWordList.length===1){
+                    let oldItem = this.selectedWordList[0]
+                   if(item == this.selectedWordList[0]){
+                       this.hideSelectWordShowFlag(item)
+                   }else{
+                       this.resetWordShowFlag(item)
+                       this.resetWordShowFlag(oldItem)
+                   }
+                    this.selectedWordList = []
                 }else{
-                    this.hideSelectWordShowFlag()
-                    this.resetWordShowFlag()
+                    this.selectedWordList = [item]
                 }
             },
-            hideSelectWordShowFlag(){
-                 this.selectedWordList = []
+            hideSelectWordShowFlag(item){
+                item.plugs.cn.visible.showFlag = false
+                item.plugs.en.visible.showFlag = false
             },
-            resetWordShowFlag(){
-                this.currWordList.forEach(item=>{
-                    item.plugs.color.color = this.blue
-                })
-            },
-            hideWord () {
-                this.currWordList.forEach(item=>{
-                    item.plugs.word.showFlag = false
-                })
-            },
-            /**
-             * 定时器
-             */
-            showWordList(){
-                this.startTimer()
-            },
-            startTimer() {
-                if(this.timer){
-                    this.clearTimer()
-                }
-                let that = this
-                this.timer = setInterval(function() {
-                    if(that.timerIndex< that.currWordList.length){
-                        that.currWordList[that.timerIndex++].plugs.visible.showFlag = true
-                    }else{
-                        that.stopTimer()
-                    }
-                }, 1000); // 每隔1秒执行一次
-            },
-            clearTimer() {
-                if(this.timer){
-                    this.timerIndex = 0
-                    clearInterval(this.timer); // 停止定时器
-                }
-            },
-            stopTimer() {
-                if(this.timer){
-                    this.timerIndex = 0
-                    clearInterval(this.timer); // 停止定时器
-                    this.hideWord()
-                }
+            resetWordShowFlag(item){
+                item.plugs.cn.color.color = this.gray
+                item.plugs.en.color.color = this.gray
             },
             /**
              * 分页切换
              */
-            previous(){
+            previousBtn(){
                 let itemCurrWordList = this.previousPage(this.wordBookList)
                 this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
-                this.showWordList()
             },
-            next(){
+            nextBtn(){
                 let itemCurrWordList = this.nextPage(this.wordBookList)
                 this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
-                this.showWordList()
             },
-            aotuNextPage(){
-                if(this.currWordList.length === this.selectedWordList.length){
-                    this.next(this.wordBookList)
-                }
+            aotuNextBtn(){
+              let arr = this.currWordList.filter(item=>{
+                    return item.plugs.cn.visible.showFlag ||  item.plugs.en.visible.showFlag
+                })
+              if(arr && arr.length==0){
+                  this.nextBtn()
+              }
             },
             /**
              * 位置管理
              * */
             resetCurrWordPositon(currWordList){
-                this.currPositions = []
-                for (let i = 0; i < currWordList.length; i++) {
-                    let word = currWordList[i]
-                    word['plugs'] = {
-                            position: {
-                                top: 0,
-                                left: 0,
+                    this.currPositions = []
+                    for (let i = 0; i < currWordList.length; i++) {
+                        let word = currWordList[i]
+                        word['plugs'] = {
+                            cn: {
+                                position:{
+                                    top: 0,
+                                    left: 0,
+                                },
+                                visible:{
+                                    showFlag: true
+                                },
+                                color:{
+                                    color: this.gray
+                                }
                             },
-                            visible: {
-                                showFlag: false
-                            },
-                            word: {
-                                showFlag: true
-                            },
-                            color:{
-                                color: this.gray
+                            en: {
+                                position:{
+                                    top: 0,
+                                    left: 0,
+                                },
+                                visible:{
+                                    showFlag: true
+                                },
+                                color:{
+                                    color: this.gray
+                                }
                             }
+                        }
+                        // 显示标记
+                        // 中文位置
+                        let cnPosition = this.getRandomPosition(this.currPositions)
+                        word['plugs'].cn.position.top= cnPosition.top
+                        word['plugs'].cn.position.left = cnPosition.left
+                        // 英文位置
+                        let enPsition = this.getRandomPosition(this.currPositions)
+                        word['plugs'].en.position.top = enPsition.top
+                        word['plugs'].en.position.left  = enPsition.left
                     }
-                    // 显示标记
-                    // 中文位置
-                    let cnPosition = this.getRandomPosition(this.currPositions)
-                    word['plugs'].position.top= cnPosition.top
-                    word['plugs'].position.left = cnPosition.left
-                    // 英文位置
-                    let enPsition = this.getRandomPosition(this.currPositions)
-                    word['plugs'].position.top = enPsition.top
-                    word['plugs'].position.left  = enPsition.left
-                }
-                return currWordList
+                    return currWordList
             },
             getRandomPosition(currPositions) {
                 // 计算可用的位置范围
@@ -305,7 +289,6 @@
                     return Math.abs(p.top - position.top) < 200 && Math.abs(p.left - position.left) < 200;
                 });
             },
-
             /**
              * 分页工具
              * */

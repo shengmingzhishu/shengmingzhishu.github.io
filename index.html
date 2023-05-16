@@ -7,6 +7,7 @@
     <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
     <meta name="generator" content="Hugo 0.101.0">
     <title>Learning English</title>
+    <base :href="rootPath">
 
     <link rel="canonical" href="https://getbootstrap.com/docs/4.6/examples/cover/">
 
@@ -31,21 +32,21 @@
             }
         }
     </style>
-    <base :href="rootPath">
+
 
     <!-- Custom styles for this template -->
-    <link href="LearnEnglish/common/css/cover.css" rel="stylesheet">
+    <link href="WordList/common/css/cover.css" rel="stylesheet">
 
     <script src="./vue/vue.global.js"></script>
     <!--书籍-->
-    <script src="./LearnEnglish/common/js/phrase/罗马假日.js"></script>
-    <script src="./LearnEnglish/common/js/phrase/早安英语.js"></script>
-    <script src="./LearnEnglish/common/js/phrase/50句子700词.js"></script>
-    <script src="./LearnEnglish/common/js/phrase/50短句.js"></script>
+    <script src="WordList/common/js/phrase/罗马假日.js"></script>
+    <script src="WordList/common/js/phrase/早安英语.js"></script>
+    <script src="WordList/common/js/phrase/50句子700词.js"></script>
+    <script src="WordList/common/js/phrase/50短句.js"></script>
     <!--工具-->
-    <script src="./LearnEnglish/common/js/utils/BookUtils.js"></script>
-    <script src="./LearnEnglish/common/js/utils/ReadUtils.js"></script>
-    <script src="./LearnEnglish/common/js/utils/FileUtils.js"></script>
+    <script src="WordList/common/js/utils/BookUtils.js"></script>
+    <script src="WordList/common/js/utils/ReadUtils.js"></script>
+    <script src="WordList/common/js/utils/FileUtils.js"></script>
 </head>
 <body class="text-center">
 <span id="app" class="langWithe">
@@ -55,9 +56,9 @@
             <div class="inner">
                 <h3 class="masthead-brand">Learning English</h3>
                 <nav class="nav nav-masthead justify-content-center">
-                    <a class="nav-link" href="PlayGame/GameWordLink/index.html">消消乐</a>
-                    <a class="nav-link" href="RememberGame/RememberGame/index.html">记忆术</a>
-                    <a class="nav-link" href="RememberGame/RememberGame/index.html">单词树</a>
+                    <a class="nav-link" href="WordTree/WordTree/index.html">单词树</a>
+                    <a class="nav-link" href="LinkWord/LinkWord/index.html">消消乐</a>
+                    <a class="nav-link" href="TimerWord/TimerWord/index.html">记忆术</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.BOOK50TO700Words)">50句子7000词</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.BOOK50Words)">50短句</a>
                     <a class="nav-link" href="#" @click="changeBook(bookEnum.LuoMaJiaRi)">罗马假日</a>
@@ -74,7 +75,6 @@
                 <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextPhrase()">Next</button>
             </p>
 
-            {{rootPath}}
             <template v-if="currentPhrase">
 
                 <!--图片切换功能-->
@@ -184,7 +184,6 @@
         },
         mounted() {
             this.rootPath = window.location.protocol + "//" + window.location.host
-
             this.changeBook(this.bookEnum.BOOK50Words)
         },
         methods: {
