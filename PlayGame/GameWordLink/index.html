@@ -51,7 +51,8 @@
     <!-- Custom styles for this template -->
     <script src="../../vue/vue.global.js"></script>
     <!--字典-->
-    <script src="../common/dict/dict.js"></script>
+    <script src="../common/dict/dict-cet6.js"></script>
+    <script src="../common/dict/dict-gre-redbook.js"></script>
     <!--工具-->
     <script src="../common/js/PageUril.js"></script>
 </head>
@@ -70,25 +71,23 @@
 
         <main role="main" class="inner cover">
             <h1 class="cover-heading hide70">Practice in English.</h1>
-             <p class="lead">Switch cards and sort them correctly, Help you learn more.</p>
+             <p class="lead">Switch cards and sort them correctly, Help you learn more. currPage：{{this.currentPage}}</p>
             <p class="lead">
-                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousPhrase()">Prev</button>
-                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextPhrase()">Next</button>
-                arr:{{arr}}
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="previousPage()">Prev</button>
+                <button type="button" class="btn btn-warning mr5 mb5 width50" @click="nextPage()">Next</button>
             </p>
 
-            rootPath:{{rootPath}}<br>
-            wordBookList:{{wordBookList}}<br>
-            currWordList:{{currWordList}}<br>
+<!--            rootPath:{{rootPath}}<br>-->
+<!--            wordBookList:{{wordBookList}}<br>-->
+<!--            currWordList:{{currWordList}}<br>-->
          
-            <div  v-for="(item, index) in currWordList" @click="checkWord(item)" class="box" :style="{top: item.position.cnTtop+'px', left:item.position.cnLeft+'px' }" v-show="item.showFlag" >
+            <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs.cn)" class="box" :style="{top: item.plugs.cn.position.top+'px', left:item.plugs.cn.position.left+'px',backgroundColor: item.plugs.cn.color.color }" v-show="item.plugs.cn.visible.showFlag" >
                 {{ item.cn }}
             </div>
-            <div  v-for="(item, index) in currWordList" @click="checkWord(item)" class="box" :style="{top: item.position.enTtop+'px', left:item.position.enLeft+'px' }" v-show="item.showFlag" >
+             <div  v-for="(item, index) in currWordList" @click="checkWord(item,item.plugs.en)" class="box" :style="{top: item.plugs.en.position.top+'px', left:item.plugs.en.position.left+'px',backgroundColor: item.plugs.en.color.color }" v-show="item.plugs.en.visible.showFlag" >
                 {{ item.en }}
             </div>
-        
- 
+
         </main>
 
         <footer class="mastfoot mt-auto">
@@ -115,29 +114,36 @@
                  * 基本信息
                  */ 
                 message: 'Hello Vue!',
-                rootPath: '', 
+                rootPath: '',
+                /**
+                 * 基本颜色
+                 */
+                gray: '#666',
+                yellow: '#c88',
                 /**
                  * AI code
                  * */
                 arr: [1, 2],
                 displayArr: [], // 当前页面显示的数组元素
                 selectedItems: [], // 已选中的元素
-                totalPages: [], // 总页数
-                currentPage: 0, // 当前页码
+                /**
+                 * 分页工具
+                 * */
+                currentPage: 1, // 当前页码
+                pageSize: 3, // 每页数量
                 /**
                  * ai code 2
                  * */
                 currPositions: [],
                 /**
                  * 分页工具
-                 */ 
-                 currentPage :1,
-                 pageSize: 3,
+                 */
                 /**
                  * 字典集合
                  */ 
                 wordBookList: [],
                 currWordList: [],
+                selectedWordList: [],
                 /**
                  * 随机位置
                  */ 
@@ -158,75 +164,111 @@
                 // 获取字典集合元素
                 this.initWordBookList()
                 this.getCurrWordList()
-                this.resetCurrWordPositon()
+                this.resetCurrWordPositon(this.currWordList)
             },
             // 初始化当前单词书
             initWordBookList() {
-                this.wordBookList = getDictList()
+                this.wordBookList = getDictCet6()
+                return this.wordBookList
             },
             getCurrWordList(){
                this.currWordList = getPageData(this.wordBookList, this.currentPage, this.pageSize)
+                return this.currWordList
+            },
+
+            /**
+             * 单击单词
+             */
+            checkWord(item, plugs){
+                plugs.color.color = this.yellow
+                this.checkSelectWordList(item)
+                this.aotuChangePage()
+            },
+            checkSelectWordList(item){
+                if(this.selectedWordList && this.selectedWordList.length===1){
+                    let oldItem = this.selectedWordList[0]
+                   if(item == this.selectedWordList[0]){
+                       this.hideSelectWorldShowFlag(item)
+                   }else{
+                       this.resetWorldShowFlag(item)
+                       this.resetWorldShowFlag(oldItem)
+                   }
+                    this.selectedWordList = []
+                }else{
+                    this.selectedWordList = [item]
+                }
+            },
+            hideSelectWorldShowFlag(item){
+                item.plugs.cn.visible.showFlag = false
+                item.plugs.en.visible.showFlag = false
+            },
+            resetWorldShowFlag(item){
+                item.plugs.cn.color.color = this.gray
+                item.plugs.en.color.color = this.gray
             },
             /**
              * 分页切换
-             */ 
+             */
             previousPage(){
-                this.currWordList = previousPage(this.wordBookList, this.currentPage, this.pageSize)
+                let itemCurrWordList = previousPage(this.wordBookList, this.currentPage, this.pageSize)
+                this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
             },
             nextPage(){
-                this.currWordList = nextPage(this.wordBookList, this.currentPage, this.pageSize)
+                let itemCurrWordList = nextPage(this.wordBookList, this.currentPage, this.pageSize)
+                this.currWordList  = this.resetCurrWordPositon(itemCurrWordList)
             },
-            /**
-             * AI code
-             * */
-            handleClick(item) {
-                this.selectedItems.push(item); // 将当前点击的元素添加到已选中数组中
-                if (this.selectedItems.length === 2) {
-                    if (this.selectedItems[0] === this.selectedItems[1]) {
-                        this.removeItems(this.selectedItems[0]); // 如果两个选中元素相同，移除这两个元素
-                    }
-                    this.selectedItems = []; // 点击了两个元素后，清空已选中元素的数组
-                }
+            aotuChangePage(){
+              let arr = this.currWordList.filter(item=>{
+                    return item.plugs.cn.visible.showFlag ||  item.plugs.en.visible.showFlag
+                })
+              if(arr && arr.length==0){
+                  this.nextPage()
+              }
             },
-            removeItems(val) {
-                // 移除已选中的元素
-                this.arr =  this.arr.filter(item =>  item !== val )
-            },
-            changePage(page) {
-                this.currentPage = page;
-                this.displayArr = this.arr.slice(page * 5, page * 5 + 5);
-            },
-
             /**
              * 位置管理
              * */
-            resetCurrWordPositon(){
-                if(this.currWordList&& this.currWordList.length>0){
-                    for (let i = 0; i < this.currWordList.length; i++) {
-                        let word = this.currWordList[i]
-
-                        word['position'] = {}
+            resetCurrWordPositon(currWordList){
+                    this.currPositions = []
+                    for (let i = 0; i < currWordList.length; i++) {
+                        let word = currWordList[i]
+                        word['plugs'] = {
+                            cn: {
+                                position:{
+                                    top: 0,
+                                    left: 0,
+                                },
+                                visible:{
+                                    showFlag: true
+                                },
+                                color:{
+                                    color: this.gray
+                                }
+                            },
+                            en: {
+                                position:{
+                                    top: 0,
+                                    left: 0,
+                                },
+                                visible:{
+                                    showFlag: true
+                                },
+                                color:{
+                                    color: this.gray
+                                }
+                            }
+                        }
                         // 显示标记
-                        word['showFlag'] = true
                         // 中文位置
                         let cnPosition = this.getRandomPosition(this.currPositions)
-                        word['position']['cnTop'] = cnPosition.top 
-                        word['position']['cnLeft'] = cnPosition.left 
+                        word['plugs'].cn.position.top= cnPosition.top
+                        word['plugs'].cn.position.left = cnPosition.left
                         // 英文位置
                         let enPsition = this.getRandomPosition(this.currPositions)
-                        word['position']['enTop'] = enPsition.top 
-                        word['position']['enLeft'] = enPsition.left 
-                    } 
-                }
-            },
-            resetCurrPositions(){
-                this.currPositions = []
-            },
-            getRamdomPositionXX(){
-                // 创建一个存储已经随机过的位置的数组，用来避免重复
-                let position = this.getRandomPosition(this.currPositions);
-                // return { top: position.top + 'px', left: position.left + 'px' }
-                return position
+                        word['plugs'].en.position.top = enPsition.top
+                        word['plugs'].en.position.left  = enPsition.left
+                    }
+                    return currWordList
             },
             getRandomPosition(currPositions) {
                 // 计算可用的位置范围

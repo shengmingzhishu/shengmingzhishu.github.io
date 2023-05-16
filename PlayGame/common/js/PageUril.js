@@ -1,4 +1,4 @@
-function getTotalPages(dataList) {
+function getTotalPages(dataList, currentPage, pageSize) {
   return Math.ceil(dataList.length / pageSize);
 }
 
@@ -16,7 +16,7 @@ function previousPage(dataList, currentPage, pageSize) {
 }
 
 function nextPage(dataList, currentPage, pageSize) {
-  if (currentPage < getTotalPages(dataList)) {
+  if (currentPage < getTotalPages(dataList, currentPage, pageSize)) {
     currentPage++;
   }
   return getPageData(dataList, currentPage, pageSize);
