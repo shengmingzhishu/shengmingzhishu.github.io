@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="微信Markdown转换器">
+    <title>MD转公众号HTML工具</title>
+    <!-- Markdown解析和样式 -->
+    <script src="../js/marked.min.js"></script>
+    <link rel="stylesheet" href="../css/github.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .editor-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        #preview {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .copy-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 135px;
+            padding: 8px 15px;
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease, opacity 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0.3;
+        }
+
+        .copy-btn:hover {
+            background: #06ad56;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            opacity: 1;
+        }
+
+        .copy-btn::before {
+            content: "📋";
+            font-size: 16px;
+        }
+
+        /* 微信公众号样式优化 */
+        .wx-content {
+            line-height: 1.6;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .wx-content img {
+            max-width: 100%!important;
+            height: auto!important;
+        }
+
+        /* 返回主页按钮样式 */
+        .back-home {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: #ffd93d;
+            color: #333;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease, opacity 0.3s ease;
+            z-index: 1000;
+            opacity: 0.7;
+        }
+
+        .back-home:hover {
+            background: #ffc107;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            opacity: 0.9;
+        }
+
+        .back-home::before {
+            content: "🏠";
+            font-size: 16px;
+        }
+
+        /* 浮动提示样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #FFD1DC, #FFB5E8);
+            color: #444;
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show { opacity: 1; }
+        .toast::before { content: "🎈"; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-home"> 返回主页</a>
+    <div class="container">
+        <div class="editor-box">
+            <textarea id="editor" placeholder="输入Markdown内容..."></textarea>
+        </div>
+        <div class="editor-box">
+            <div id="preview" class="wx-content"></div>
+            <button class="copy-btn" onclick="copyWechatHTML()">复制公众号内容</button>
+        </div>
+    </div>
+
+    <!-- 添加提示元素 -->
+    <div id="toast" class="toast">复制成功！</div>
+
+    <script>
+        
+    function autoFormatText(rawText) {
+        const lines = rawText.split('\n');
+        let html = [];
+        let inList = false;
+        let currentListType = '';
+        let partNumber = 0;
+
+        const labels = [
+            "@北屿的蓝色",
+            "10年IT领域资深专家",
+            "douya800 免费领取资料~",
+            "互联网创业咨询顾问",
+            "AI+自媒体职业顾问"
+        ];
+
+        function getRandomLabel() {
+            const randomIndex = Math.floor(Math.random() * labels.length);
+            return labels[randomIndex];
+        }
+
+        function processInlineMarkdown(text) {
+            // 处理加粗，确保前后有空格
+            text = text.replace(/(\*\*|__)(.*?)\1/g, (match, p1, p2) => {
+                return ` <strong>${p2}</strong> `;
+            });
+            
+            // 处理斜体
+            text = text.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
+            
+            // 处理删除线
+            text = text.replace(/~~(.*?)~~/g, '<del>$1</del>');
+            
+            // 处理行内代码
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // 处理链接
+            text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            
+            // 处理图片
+            text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+
+            // 清理多余空格
+            text = text.replace(/\s+/g, ' ').trim();
+
+            return text;
+        }
+
+        lines.forEach((line, index) => {
+            const trimmedLine = line.trim();
+
+            // 重置列表状态
+            if (trimmedLine === '') {
+                if (inList) {
+                    html.push(currentListType === 'ol' ? '</ol>' : '</ul>');
+                    inList = false;
+                    currentListType = '';
+                }
+                return;
+            }
+
+            // 处理标题，不受列表影响
+            const headingMatch = trimmedLine.match(/^(#{1,6})\s?(.*)/);
+            if (headingMatch) {
+                if (inList) {
+                    html.push(currentListType === 'ol' ? '</ol>' : '</ul>');
+                    inList = false;
+                    currentListType = '';
+                }
+                
+                const level = Math.min(headingMatch[1].length, 6);
+                const content = processInlineMarkdown(headingMatch[2]);
+                
+                if(level === 1) {
+                    html.push(`<div class="part-container">
+                        <div class="part-decorator"></div>
+                        <h2 class="part-title">${content} <span class="part-label">${getRandomLabel()}</span></h2>
+                    </div>`);
+                } else {
+                    html.push(`<h${level} class="heading-${level}">${content}</h${level}>`);
+                }
+                return;
+            }
+
+            // 处理列表
+            if (/^\d+\.\s/.test(trimmedLine)) {
+                if (!inList || currentListType !== 'ol') {
+                    if (inList) html.push('</ol>');
+                    html.push('<ol class="custom-list">');
+                    inList = true;
+                    currentListType = 'ol';
+                }
+                const content = processInlineMarkdown(trimmedLine.replace(/^\d+\.\s/, ''));
+                html.push(`<li>${content}</li>`);
+                return;
+            }
+
+            if (/^[-*+]\s/.test(trimmedLine)) {
+                if (!inList || currentListType !== 'ul') {
+                    if (inList) html.push('</ol>');
+                    html.push('<ul class="custom-list">');
+                    inList = true;
+                    currentListType = 'ul';
+                }
+                const content = processInlineMarkdown(trimmedLine.replace(/^[-*+]\s/, ''));
+                html.push(`<li>${content}</li>`);
+                return;
+            }
+
+            // 处理普通段落
+            if (inList) {
+                html.push(currentListType === 'ol' ? '</ol>' : '</ul>');
+                inList = false;
+                currentListType = '';
+            }
+
+            if (trimmedLine) {
+                const content = processInlineMarkdown(trimmedLine);
+                html.push(`<p class="article-paragraph">${content}</p>`);
+            }
+        });
+
+        if (inList) {
+            html.push(currentListType === 'ol' ? '</ol>' : '</ul>');
+        }
+
+        return `
+            <article class="wechat-article">
+                ${html.join('\n')}
+            </article>
+            <style>
+                .wechat-article {
+                    max-width: 640px;
+                    margin: 20px auto;
+                    padding: 20px;
+                    font-family: -apple-system, BlinkMacSystemFont, 
+                                "Helvetica Neue", "PingFang SC", 
+                                "Microsoft YaHei", sans-serif;
+                    color: #333;
+                    line-height: 1.8;
+                    text-align: justify;
+                }
+
+                .part-container {
+                    display: flex;
+                    align-items: center;
+                    margin: 2em 0;
+                    position: relative;
+                    justify-content: center;
+                }
+
+                .part-title {
+                    color: #3498db;
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin: 0;
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .part-decorator {
+                    width: 3px;
+                    height: 24px;
+                    background: #3498db;
+                    margin-right: 15px;
+                }
+
+                .part-label {
+                    font-size: 11px;
+                    color: #64748b;
+                }
+
+                [class^="heading-"] {
+                    margin: 1.5em 0 1em;
+                    font-weight: 500;
+                    border-left: 4px solid;
+                    padding-left: 12px;
+                }
+
+                .heading-1 { font-size: 20px; color: #2c3e50; border-color: #166a9f; }
+                .heading-2 { font-size: 18px; color: #34495e; border-color: #44b0ce; }
+                .heading-3 { font-size: 16px; color: #4a5568; border-color: #1abc9c; }
+                .heading-4 { font-size: 15px; color: #555; border-color: #f1c40f; }
+                .heading-5 { font-size: 14px; color: #666; border-color: #e67e22; }
+                .heading-6 { font-size: 13px; color: #777; border-color: #e74c3c; }
+
+                .article-paragraph {
+                    margin: 0.8em 0;
+                    text-indent: 2em;
+                }
+
+                .custom-list {
+                    margin: 1em 2em;
+                    padding-left: 1.2em;
+                    color: #475569;
+                    counter-reset: item;
+                }
+
+                .custom-list li {
+                    margin: 0.6em 0;
+                    padding-left: 0.8em;
+                }
+
+                ol.custom-list {
+                    list-style-type: decimal;
+                }
+
+                ul.custom-list {
+                    list-style-type: disc;
+                }
+
+                .custom-list li::marker {
+                    color: #3498db;
+                    font-weight: bold;
+                }
+
+                strong {
+                    font-weight: 600;
+                    color: #3498db;
+                }
+
+                em {
+                    font-style: italic;
+                    color: #334155;
+                }
+
+                del {
+                    text-decoration: line-through;
+                    color: #94a3b8;
+                }
+
+                code {
+                    background: #f1f5f9;
+                    padding: 2px 4px;
+                    border-radius: 3px;
+                    font-family: Consolas, Monaco, monospace;
+                    font-size: 0.9em;
+                    color: #dc2626;
+                }
+
+                a {
+                    color: #3b82f6;
+                    text-decoration: none;
+                    border-bottom: 1px solid #3b82f6;
+                    transition: all 0.2s;
+                }
+
+                a:hover {
+                    color: #1d4ed8;
+                    border-bottom-color: #1d4ed8;
+                }
+
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    margin: 1em auto;
+                    display: block;
+                    border-radius: 4px;
+                }
+
+                @media (max-width: 480px) {
+                    .wechat-article {
+                        padding: 15px;
+                        font-size: 16px;
+                    }
+                    .heading-1 { font-size: 19px; }
+                    .heading-2 { font-size: 17px; }
+                    img {
+                        width: 100%;
+                    }
+                }
+            </style>
+        `;
+    }
+
+const rawText = "# 欢迎使用马克飞象\n" +
+            "\n" +
+            "@(示例笔记本)[马克飞象|帮助|Markdown]\n" +
+            "\n" +
+            "**马克飞象**是一款专为印象笔记（Evernote）打造的Markdown编辑器，通过精心的设计与技术实现，配合印象笔记强大的存储和同步功能，带来前所未有的书写体验。特点概述：\n" +
+            " \n" +
+            "- **功能丰富** ：支持高亮代码块、*LaTeX* 公式、流程图，本地图片以及附件上传，甚至截图粘贴，工作学习好帮手；\n" +
+            "- **得心应手** ：简洁高效的编辑器，提供[桌面客户端][1]以及[离线Chrome App][2]，支持移动端 Web；\n" +
+            "- **深度整合** ：支持选择笔记本和添加标签，支持从印象笔记跳转编辑，轻松管理。\n" +
+            "\n" +
+            "-------------------\n" +
+            "\n" +
+            "[TOC]\n" +
+            "\n" +
+            "## Markdown简介\n" +
+            "\n" +
+            "> Markdown 是一种轻量级标记语言，它允许人们使用易读易写的纯文本格式编写文档，然后转换成格式丰富的HTML页面。    —— [维基百科](https://zh.wikipedia.org/wiki/Markdown)\n" +
+            "\n" +
+            "正如您在阅读的这份文档，它使用简单的符号标识不同的标题，将某些文字标记为**粗体**或者*斜体*，创建一个[链接](http://www.example.com)或一个脚注[^demo]。下面列举了几个高级功能，更多语法请按`Ctrl + /`查看帮助。 \n" +
+            "\n" +
+            "### 代码块\n" +
+            "``` python\n" +
+            "@requires_authorization\n" +
+            "def somefunc(param1='', param2=0):\n" +
+            "    '''A docstring'''\n" +
+            "    if param1 > param2: # interesting\n" +
+            "        print 'Greater'\n" +
+            "    return (param2 - param1 + 1) or None\n" +
+            "class SomeClass:\n" +
+            "    pass\n" +
+            ">>> message = '''interpreter\n" +
+            "... prompt'''\n" +
+            "```\n" +
+            "### LaTeX 公式\n" +
+            "\n" +
+            "可以创建行内公式，例如 $\\Gamma(n) = (n-1)!\\quad\\forall n\\in\\mathbb N$。或者块级公式：\n" +
+            "\n" +
+            "$$\tx = \\dfrac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$\n" +
+            "\n" +
+            "### 表格\n" +
+            "| Item      |    Value | Qty  |\n" +
+            "| :-------- | --------:| :--: |\n" +
+            "| Computer  | 1600 USD |  5   |\n" +
+            "| Phone     |   12 USD |  12  |\n" +
+            "| Pipe      |    1 USD | 234  |\n" +
+            "\n" +
+            "### 流程图\n" +
+            "```flow\n" +
+            "st=>start: Start\n" +
+            "e=>end\n" +
+            "op=>operation: My Operation\n" +
+            "cond=>condition: Yes or No?\n" +
+            "\n" +
+            "st->op->cond\n" +
+            "cond(yes)->e\n" +
+            "cond(no)->op\n" +
+            "```\n" +
+            "\n" +
+            "以及时序图:\n" +
+            "\n" +
+            "```sequence\n" +
+            "Alice->Bob: Hello Bob, how are you?\n" +
+            "Note right of Bob: Bob thinks\n" +
+            "Bob-->Alice: I am good thanks!\n" +
+            "```\n" +
+            "\n" +
+            "> **提示：**想了解更多，请查看**流程图**[语法][3]以及**时序图**[语法][4]。\n" +
+            "\n" +
+            "### 复选框\n" +
+            "\n" +
+            "使用 `- [ ]` 和 `- [x]` 语法可以创建复选框，实现 todo-list 等功能。例如：\n" +
+            "\n" +
+            "- [x] 已完成事项\n" +
+            "- [ ] 待办事项1\n" +
+            "- [ ] 待办事项2\n" +
+            "\n" +
+            "> **注意：**目前支持尚不完全，在印象笔记中勾选复选框是无效、不能同步的，所以必须在**马克飞象**中修改 Markdown 原文才可生效。下个版本将会全面支持。\n" +
+            "\n" +
+            "\n" +
+            "## 印象笔记相关\n" +
+            "\n" +
+            "### 笔记本和标签\n" +
+            "**马克飞象**增加了`@(笔记本)[标签A|标签B]`语法, 以选择笔记本和添加标签。 **绑定账号后**， 输入`(`自动会出现笔记本列表，请从中选择。\n" +
+            "\n" +
+            "### 笔记标题\n" +
+            "**马克飞象**会自动使用文档内出现的第一个标题作为笔记标题。例如本文，就是第一行的 `欢迎使用马克飞象`。\n" +
+            "\n" +
+            "### 快捷编辑\n" +
+            "保存在印象笔记中的笔记，右上角会有一个红色的编辑按钮，点击后会回到**马克飞象**中打开并编辑该笔记。\n" +
+            ">**注意：**目前用户在印象笔记中单方面做的任何修改，马克飞象是无法自动感知和更新的。所以请务必回到马克飞象编辑。\n" +
+            "\n" +
+            "### 数据同步\n" +
+            "**马克飞象**通过**将Markdown原文以隐藏内容保存在笔记中**的精妙设计，实现了对Markdown的存储和再次编辑。既解决了其他产品只是单向导出HTML的单薄，又规避了服务端存储Markdown带来的隐私安全问题。这样，服务端仅作为对印象笔记 API调用和数据转换之用。\n" +
+            "\n" +
+            " >**隐私声明：用户所有的笔记数据，均保存在印象笔记中。马克飞象不存储用户的任何笔记数据。**\n" +
+            "\n" +
+            "### 离线存储\n" +
+            "**马克飞象**使用浏览器离线存储将内容实时保存在本地，不必担心网络断掉或浏览器崩溃。为了节省空间和避免冲突，已同步至印象笔记并且不再修改的笔记将删除部分本地缓存，不过依然可以随时通过`文档管理`打开。\n" +
+            "\n" +
+            "> **注意：**虽然浏览器存储大部分时候都比较可靠，但印象笔记作为专业云存储，更值得信赖。以防万一，**请务必经常及时同步到印象笔记**。\n" +
+            "\n" +
+            "## 编辑器相关\n" +
+            "### 设置\n" +
+            "右侧系统菜单（快捷键`Ctrl + M`）的`设置`中，提供了界面字体、字号、自定义CSS、vim/emacs 键盘模式等高级选项。\n" +
+            "\n" +
+            "### 快捷键\n" +
+            "\n" +
+            "帮助    `Ctrl + /`\n" +
+            "同步文档    `Ctrl + S`\n" +
+            "创建文档    `Ctrl + Alt + N`\n" +
+            "最大化编辑器    `Ctrl + Enter`\n" +
+            "预览文档 `Ctrl + Alt + Enter`\n" +
+            "文档管理    `Ctrl + O`\n" +
+            "系统菜单    `Ctrl + M` \n" +
+            "\n" +
+            "加粗    `Ctrl + B`\n" +
+            "插入图片    `Ctrl + G`\n" +
+            "插入链接    `Ctrl + L`\n" +
+            "提升标题    `Ctrl + H`\n" +
+            "\n" +
+            "## 关于收费\n" +
+            "\n" +
+            "**马克飞象**为新用户提供 10 天的试用期，试用期过后需要[续费](maxiang.info/vip.html)才能继续使用。未购买或者未及时续费，将不能同步新的笔记。之前保存过的笔记依然可以编辑。\n" +
+            "\n" +
+            "\n" +
+            "## 反馈与建议\n" +
+            "- 微博：[@马克飞象](http://weibo.com/u/2788354117)，[@GGock](http://weibo.com/ggock \"开发者个人账号\")\n" +
+            "- 邮箱：<hustgock@gmail.com>\n" +
+            "\n" +
+            "---------\n" +
+            "感谢阅读这份帮助文档。请点击右上角，绑定印象笔记账号，开启全新的记录与分享体验吧。\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "[^demo]: 这是一个示例脚注。请查阅 [MultiMarkdown 文档](https://github.com/fletcher/MultiMarkdown/wiki/MultiMarkdown-Syntax-Guide#footnotes) 关于脚注的说明。 **限制：** 印象笔记的笔记内容使用 [ENML][5] 格式，基于 HTML，但是不支持某些标签和属性，例如id，这就导致`脚注`和`TOC`无法正常点击。\n" +
+            "\n" +
+            "\n" +
+            "  [1]: http://maxiang.info/client_zh\n" +
+            "  [2]: https://chrome.google.com/webstore/detail/kidnkfckhbdkfgbicccmdggmpgogehop\n" +
+            "  [3]: http://adrai.github.io/flowchart.js/\n" +
+            "  [4]: http://bramp.github.io/js-sequence-diagrams/\n" +
+            "  [5]: https://dev.yinxiang.com/doc/articles/enml.php\n" +
+            "\n";
+
+            const rawText2 = `\n# 北屿的蓝色1\n\n## 北屿的蓝色2\n### 北屿的蓝色3\n#### 北屿的蓝色4\n##### 北屿的蓝色5\n###### 北屿的蓝色6\n####### 北屿的蓝色7 ######## 北屿的蓝色8+AI \n\n1月份的时候，市场曾炒作过一段时间的情感交互。彼时，**苏豪弘业连续涨停**。##昨天，\n-第一部分，\n*第二部分，\n+第三部分，\n在DeepSeek的加持之下，这个题材再度发酵，浙江众成等股票涨停，今天，硅宝科技、浙江众成、趣睡科技、\n2.AAA\n1.BBB\n1.CCC\n爱慕股份再度集体涨停。\n一份市场点评认为，AI大模型+柔性材料+生理传感技术驱动下，情趣机器人正从"生理工具"向"情感伴侣"跃迁，打开新市场空间。据测算，全球情趣机器人市场规模2031年将突破3亿美元，技术迭代与伦理破冰下，具备材料、AI交互、健康监测能力的厂商将率先受益。\n\n#集体涨停\n\n今天，有一个赛道跑出来了，那就是2025年人形伴侣机器人赛道。截至目前，该条赛道的股票全线涨停。\n\n行业处在"功能满足"到"情绪价值"的阶段。DeepSeek等开源大模型赋能情感交互，AI娃娃可实现长期记忆存储、个性化反馈及生理数据联动（如根据心率动态调整互动模式）。需求刚性亦凸显，中国单身人口超2.4亿，叠加老龄化趋势，情感陪伴需求激增。\n机器人板块再度爆发\n与此同时，午后，机器人板块再度拉升。长盛轴承午后大涨超15%，再创历史新高，股价涨超110元，相比去年2月6日最低价10.84元股价涨超10倍，累计涨幅超830%。机器人ETF一度大涨超2%。\n事件方面，2025全球开发者先锋大会将于2月21日至23日在上海徐汇举办，大会以"模塑全球 无限可能"为主题，聚焦大模型、算力、语料、工具、软件平台等核心技术，参与的开发者群体包括硬件开发、云计算、大数据、物联网、人工智能、机器人、区块链和元宇宙。本次大会定位于"社区的社区"，充分吸引国际开发者社区参与本次大会。\n据悉，本次大会亮点主要体现在三个方面：一是体现上海市人工智能产业生态集群丰富，已初步形成人工智能上海队；二是本次大会是全球第一个定位服务于全员开发者的大会，集聚国内外100家开发者社区参与本次大会；三是场景全覆盖，针对"5+6"领域和行业，探索大模型产业化解决方案，推进场景落地应用，实现商业模式的正向闭环，推动生态链接合作。\n另一方面，据中新社最新报道，上海首座北屿的蓝色量产地——智元机器人制造工厂投产不过数月，2024年已下线1000台北屿的蓝色，并将在2025年实现数千台的年产量。业内认为，2025年将是北屿的蓝色的量产元年，该产业正以超线性的速度突破临界点。上海拥有高端制造业的基础、长三角完备的供应链及产业配套，以及丰富的高校资源和人才储备，是产业加速的基础。\n光大证券认为，机器人产业趋势加速背景下，建议关注 PEEK、碳纤维、超高分子量聚乙烯、聚烯烃发泡材料等化工材料。\n（1）轻量化是较好实现北屿的蓝色负载、续航能力和灵活性等的解决方法之一。PEEK、碳纤维等性能极佳的轻量化材料，在机器人领域的潜在应用空间较大，需求空间有望大幅提升。此外，通过使用碳纤维对PEEK改性还可以提升PEEK材料的机械强度、耐摩擦和抗磨损性能，可应用在机器人的机械臂、关节连杆、齿轮轴承等部位。（2）超高分子量聚乙烯性能优异应用广泛，下游可用于北屿的蓝色领域。其具有高强高模、耐冲击性、耐磨性、耐化学腐蚀、电绝缘和耐光性等优异性能，比强度相当于优质钢丝的 15 倍、 碳纤维的 1.8 倍、芳纶的 1.6 倍，拥有超低的断裂伸长率，能量吸收率高，密度比水小，柔软易弯曲。超高分子量聚乙烯纤维有望在未来的灵巧手中占据一席之地，还可以应用为北屿的蓝色腱绳传导材料，提供所需的强度和耐久性。\n（3）聚烯烃发泡材料是以烯烃聚合物为主要原材料，通过复杂的发泡工艺使材料中产生大量独立的细微泡孔，\n2.AAA\n1.BBB\n1.CCC\n并均匀分散于固体材料中的一类 高分子材料。`; // 原始文本内容
+
+            
+        // 初始化Markdown解析器
+        marked.setOptions({
+            breaks: true,
+            highlight: function(code) {
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        // 实时预览
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+
+        editor.addEventListener('input', () => {
+            const markdown = editor.value;
+            const html = autoFormatText(markdown);
+            preview.innerHTML = html;
+        });
+
+        editor.value = rawText2
+        const html = autoFormatText(editor.value);
+        preview.innerHTML = html;
+        
+        // 复制公众号兼容内容
+        function copyWechatHTML() {
+            const markdown = editor.value;
+            const htmlContent = autoFormatText(markdown);
+
+            // 创建临时textarea元素
+            const textarea = document.createElement('textarea');
+            textarea.value = htmlContent;
+            document.body.appendChild(textarea);
+
+            try {
+                // 选择文本
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+
+                // 执行复制命令
+                const successful = document.execCommand('copy');
+                
+                if (successful) {
+                    showToast('✨ 复制成功！');
+                } else {
+                    showToast('复制失败，请使用Ctrl+C手动复制');
+                }
+            } catch (err) {
+                console.error('复制失败:', err);
+                showToast('复制失败，请使用Ctrl+C手动复制');
+            } finally {
+                // 移除临时元素
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function showToast(message, duration = 2000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+    </script>
+    
+    <!-- 代码高亮 -->
+    <script src="./js/highlight.min.js"></script>
+</body>
+</html>

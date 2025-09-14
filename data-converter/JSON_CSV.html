@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JSON转CSV工具">
+    <title>JSON转CSV工具</title>
+    <style>
+        /* 返回主页按钮样式 */
+        .back-home {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: #ffd93d;
+            color: #333;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease, opacity 0.3s ease;
+            z-index: 1000;
+            opacity: 0.7;
+        }
+
+        .back-home:hover {
+            background: #ffc107;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            opacity: 0.9;
+        }
+
+        .back-home::before {
+            content: "🏠";
+            font-size: 16px;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 
+                        "Helvetica Neue", "PingFang SC", 
+                        "Microsoft YaHei", sans-serif;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .editor-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        #csvOutput {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow-y: auto;
+            background: #fff;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .header {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 16px;
+            color: #333;
+            margin: 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #06ad56;
+        }
+
+        .btn.secondary {
+            background: #3498db;
+        }
+
+        .btn.secondary:hover {
+            background: #2980b9;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        /* 浮动提示样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #FFD1DC, #FFB5E8);
+            color: #444;
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show { opacity: 1; }
+        .toast::before { content: "🎈"; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-home"> 返回主页</a>
+    <div class="container">
+        <div class="editor-box">
+            <div class="header">
+                <h3 class="title">JSON输入</h3>
+                <div class="button-group">
+                    <button class="btn" onclick="loadSampleData()">加载示例</button>
+                    <button class="btn secondary" onclick="clearInput()">清空</button>
+                </div>
+            </div>
+            <textarea id="jsonInput" placeholder="请输入JSON数组数据..."></textarea>
+            <div id="jsonError" class="error"></div>
+        </div>
+        <div class="editor-box">
+            <div class="header">
+                <h3 class="title">CSV输出</h3>
+                <button class="btn" onclick="copyCSV()">复制CSV</button>
+            </div>
+            <div id="csvOutput"></div>
+        </div>
+    </div>
+
+    <!-- 添加提示元素 -->
+    <div id="toast" class="toast">复制成功！</div>
+
+    <script>
+        function jsonToCSV(jsonData) {
+            try {
+                // 如果输入是字符串，解析为JSON对象
+                const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+                
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('输入必须是非空JSON数组');
+                }
+
+                // 获取所有可能的列名
+                const headers = Array.from(new Set(
+                    data.reduce((acc, curr) => acc.concat(Object.keys(curr)), [])
+                ));
+
+                // 创建CSV行
+                const csvRows = [];
+                
+                // 添加表头
+                csvRows.push(headers.join(','));
+
+                // 添加数据行
+                data.forEach(item => {
+                    const row = headers.map(header => {
+                        const value = item[header] ?? '';
+                        // 处理包含逗号、引号或换行符的值
+                        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                            return `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value;
+                    });
+                    csvRows.push(row.join(','));
+                });
+
+                return csvRows.join('\n');
+            } catch (error) {
+                throw new Error('JSON解析错误：' + error.message);
+            }
+        }
+
+        function updateCSV() {
+            const jsonInput = document.getElementById('jsonInput');
+            const csvOutput = document.getElementById('csvOutput');
+            const errorDiv = document.getElementById('jsonError');
+
+            try {
+                const csvResult = jsonToCSV(jsonInput.value);
+                csvOutput.textContent = csvResult;
+                errorDiv.textContent = '';
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                csvOutput.textContent = '';
+            }
+        }
+
+        function showToast(message, duration = 2000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        function copyCSV() {
+            const csvOutput = document.getElementById('csvOutput');
+            const textarea = document.createElement('textarea');
+            textarea.value = csvOutput.textContent;
+            document.body.appendChild(textarea);
+
+            try {
+                textarea.select();
+                document.execCommand('copy');
+                showToast('✨ 复制成功！');
+            } catch (err) {
+                showToast('❌ 复制失败，请手动复制');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function loadSampleData() {
+            const sampleData = [
+                { name: '张三', age: 25, city: '北京' },
+                { name: '李四', age: 30, city: '上海' },
+                { name: '王五', age: 28, city: '广州' }
+            ];
+            document.getElementById('jsonInput').value = JSON.stringify(sampleData, null, 2);
+            updateCSV();
+        }
+
+        function clearInput() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('csvOutput').textContent = '';
+            document.getElementById('jsonError').textContent = '';
+        }
+
+        // 监听输入变化
+        document.getElementById('jsonInput').addEventListener('input', updateCSV);
+
+        // 初始加载示例数据
+        loadSampleData();
+    </script>
+</body>
+</html>

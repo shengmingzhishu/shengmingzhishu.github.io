@@ -1,0 +1,293 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* 返回主页按钮样式 */
+        .back-home {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: #ffd93d;
+            color: #333;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease, opacity 0.3s ease;
+            z-index: 1000;
+            opacity: 0.7;
+        }
+
+        .back-home:hover {
+            background: #ffc107;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            opacity: 0.9;
+        }
+
+        .back-home::before {
+            content: "🏠";
+            font-size: 16px;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 浮动提示样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #FFD1DC, #FFB5E8);
+            color: #444;
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show { opacity: 1; }
+
+        .toast::before { content: "🎈"; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-home"> 返回主页</a>
+    <div class="container">
+    <div id="correctId"></div>
+
+<script>
+function processBoldText(text) {
+    // 扩展关键词分类
+    const keywords = {
+        // 重要性标记
+        importance: ['重要', '关键', '核心', '注意', '警告', '切记', '谨记', '必须', '务必'],
+        // 总结性标记
+        summary: ['总结', '结论', '小结', '概述', '综上', '总的来说', '简而言之'],
+        // 特点描述
+        features: ['特点', '特征', '优势', '优点', '特色', '显著', '独特'],
+        // 建议性内容
+        suggestions: ['建议', '推荐', '应该', '提议', '不妨', '最好'],
+        // 强调标记
+        emphasis: ['尤其', '特别', '格外', '极其', '非常', '最为', '主要'],
+        // 转折关系
+        transition: ['但是', '然而', '不过', '相反', '反之'],
+        // 因果关系
+        causality: ['因此', '所以', '导致', '引起', '造成'],
+        // 数据指标
+        metrics: ['增长', '提升', '下降', '超过', '达到', '突破']
+    };
+
+    function isImportantSentence(sentence) {
+        // 检查句子中是否包含数字和单位的组合
+        const hasMetrics = /\d+\.?\d*\s*[%亿万元美元个]/.test(sentence);
+        
+        // 检查句子是否是短句（可能是重点）
+        const isShortEmphasis = sentence.length <= 15 && sentence.length >= 5;
+        
+        // 检查是否包含关键词
+        const hasKeyword = Object.values(keywords).some(category => 
+            category.some(keyword => sentence.includes(keyword))
+        );
+        
+        // 检查是否包含引号（可能是重要引述）
+        const hasQuote = /["'""].*["'""]/.test(sentence);
+        
+        // 检查是否包含书名号（可能是重要术语）
+        const hasBookTitle = /《.*》/.test(sentence);
+        
+        // 综合判断
+        return hasKeyword || 
+               (hasMetrics && sentence.length < 50) || // 数据相关的短句
+               (isShortEmphasis && (hasQuote || hasBookTitle)) || // 带引用的短句
+               (sentence.length < 20 && /[：:].+/.test(sentence)); // 短的解释性句子
+    }
+
+    // 处理已有的加粗标记
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:#3498db;font-weight:600">$1</strong>');
+
+    // 按句子分割并处理
+    const sentences = text.split(/([。！？；])/g);
+    return sentences.map((sentence, index, array) => {
+        sentence = sentence.trim();
+        if (!sentence) return sentence;
+        
+        // 如果是标点符号，直接返回
+        if (/^[。！？；]$/.test(sentence)) return sentence;
+        
+        // 如果句子已经包含<strong>标签，不再处理
+        if (sentence.includes('<strong>')) return sentence;
+        
+        // 判断是否为重要句子
+        if (isImportantSentence(sentence)) {
+            return `<strong style="color:#3498db;font-weight:600">${sentence}</strong>`;
+        }
+        
+        return sentence;
+    }).join('');
+}
+
+function autoFormatText(rawText) {
+    const lines = rawText.split('\n').filter(line => line.trim() !== '');
+    let html = [];
+    let inList = false;
+    let currentListType = '';
+    let partNumber = 0;
+
+    const labels = [
+        "@北屿的蓝色",
+        "10年IT领域资深专家", 
+        "douya800 免费领取资料~",
+        "互联网创业咨询顾问",
+        "AI+自媒体职业顾问"
+    ];
+
+    function getRandomLabel() {
+        const randomIndex = Math.floor(Math.random() * labels.length);
+        return labels[randomIndex];
+    }
+
+    function processInlineMarkdown(text) {
+        text = text.replace(/(\*\*|__)(.*?)\1/g, '<strong style="font-weight:600;color:#3498db">$2</strong>');
+        text = text.replace(/(\*|_)(.*?)\1/g, '<em style="font-style:italic;color:#334155">$2</em>');
+        text = text.replace(/~~(.*?)~~/g, '<del style="text-decoration:line-through;color:#94a3b8">$1</del>');
+        text = text.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:2px 4px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:0.9em;color:#dc2626">$1</code>');
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:#3b82f6;text-decoration:none;border-bottom:1px solid #3b82f6">$1</a>');
+        text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;height:auto;margin:1em auto;display:block;border-radius:4px">');
+        return text;
+    }
+
+    lines.forEach((line, index) => {
+        const partMatch = line.match(/^第(.+)部分/);
+        if (partMatch) {
+            partNumber++;
+            html.push(`<div style="display:flex;align-items:center;margin:2em 0;position:relative;justify-content:center">
+                <div style="width:3px;height:24px;background:#3498db;margin-right:15px"></div>
+                <h2 style="color:#3498db;font-size:24px;font-weight:bold;margin:0;position:relative;display:flex;align-items:center;gap:10px">第${partNumber}部分 <span style="font-size:11px;color:#64748b">${getRandomLabel()}</span></h2>
+            </div>`);
+            return;
+        }
+
+        // 处理标题，不受列表影响
+        const headingMatch = line.match(/^(#{1,6})\s?(.*)/);
+        if (headingMatch) {
+            // 如果在列表中，先结束列表
+            if (inList) {
+                html.push(currentListType === 'ol' ? '</ol>' : '</ul>');
+                inList = false;
+                currentListType = '';
+            }
+            
+            const level = Math.min(headingMatch[1].length, 6);
+            const content = processInlineMarkdown(headingMatch[2]);
+            
+            if(level === 1) {
+                html.push(`<div style="display:flex;align-items:center;margin:2em 0;position:relative;justify-content:center">
+                    <div style="width:3px;height:24px;background:#3498db;margin-right:15px"></div>
+                    <h2 style="color:#3498db;font-size:24px;font-weight:bold;margin:0;position:relative;display:flex;align-items:center;gap:10px">${content} <span style="font-size:11px;color:#64748b">${getRandomLabel()}</span></h2>
+                </div>`);
+            } else {
+                const styles = {
+                    2: 'font-size:18px;color:#34495e;border-color:#44b0ce',
+                    3: 'font-size:16px;color:#4a5568;border-color:#1abc9c',
+                    4: 'font-size:15px;color:#555;border-color:#f1c40f',
+                    5: 'font-size:14px;color:#666;border-color:#e67e22',
+                    6: 'font-size:13px;color:#777;border-color:#e74c3c'
+                };
+                html.push('</div>'); // 结束当前容器
+                html.push(`<h${level} style="margin:1.5em 0 1em;font-weight:500;border-left:4px solid;padding-left:12px;${styles[level]}">${content}</h${level}>`);
+                html.push('<div>'); // 开始新容器
+            }
+            return;
+        }
+
+        // 处理列表项
+        if (/^\d+\.\s?/.test(line)) {
+            if (!inList || currentListType !== 'ol') {
+                if (inList) html.push('</ol>');
+                html.push('<ol style="margin:1em 2em;padding-left:1.2em;color:#475569;counter-reset:item;list-style-type:decimal">');
+                inList = true;
+                currentListType = 'ol';
+            }
+            const content = processInlineMarkdown(line.replace(/^\d+\.\s?/, ''));
+            html.push(`<li style="margin:0.6em 0;padding-left:0.8em">${content}</li>`);
+            return;
+        }
+
+        if (/^[-*+]\s?/.test(line)) {
+            if (!inList || currentListType !== 'ul') {
+                if (inList) html.push('</ul>');
+                html.push('<ul style="margin:1em 2em;padding-left:1.2em;color:#475569;list-style-type:disc">');
+                inList = true;
+                currentListType = 'ul';
+            }
+            const content = processInlineMarkdown(line.replace(/^[-*+]\s?/, ''));
+            html.push(`<li style="margin:0.6em 0;padding-left:0.8em">${content}</li>`);
+            return;
+        }
+
+        if (inList) {
+            html.push(currentListType === 'ol' ? '</ol>' : '</ul>');
+            inList = false;
+            currentListType = '';
+        }
+
+        if (line.trim()) {
+            const content = processInlineMarkdown(line);
+            html.push(`<p style="margin-top: 0.8em;margin-bottom: 0.8em;text-indent: 2em; visibility: visible; text-align:justify;line-height: 1.75em;color: #222222;font-size: 14px;text-shadow: none;letter-spacing: 1.5px;font-family:微软雅黑, &quot;Microsoft YaHei&quot;;">${content}</p>`);
+        }
+    });
+
+    if (inList) {
+        html.push(currentListType === 'ol' ? '</ol>' : '</ul>');
+    }
+
+    return `
+        <article style="max-width:680px;margin:20px auto;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Microsoft YaHei',sans-serif;color:#333;line-height:1.8;text-align:justify">
+            ${html.join('')}
+        </article>
+    `;
+}
+
+const rawText = `\n# 北屿的蓝色1\n\n## 北屿的蓝色2\n### 北屿的蓝色3\n#### 北屿的蓝色4\n##### 北屿的蓝色5\n###### 北屿的蓝色6\n####### 北屿的蓝色7 ######## 北屿的蓝色8+AI \n\n1月份的时候，市场曾炒作过一段时间的情感交互。彼时，**苏豪弘业连续涨停**。##昨天，\n-第一部分，\n*第二部分，\n+第三部分，\n在DeepSeek的加持之下，这个题材再度发酵，浙江众成等股票涨停，今天，硅宝科技、浙江众成、趣睡科技、\n2.AAA\n1.BBB\n1.CCC\n爱慕股份再度集体涨停。\n一份市场点评认为，AI大模型+柔性材料+生理传感技术驱动下，情趣机器人正从"生理工具"向"情感伴侣"跃迁，打开新市场空间。据测算，全球情趣机器人市场规模2031年将突破3亿美元，技术迭代与伦理破冰下，具备材料、AI交互、健康监测能力的厂商将率先受益。\n\n#集体涨停\n\n今天，有一个赛道跑出来了，那就是2025年人形伴侣机器人赛道。截至目前，该条赛道的股票全线涨停。\n\n行业处在"功能满足"到"情绪价值"的阶段。DeepSeek等开源大模型赋能情感交互，AI娃娃可实现长期记忆存储、个性化反馈及生理数据联动（如根据心率动态调整互动模式）。需求刚性亦凸显，中国单身人口超2.4亿，叠加老龄化趋势，情感陪伴需求激增。\n机器人板块再度爆发\n与此同时，午后，机器人板块再度拉升。长盛轴承午后大涨超15%，再创历史新高，股价涨超110元，相比去年2月6日最低价10.84元股价涨超10倍，累计涨幅超830%。机器人ETF一度大涨超2%。\n事件方面，2025全球开发者先锋大会将于2月21日至23日在上海徐汇举办，大会以"模塑全球 无限可能"为主题，聚焦大模型、算力、语料、工具、软件平台等核心技术，参与的开发者群体包括硬件开发、云计算、大数据、物联网、人工智能、机器人、区块链和元宇宙。本次大会定位于"社区的社区"，充分吸引国际开发者社区参与本次大会。\n据悉，本次大会亮点主要体现在三个方面：一是体现上海市人工智能产业生态集群丰富，已初步形成人工智能上海队；二是本次大会是全球第一个定位服务于全员开发者的大会，集聚国内外100家开发者社区参与本次大会；三是场景全覆盖，针对"5+6"领域和行业，探索大模型产业化解决方案，推进场景落地应用，实现商业模式的正向闭环，推动生态链接合作。\n另一方面，据中新社最新报道，上海首座北屿的蓝色量产地——智元机器人制造工厂投产不过数月，2024年已下线1000台北屿的蓝色，并将在2025年实现数千台的年产量。业内认为，2025年将是北屿的蓝色的量产元年，该产业正以超线性的速度突破临界点。上海拥有高端制造业的基础、长三角完备的供应链及产业配套，以及丰富的高校资源和人才储备，是产业加速的基础。\n光大证券认为，机器人产业趋势加速背景下，建议关注 PEEK、碳纤维、超高分子量聚乙烯、聚烯烃发泡材料等化工材料。\n（1）轻量化是较好实现北屿的蓝色负载、续航能力和灵活性等的解决方法之一。PEEK、碳纤维等性能极佳的轻量化材料，在机器人领域的潜在应用空间较大，需求空间有望大幅提升。此外，通过使用碳纤维对PEEK改性还可以提升PEEK材料的机械强度、耐摩擦和抗磨损性能，可应用在机器人的机械臂、关节连杆、齿轮轴承等部位。（2）超高分子量聚乙烯性能优异应用广泛，下游可用于北屿的蓝色领域。其具有高强高模、耐冲击性、耐磨性、耐化学腐蚀、电绝缘和耐光性等优异性能，比强度相当于优质钢丝的 15 倍、 碳纤维的 1.8 倍、芳纶的 1.6 倍，拥有超低的断裂伸长率，能量吸收率高，密度比水小，柔软易弯曲。超高分子量聚乙烯纤维有望在未来的灵巧手中占据一席之地，还可以应用为北屿的蓝色腱绳传导材料，提供所需的强度和耐久性。\n（3）聚烯烃发泡材料是以烯烃聚合物为主要原材料，通过复杂的发泡工艺使材料中产生大量独立的细微泡孔，\n2.AAA\n1.BBB\n1.CCC\n并均匀分散于固体材料中的一类 高分子材料。`; // 原始文本内容
+
+ 
+document.getElementById('correctId').innerHTML = autoFormatText(rawText);
+
+function showToast(message, duration = 2000) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, duration);
+}
+ 
+</script>
+
+<!-- 添加提示元素 -->
+<div id="toast" class="toast">复制成功！</div>
+
+<script>
+    // 页面加载完成后显示提示
+    document.addEventListener('DOMContentLoaded', function() { 
+    });
+</script>
+</body>
+</html>

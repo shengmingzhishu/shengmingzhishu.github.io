@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>练枪页面</title>
+  <style>
+    body {
+      background: #e8eaf6;
+      background-image: linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+      background-size: 15px 15px;
+      margin: 0px;
+      width: 100%;
+    }
+
+    .reset-game-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      /* border: 1px solid rgba(209, 25, 25, 0.2); */
+    }
+
+    
+    .mode-select-container {
+      display: inline-block;
+      width: 48%;
+      height: 80px;
+      text-align: right;
+      overflow: hidden;
+      background-color: transparent;
+      border: 0px solid rgba(209, 25, 25, 0.2);
+    }
+
+    .panel-container{
+      display: inline-block;
+      width: 48%;
+      height: 80px;
+      overflow: hidden;
+      background-color: transparent;
+      border: 0px solid rgba(209, 25, 25, 0.2);
+    }
+
+    .game-container {
+      display: inline-block;
+      width: 400px;
+      font-family: 'Courier New', Courier, monospace;
+      overflow: hidden;
+      font-size: 16px;
+      background-color: transparent;
+    }
+
+    .target {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background-color: #f8bbd0;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    /* 十环 */
+    .bullseye {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background-color: #bbdefb;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* 中枪效果 */
+    .target.hit {
+      transform: scale(1.2);
+      opacity: 0;
+    }
+
+   
+
+    .moveMode {
+      animation: move 1s linear infinite; /* 动画名称、持续时间、动画速度曲线、循环次数 */
+    }
+
+    /* 返回主页按钮样式 */
+    .back-home {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          padding: 8px 15px;
+          background: #ffd93d;
+          color: #333;
+          border: none;
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          text-decoration: none;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          transition: all 0.3s ease, opacity 0.3s ease;
+          z-index: 1000;
+          opacity: 0.7;
+      }
+
+      .back-home:hover {
+          background: #ffc107;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+          opacity: 0.9;
+      }
+
+      .back-home::before {
+          content: "🏠";
+          font-size: 16px;
+      }
+
+      /* 返回主页按钮样式 */
+    .reset-game {
+        margin: 0 auto;
+        width: 100px;
+        padding: 8px 15px;
+        background: #a431aa;
+        color: #060404;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        text-decoration: none;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        transition: all 0.3s ease, opacity 0.3s ease;
+        z-index: 1000;
+        opacity: 0.7;
+    }
+
+    .reset-game:hover {
+        background: #ffc107;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        opacity: 0.9;
+    }
+
+    .reset-game::before {
+        content: "🏠";
+        font-size: 16px;
+    }
+    
+    /* 浮动提示样式 */
+    .toast {
+        position: fixed;
+        top: 45px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(45deg, #FFD1DC, #FFB5E8);
+        color: #444;
+        padding: 12px 24px;
+        border-radius: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .toast.show { opacity: 1; }
+    .toast::before { content: "🎈"; }
+
+    /* 彩条动画 */
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: #ffd1dc;
+      border-radius: 50%;
+      animation: confetti-fall 1s ease-out forwards;
+    }
+
+    @keyframes confetti-fall {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(200px) rotate(360deg);
+        opacity: 9;
+      }
+    }
+
+    /* 彩条垂直移动动画 */
+    @keyframes confetti-move {
+      0% {
+        transform: translateX(0);
+      }
+      50% {
+        transform: translateX(55px);
+      }
+      100% {
+        transform: translateX(0);
+      }
+    }
+
+    /* 彩条水平移动动画 */
+    @keyframes confetti-line {
+      0% {
+        transform: translateX(0);
+      }
+      50% {
+        transform: translateX(55px);
+      }
+      100% {
+        transform: translateX(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="reset-game-container" class="reset-game-container">
+    <a href="#" onclick="createTarget()" class="reset-game"> 重新开始</a>
+  </div>
+  <div class="panel-container" id="panel-container">
+    <div id="game-container" class="game-container">
+      <div id="score-board">得分: 0</div>
+      <div id="time-display">本次耗时: 0ms</div>
+      <div id="average-time-display">平均耗时: 0ms</div>
+      <div id="bullseye-score-board">十环得分: 0</div>
+    </div>
+  </div>
+  <div class="mode-select-container">
+    <!-- <input type="button" class="back-home" name="" id="restart" value="重新开始"> -->
+    <div id="toast" class="toast">游戏结束！</div>
+    <a href="../index.html" class="back-home"> 返回主页</a>
+    <form action="">
+      |
+      <label for="jumpMode"> <input type="radio" id="jumpMode" name="jumpMode" value="jumpMode" checked>跳跃</label>
+      <label for="horizontalMode"> <input type="radio" id="horizontalMode"  name="jumpMode" value="horizontalMode"> 水平</label>
+      |
+      <label for="fixedMode"> <input type="radio"  id="fixedMode" name="moveMode" value="fixedMode" checked>固定</label>
+      <label for="moveMode"> <input type="radio" id="moveMode" name="moveMode" value="moveMode">下落</label> 
+      <label for="lineMode"> <input type="radio" id="lineMode" name="moveMode" value="lineMode"> 平移</label>
+      |
+      <label for="koMode"> <input type="radio"  id="koMode" name="hitMode" value="koMode" checked> 十环</label>
+      <label for="normalMode"> <input type="radio" id="normalMode" name="hitMode" value="normalMode"> 普通</label> 
+      |
+    </form>
+  </div>
+  <script>
+    const panelContainer = document.getElementById('panel-container');
+    const gameContainer = document.getElementById('game-container');
+    const scoreBoard = document.getElementById('score-board');
+    const timeDisplay = document.getElementById('time-display');
+    const averageTimeDisplay = document.getElementById('average-time-display');
+    const bullseyeScoreBoard = document.getElementById('bullseye-score-board');
+    const jumpMode = document.getElementById('jumpMode');
+    const moveMode = document.getElementById('moveMode');
+    const lineMode = document.getElementById('lineMode');
+    let score = 0;
+    let bullseyeScore = 0;
+    let clickStartTime = 0;
+    let totalTime = 0;
+    const rounds = 30;
+
+    function showToast(message, duration = 1000) {
+          const toast = document.getElementById('toast');
+          toast.textContent = message;
+          toast.classList.add('show');
+          setTimeout(() => {
+              toast.classList.remove('show');
+          }, duration);
+    }
+
+    function createTarget() {
+      if (score >= rounds) {
+        showToast('✨ 游戏结束，可重新开始！');
+        score = 0;
+        bullseyeScore = 0;
+        clickStartTime = 0;
+        totalTime = 0;
+        return;
+      }
+      const target = document.createElement('div');
+      target.classList.add('target');
+ 
+      debugger
+      const windowWidth = window.innerWidth;// 获取浏览器窗口的宽度。
+      const windowHeight = window.innerHeight;// 获取浏览器窗口的高度。
+      target.style.left = `${ windowWidth/2 - 200  +  Math.floor(Math.random() * 400)}px`;
+      target.style.top = (jumpMode.checked ) ? `${ windowHeight/2 - 100  +  Math.floor(Math.random() * 200)}px` : `${ windowHeight/2}px`;
+      if(moveMode.checked){
+          target.style.animation = 'confetti-move 3.5s linear infinite, confetti-fall 2s ease-out forwards';
+      }
+      if(lineMode.checked){
+          target.style.animation = 'confetti-move 3.5s linear infinite, confetti-line 2s ease-out forwards';
+      }
+
+
+      const bullseye = document.createElement('div');
+      bullseye.classList.add('bullseye');
+      target.appendChild(bullseye);
+
+      panelContainer.appendChild(target);
+      clickStartTime = Date.now();
+
+      target.addEventListener('click', (event) => {
+        const rect = target.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const clickY = event.clientY - rect.top;
+        const isBullseye = clickX >= 15 && clickX <= 35 && clickY >= 15 && clickY <= 35;
+
+        // 十环模式下，如果不是十环，则不中枪
+        if(koMode.checked && !isBullseye ){
+         return;
+        }
+
+        // 添加中枪效果
+        target.classList.add('hit');
+        const clickEndTime = Date.now();
+        const clickTime = clickEndTime - clickStartTime;
+        totalTime += clickTime;
+        timeDisplay.textContent = `本次耗时: ${clickTime}ms`;
+        const averageTime = score > 0 ? totalTime / score : 0;
+        averageTimeDisplay.textContent = `平均耗时: ${averageTime.toFixed(2)}ms`;
+
+        if (isBullseye) {
+          bullseyeScore++;
+          bullseyeScoreBoard.textContent = `十环得分: ${bullseyeScore}`;
+        }
+
+        setTimeout(() => {
+          score++;
+          scoreBoard.textContent = `得分: ${score}`;
+          panelContainer.removeChild(target);
+          if (score <= rounds) {
+            createTarget();
+          }
+        }, 100);
+      });
+    }
+
+   
+    // 开始游戏
+    createTarget();
+  </script>
+</body>
+
+</html>

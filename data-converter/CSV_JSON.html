@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CSV转JSON工具">
+    <title>CSV转JSON工具</title>
+    <style>
+        /* 返回主页按钮样式 */
+        .back-home {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: #ffd93d;
+            color: #333;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease, opacity 0.3s ease;
+            z-index: 1000;
+            opacity: 0.7;
+        }
+
+        .back-home:hover {
+            background: #ffc107;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            opacity: 0.9;
+        }
+
+        .back-home::before {
+            content: "🏠";
+            font-size: 16px;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 
+                        "Helvetica Neue", "PingFang SC", 
+                        "Microsoft YaHei", sans-serif;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .editor-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        #jsonOutput {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow-y: auto;
+            background: #fff;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .header {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 16px;
+            color: #333;
+            margin: 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #06ad56;
+        }
+
+        .btn.secondary {
+            background: #3498db;
+        }
+
+        .btn.secondary:hover {
+            background: #2980b9;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        /* 浮动提示样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #FFD1DC, #FFB5E8);
+            color: #444;
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show { opacity: 1; }
+        .toast::before { content: "🎈"; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-home"> 返回主页</a>
+    <div class="container">
+        <div class="editor-box">
+            <div class="header">
+                <h3 class="title">CSV输入</h3>
+                <div class="button-group">
+                    <button class="btn" onclick="loadSampleData()">加载示例</button>
+                    <button class="btn secondary" onclick="clearInput()">清空</button>
+                </div>
+            </div>
+            <textarea id="csvInput" placeholder="请输入CSV数据，用逗号分隔列，换行分隔行&#10;例如:&#10;name,age,city&#10;张三,25,北京&#10;李四,30,上海"></textarea>
+            <div id="csvError" class="error"></div>
+        </div>
+        <div class="editor-box">
+            <div class="header">
+                <h3 class="title">JSON输出</h3>
+                <button class="btn" onclick="copyJSON()">复制JSON</button>
+            </div>
+            <div id="jsonOutput"></div>
+        </div>
+    </div>
+
+    <!-- 添加提示元素 -->
+    <div id="toast" class="toast">复制成功！</div>
+
+    <script>
+        function csvToJSON(csv) {
+            const lines = csv.trim().split('\n');
+            if (lines.length === 0) return [];
+
+            let headers = lines[0].split(',').map(header => 
+                header.trim() || `default${Math.random().toString(36).substr(2, 5)}`
+            );
+
+            const result = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                const obj = {};
+                const currentLine = lines[i].split(',');
+
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = currentLine[j] ? currentLine[j].trim() : '';
+                }
+                result.push(obj);
+            }
+
+            return result;
+        }
+
+        function updateJSON() {
+            const csvInput = document.getElementById('csvInput');
+            const jsonOutput = document.getElementById('jsonOutput');
+            const errorDiv = document.getElementById('csvError');
+
+            try {
+                const jsonResult = csvToJSON(csvInput.value);
+                jsonOutput.textContent = JSON.stringify(jsonResult, null, 2);
+                errorDiv.textContent = '';
+            } catch (error) {
+                errorDiv.textContent = '解析CSV时出错：' + error.message;
+                jsonOutput.textContent = '';
+            }
+        }
+
+        function copyJSON() {
+            const jsonOutput = document.getElementById('jsonOutput');
+            const textarea = document.createElement('textarea');
+            textarea.value = jsonOutput.textContent;
+            document.body.appendChild(textarea);
+
+            try {
+                textarea.select();
+                document.execCommand('copy');
+                showToast('✨ 复制成功！');
+            } catch (err) {
+                showToast('❌ 复制失败，请手动复制');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function loadSampleData() {
+            const sampleData = 'name,age,city\n张三,25,北京\n李四,30,上海\n王五,28,广州';
+            document.getElementById('csvInput').value = sampleData;
+            updateJSON();
+        }
+
+        function clearInput() {
+            document.getElementById('csvInput').value = '';
+            document.getElementById('jsonOutput').textContent = '';
+            document.getElementById('csvError').textContent = '';
+        }
+
+        // 监听输入变化
+        document.getElementById('csvInput').addEventListener('input', updateJSON);
+
+        // 初始加载示例数据
+        loadSampleData();
+
+        function showToast(message, duration = 2000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+    </script>
+</body>
+</html>
