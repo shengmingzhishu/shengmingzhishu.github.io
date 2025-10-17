@@ -186,6 +186,23 @@
                 <div text-align: right;"><input type="button" name="clearSort" value="内容乱序" id="clear-sort"/></div>
                 <div text-align: right;"><input type="button" name="clearShort" value="删除短词" id="clear-short"/></div>
                 <div text-align: right;"><input type="button" name="periodLine" value="句号换行" id="period-line"/></div>
+                <div class="mt-4">
+                    <button id="pick-images-btn"
+                            class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg shadow">
+                        选择图片
+                    </button>
+                    <button id="clear-images-btn"
+                            class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg shadow">
+                        清空图片
+                    </button>
+                    <input id="file-input-btn" type="file" accept="image/*" multiple style="display: none;" />
+                    <input id="file-src-array" type="textarea"/>
+                    <input id="valueDisplay" type="hidden" />
+                </div> 
+            </div>
+            <div class="options-bar" style="width: 100%;"> 
+                 <div id="image-list" style="float: left; width: 100%; min-height:60px; border: #444 1px solid;"></div>
+
             </div>
             <textarea id="editor" placeholder="输入Markdown内容..."></textarea>
         </div>
@@ -202,6 +219,12 @@
     // 段落模式和对齐方式的全局变量
     let paragraphMode = true; // true: 段落分割，false: 每行为一个块
     let alignMode = 'left';   // 'left' or 'center'
+
+    // 圖片列表
+    let imageFiles = [];
+
+    // 全局 src 列表（存储可直接用于 img.src 的字符串）
+    let imageSrcList = [];
 
     // 监听段落模式切换
     document.addEventListener('DOMContentLoaded', function() {
@@ -278,7 +301,6 @@
             textArea.value = text;
             updatePreview();
     } 
-
     
     function clearSort(){
             let textArea = document.getElementById('editor');
@@ -302,6 +324,18 @@
             textArea.value = filteredLines.join('\n');
             updatePreview();
     } 
+
+    let imgLinks = [
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221577",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221748",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221929",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222005",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222116",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221856",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222370",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222487",
+        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222229"
+    ]
 
     function autoFormatText(rawText) {
         // 段落分割
@@ -336,17 +370,6 @@
             // ... 省略部分，原有内容继续 ...
             '𝓈𝓁𝑒𝑒𝓅 💤 𝒮𝑜𝓊𝓁'
         ];
-        const imgLinks = [
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221577",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221748",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221929",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222005",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222116",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221856",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222370",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222487",
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222229"
-        ]
 
         function getRandomItem(arr) {
             const randomIndex = Math.floor(Math.random() * arr.length);
@@ -469,7 +492,7 @@
  
         let beginHtml = `
             <section style="text-align: left;-webkit-tap-highlight-color: transparent;margin: 0px 0px 24px;padding: 0px;outline: 0px;max-width: 100%;font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: 0.544px;orphans: 2;text-indent: 2em;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;text-align: left;font-size: 13px;color: grey;visibility: visible;box-sizing: border-box !important;overflow-wrap: break-word !important;line-height: 1.75em;" data-pm-slice="0 0 []">
-                <span leaf="" style="-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;visibility: visible;box-sizing: border-box !important;overflow-wrap: break-word !important;">本篇书籍《百年孤独》 &nbsp;作者: 加西亚·马尔克斯</span>
+                <span leaf="" style="-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;visibility: visible;box-sizing: border-box !important;overflow-wrap: break-word !important;"></span>
             </section>
         `
  
@@ -497,6 +520,8 @@
             </section>
             </section>
         `
+        debugger
+        document.getElementById('valueDisplay').value =  imgLinks.join('\r\n') ;
 
         return `
             <article class="wechat-article">
@@ -652,6 +677,229 @@
     }
 
     const rawText = `\n# 北屿的蓝色1\n\n## 北屿的蓝色2\n### 北屿的蓝色3\n#### 北屿的蓝色4\n##### 北屿的蓝色5\n###### 北屿的蓝色6\n####### 北屿的蓝色7 ######## 北屿的蓝色8+AI \n\n1月份的时候，市场曾炒作过一段时间的情感交互。彼时，**苏豪弘业连续涨停**。##昨天，\n-第一部分，\n*第二部分，\n+第三部分，\n在DeepSeek的加持之下，这个题材再度发酵，浙江众成等股票涨停，今天，硅宝科技、浙江众成、趣睡科技、\n2.AAA\n1.BBB\n1.CCC\n爱慕股份再度集体涨停。\n一份市场点评认为，AI大模型+柔性材料+生理传感技术驱动下，情趣机器人正从"生理工具"向"情感伴侣"跃迁，打开新市场空间。据测算，全球情趣机器人市场规模2031年将突破3亿美元，技术迭代与伦理破冰下，具备材料、AI交互、健康监测能力的厂商将率先受益。\n\n#集体涨停\n\n今天，有一个赛道跑出来了，那就是2025年人形伴侣机器人赛道。截至目前，该条赛道的股票全线涨停。\n\n行业处在"功能满足"到"情绪价值"的阶段。DeepSeek等开源大模型赋能情感交互，AI娃娃可实现长期记忆存储、个性化反馈及生理数据联动（如根据心率动态调整互动模式）。需求刚性亦凸显，中国单身人口超2.4亿，叠加老龄化趋势，情感陪伴需求激增。\n机器人板块再度爆发\n与此同时，午后，机器人板块再度拉升。长盛轴承午后大涨超15%，再创历史新高，股价涨超110元，相比去年2月6日最低价10.84元股价涨超10倍，累计涨幅超830%。机器人ETF一度大涨超2%。\n事件方面，2025全球开发者先锋大会将于2月21日至23日在上海徐汇举办，大会以"模塑全球 无限可能"为主题，聚焦大模型、算力、语料、工具、软件平台等核心技术，参与的开发者群体包括硬件开发、云计算、大数据、物联网、人工智能、机器人、区块链和元宇宙。本次大会定位于"社区的社区"，充分吸引国际开发者社区参与本次大会。\n据悉，本次大会亮点主要体现在三个方面：一是体现上海市人工智能产业生态集群丰富，已初步形成人工智能上海队；二是本次大会是全球第一个定位服务于全员开发者的大会，集聚国内外100家开发者社区参与本次大会；三是场景全覆盖，针对"5+6"领域和行业，探索大模型产业化解决方案，推进场景落地应用，实现商业模式的正向闭环，推动生态链接合作。\n另一方面，据中新社最新报道，上海首座北屿的蓝色量产地——智元机器人制造工厂投产不过数月，2024年已下线1000台北屿的蓝色，并将在2025年实现数千台的年产量。业内认为，2025年将是北屿的蓝色的量产元年，该产业正以超线性的速度突破临界点。上海拥有高端制造业的基础、长三角完备的供应链及产业配套，以及丰富的高校资源和人才储备，是产业加速的基础。\n光大证券认为，机器人产业趋势加速背景下，建议关注 PEEK、碳纤维、超高分子量聚乙烯、聚烯烃发泡材料等化工材料。\n（1）轻量化是较好实现北屿的蓝色负载、续航能力和灵活性等的解决方法之一。PEEK、碳纤维等性能极佳的轻量化材料，在机器人领域的潜在应用空间较大，需求空间有望大幅提升。此外，通过使用碳纤维对PEEK改性还可以提升PEEK材料的机械强度、耐摩擦和抗磨损性能，可应用在机器人的机械臂、关节连杆、齿轮轴承等部位。（2）超高分子量聚乙烯性能优异应用广泛，下游可用于北屿的蓝色领域。其具有高强高模、耐冲击性、耐磨性、耐化学腐蚀、电绝缘和耐光性等优异性能，比强度相当于优质钢丝的 15 倍、 碳纤维的 1.8 倍、芳纶的 1.6 倍，拥有超低的断裂伸长率，能量吸收率高，密度比水小，柔软易弯曲。超高分子量聚乙烯纤维有望在未来的灵巧手中占据一席之地，还可以应用为北屿的蓝色腱绳传导材料，提供所需的强度和耐久性。\n（3）聚烯烃发泡材料是以烯烃聚合物为主要原材料，通过复杂的发泡工艺使材料中产生大量独立的细微泡孔，\n2.AAA\n1.BBB\n1.CCC\n并均匀分散于固体材料中的一类 高分子材料。`;
+
+    function htmlCloudImg(){
+
+        return `
+        <section>
+            <span leaf=""><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAD8At4DASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooprMQaAFMgU4pPNFRuw3c9aY0ig0AT+aKPNFV/NFNacA9aALXmijzRVUXAo+0CgC15oo80VTa6ANJ9roAu+aKPNFUvtdH2ugC75oo80VRN1z1qWOYMgJNAFnzRShgR1qBXUipEZdooAkopm/wBOlOVuOTQAtFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUZFABRTTIAaUMCOtAC0UUUAFFFIZApxQAtFML5PHSjeaAH0UzeaUSAdetADqKb5opwO4ZoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKazEGhmINRu53GgBWlYHrSeaO55qN3O41FLLt+tAEk8gyTUD3Cge9QzXeOpqlLdM8m1QST6dqALr3u0dai+39eVJp9lpDyqPMOc/hWhBpUUC4CLn1PNAGP8A2jnqQDSHUsdvxrfFrGB/q4/++RVe60qC6ZgVCt7cYoAxW1NQ3WkfU1AHOM0zV/C0tsm6I7yx6elXNJ8LGJUeZRv7jPSgBlo73jHywWHYkYqdbSdSQyDI9K1o7dIV+VQv0oBxQBjOZYF+ZelEN/kDt7VrTp5keO1Zt/o7LB5sf3u4oAkjvAe9TJcZPtWFFf4OG4I6irkGoLxzQBsRygmntIAaz4b0E5BqZZ97UAW1fI46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gGePSgDoopFY5qYNg5FZ1rcrsFWluAV60AWPNb1oZzsz3qJZQRTJrggYB4oAdJJxk9ahe4UD3qGa7x1NUrq+Cg880AWpb5V781Xk1JAfUms2S+Msu1fmLenatjR/DokVZZhuz0GcYoHYhV5ZmwsT/UDrT/sVz/cP41tJCIxgDGKlT7ooEczdyTWHMiHb6gdKqNqQdgQxwe+Oa6+WETKVYBlPY1n/APCMWy3olEYGeoycUAZthbTXhygzGehNaEeiuUGWwa0UgEa4UBR6U4IVGAf1oA5sytdThFPzE1uWlstsoCrg45rnvCj/AG3VyTlSiZHHGa6fHOT1oGmPT7ooKgmhPuiiQ7V4oJbFAxRUauSOtPU5FAJi0UjHGPrSngGgY1kJNKEGBkCkEgHXrTgdwzQK5R17Rk1ywe3ckBz19KzovAenRIB5YYgYJLHn9a38dfejA9BQM5vUvANnc25WIPE/qCSKx9G8Bz6B4ngmeQzQe4ANd3tHpSGJSemaBtggDLmnAYoA2jAooENZiDSqcigqCaUDFAkgooooGFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAjKG60Y5paKAADA4ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigApjfep9IVBNAFa7tftkLKOucH34rhZbk2N88Z4KsRXogGK4Dx5pE8et+fBDI6OQX2jOeBQBoWOohlXmtGG9BA54rkrC5mhfEkMigeoxWnb6mMDBoA6EXQAqKe8HNZf9pj+9UN1qqqp55oGkWry+Ck881k6jqQVCQ3Jqvf6puUlWBJ7ViX99MSGWKQsTxhaCrHb+BtON5G9xMMgcAetdZCgSMADAFUPD1qLTRrZBydgJ+p5/rV4MRQJscVBNITtOBSqcigqCaCQU5FLjJz6UAYooAKKKKAIFtwj7kRVOMZAxT0jIUVIBiigBFGBSkbhzRRQAgQDtSgYoooACM0daKKAGNFk05V2rilooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKjZCCQOhqSigCtcafFdxbHVc9+K5/WPBRQl7V8cZK11JGaQIAc96APLLrVZLGdopwInQ4we9X/AA/otz4ncuR5UIPDf3q6rxD4ItPEVykkilGjOcgferVtLKO0tViRAiKMACgaZnaf4TtLCJcRI+OpOTmryaZbMQ4gjBAwPlqyBgUUBcQRqoAAwBRsFLRQIAMUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB//9k=" alt="预览图" class="w-full h-40 object-cover"></span>
+        </section>
+        `
+    }
+
+    
+
+    function htmlWenan(){
+
+        return `
+        <section style="text-align: center;box-sizing: border-box;" data-pm-slice="0 0 []">
+            <p style="font-size: 16px;font-weight: 400;font-style: normal;margin: 0px;padding: 0px;box-sizing: border-box;">
+                <strong style="font-weight: 600;color: rgb(52, 152, 219);box-sizing: border-box;"><em style="font-style: italic;color: rgb(51, 65, 85);box-sizing: border-box;"><span leaf="">今日自喜文案</span></em></strong>
+            </p>
+            <p style="margin: 0px;padding: 0px;box-sizing: border-box;">
+                <span style="box-sizing: border-box;"><span style="box-sizing: border-box;font-size: 14px;line-height: 1.7;"><span leaf="">时间是良药明天会比今天好</span><span leaf=""><br></span><span leaf="">只要不做思想的囚笼我们有的是未来</span><span leaf=""><br></span><span leaf="">断舍离是成年人的顶级自律</span></span></span>
+            </p>
+        </section>
+        `
+    }
+
+
+    
+
+    function htmlCardBeiYu(){
+
+        return `
+        <section class="mp_profile_iframe_wrp" nodeleaf="">
+            <mp-common-profile class="js_uneditable custom_select_card mp_profile_iframe" data-pluginname="mpprofile" data-nickname="北屿的蓝色" data-alias="hot-books" data-from="2" data-headimg="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" data-signature="欢迎～关注后菜单栏里取图🫰" data-id="MzI2OTQ4MDcxOA==" data-is_biz_ban="0" data-service_type="1" data-verify_status="0">
+            </mp-common-profile>
+        </section>
+        `
+    }
+
+  
+
+    // 一句话
+    function htmlLineWord(){
+
+        return `
+            <p data-mq-box-wenan="1" data-mq-wenan-text="1" data-eusoft-scrollable-element="1" style="-webkit-tap-highlight-color: transparent;margin: 21px 0px 20px;padding: 0px 32px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;clear: both;min-height: 1em;font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: normal;orphans: 2;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;text-align: center;color: rgb(0, 0, 0);font-size: 15px;letter-spacing: 0px;line-height: 18px;">
+                <span leaf="">不徘徊、不退缩、不畏惧，大步迈向未知的远方。</span>
+            </p>
+        `
+    }
+
+    // 双排图
+    function htmlShuangPaiImg(){
+
+        return `
+            <section data-mq-box-parent="1" style="-webkit-tap-highlight-color: transparent;margin: 21px 0px 20px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;color: rgba(0, 0, 0, 0.9);font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-size: 17px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: 0.544px;orphans: 2;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;display: flex;flex-flow: row;text-align: center;justify-content: center;">
+                <section style="-webkit-tap-highlight-color: transparent;margin: 10px 10px 10px 20px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;flex: 1 1 0%;aspect-ratio: 1 / 1;border-radius: 2px;overflow: hidden;box-shadow: rgb(160, 160, 160) 1px 3px 5px 3px;" nodeleaf="">
+                    <img data-src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErykJJDp0tiaedoQfCAcqfvOSEQ7m8ZC4dNnwhT0FNNOMib2NYW3KrpuSg/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=10" alt="图片" class="rich_pages wxw-img" data-ratio="0.9851851851851852" data-w="1080" style="-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;height: auto !important;object-fit: cover;aspect-ratio: 1 / 1;width: 305.5px !important;vertical-align: bottom;min-height: 100%;visibility: visible !important;" data-imgqrcoded="1" src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErykJJDp0tiaedoQfCAcqfvOSEQ7m8ZC4dNnwhT0FNNOMib2NYW3KrpuSg/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=10">
+                </section>
+                <section style="-webkit-tap-highlight-color: transparent;margin: 10px 20px 10px 10px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;flex: 1 1 0%;aspect-ratio: 1 / 1;border-radius: 3px;overflow: hidden;box-shadow: rgb(160, 160, 160) 1px 3px 5px 3px;" nodeleaf="">
+                    <img data-src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErrStUGuH3WI9nAVVcSaHsiastz8D5yaofHIZrLQVJErtV6icqLIicmzv7Q/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=11" alt="图片" class="rich_pages wxw-img" data-ratio="1" data-w="300" style="-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;height: auto !important;object-fit: cover;aspect-ratio: 1 / 1;width: 305.5px !important;vertical-align: bottom;min-height: 100%;visibility: visible !important;" data-imgqrcoded="1" src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErrStUGuH3WI9nAVVcSaHsiastz8D5yaofHIZrLQVJErtV6icqLIicmzv7Q/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=11">
+                </section>
+            </section>
+        `
+    }
+
+
+    // 辅助：将 File[] 转为 Data URL（base64）
+    // async function filesToDataURLs(files) {
+    //     const tasks = files.map(file => new Promise((resolve, reject) => {
+    //         const reader = new FileReader();
+    //         reader.onload = () => resolve(reader.result); // "data:image/...;base64,..."
+    //         reader.onerror = reject;
+    //         reader.readAsDataURL(file);
+    //     }));
+    //     return Promise.all(tasks);
+    // }
+
+    // （可选）辅助：将 File[] 转为 Object URL（性能好，需手动释放）
+    function filesToObjectURLs(files) {
+      return files.map(file => URL.createObjectURL(file));
+    }
+
+    const btnPickImage = document.getElementById('pick-images-btn');
+    const btnFile = document.getElementById('file-input-btn');
+    const btnImageSrcArray = document.getElementById('file-src-array');
+    const btnImageDiv = document.getElementById('image-list');
+
+    // 点击按钮打开文件选择框
+    btnPickImage.addEventListener('click', () => btnFile.click());
+
+    // 选择文件后处理 
+    btnFile.addEventListener('change', async (e) => {
+
+        const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+        if (!files.length) return;
+
+        await handleFiles(files);
+        
+    });
+
+
+    function deleteImage(index){
+         // 从数组中移除
+         imageSrcList.splice(index, 1);
+         showImageList(imageSrcList)
+    }
+
+    // 取得最新的图片imageSrcList=['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAADh0RVh0U29mdHdhcmUAbWF0cGxvdGxpYiB2ZXJzaW9uMy4yLjIsIGh0dHA6Ly9tYXRwbG90bGliLm9yZy+WH4yJAAAGFklEQVR4nO3deXxU1RnH8e9VpKqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKqoqKq'] 生成预览 放入到id=image-list的div中,每个图片50*50
+    function showImageList(imageSrcList) {
+        btnImageDiv.innerHTML = "";
+        let html = ''
+         // 循环
+        for (let i = 0; i < imageSrcList.length; i++) {
+            let img = `<img src="${imageSrcList[i]}" style="width:60px;height:60px;display:inline-block; margin-right:5px" onclick="deleteImage(${i})">`;
+            // 拼接
+            html += img;
+        }
+        btnImageDiv.innerHTML = html
+        btnImageSrcArray.value = '["' + imageSrcList.join('",\r\n"') + '"]'
+         
+        // 变更背景图片
+        imgLinks = [...imageSrcList];
+
+    }
+    
+
+    const clearImagesBtn = document.getElementById('clear-images-btn');
+    clearImagesBtn.addEventListener('click', () => {
+        imageSrcList = [];
+        showImageList(imageSrcList)
+    });
+    
+    // 支持拖放功能
+    const dropArea = document.getElementById('preview');
+
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight() {
+        dropArea.classList.add('border-primary', 'bg-blue-50');
+    }
+    
+    function unhighlight() {
+        dropArea.classList.remove('border-primary', 'bg-blue-50');
+    }
+    
+    dropArea.addEventListener('drop', handleDrop, false);
+    
+    // 拖拽
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        debugger
+        handleDropFiles({ target: { files } });
+    }
+
+     // 处理拖拽选择的文件
+    async function handleDropFiles(e) {
+        const files = e.target.files;
+        
+        if (!files.length) return;
+        
+        // 过滤非图片文件
+        const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+        
+        if (!imageFiles.length) {
+            alert('请选择图片文件（JPG、PNG、GIF等）');
+            return;
+        }
+         handleFiles(imageFiles)
+    }
+
+    function handleFiles(files) {
+        debugger
+        imageFiles = [...imageFiles, ...files];
+         
+        // 方式一：Data URL（适合生成可拷贝的静态 HTML）
+        // const newSrcs = await filesToDataURLs(files);
+
+        // 方式二：Object URL（更快）
+         const newSrcs = filesToObjectURLs(files);
+
+        imageSrcList.push(...newSrcs);
+
+        // btnImageDiv.innerText = imageSrcList.join('\n');
+
+        // 刷新你的预览（如果你已有预览函数，替换为对应调用）
+        if (typeof updateImagePreviewFromSrc === 'function') {
+            updateImagePreviewFromSrc(srcList);
+        }
+
+        // 更新计数（如果已有计数函数）
+        if (typeof updateFileCountFromSrc === 'function') {
+            updateFileCountFromSrc();
+        }
+
+        // 显示已选择图片
+        showImageList(imageSrcList);
+
+
+
+        // 更新预览
+        updatePreview();
+
+        // 允许再次选择同一文件
+        btnFile.value = '';
+    }
 
     // 初始化Markdown解析器
     marked.setOptions({
