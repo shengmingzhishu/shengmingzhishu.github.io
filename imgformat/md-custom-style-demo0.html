@@ -503,12 +503,10 @@
                 sentenceUrlArr.pop(); // 删除最后一个元素
             }
 
-
             // 双图模式
-            for(let i = 0; i <= 3*(sentenceUrlArr.length % 3); i+=3){
+            for(let i = 0; i < sentenceUrlArr.length; i+=2){
                  const imgurlLeft = sentenceUrlArr[i]
                 const imgurlRight = sentenceUrlArr[i+1]
-                const imgurlThree = sentenceUrlArr[i+2]
 
                 const block = `
 
@@ -543,25 +541,6 @@
                                                 class="rich_pages wxw-img" 
                                                 style="width:100%;height:auto;max-width:100vw;max-height:45vw;object-fit:cover;display:block;margin:0 auto;pointer-events:none;border-radius:16px;box-shadow:0 2px 8px 0 rgba(160,160,160,0.15);" 
                                                 src="${imgurlRight}"
-                                            >
-                                        </span>
-                                    </section>
-                                </section>
-                                <section style="box-shadow: rgb(0, 0, 0) 0px 0px 10px 0px;max-width:100%;vertical-align:middle;display:inline-block;line-height:0;width:100%;height:auto;pointer-events:none;box-sizing:border-box;visibility:visible;">
-                                    <span leaf=""><br></span>
-                                </section>
-                            </section>
-                        </section>
-                        <section style="display:inline-block;vertical-align:top;width:48%;min-width:0;align-self:flex-start;flex:1 1 0;padding:0;margin:0 0 0 1vw;border-radius:16px;overflow:hidden;height:auto;box-shadow:0 2px 8px 0 rgba(160,160,160,0.15);box-sizing:border-box;visibility:visible;" data-eusoft-scrollable-element="1">
-                            <section style="margin:0;line-height:0;pointer-events:none;box-sizing:border-box;visibility:visible;">
-                                <section style="visibility:visible;">
-                                    <section style="display:inline-block;visibility:visible;width:100%;">
-                                        <span leaf="">
-                                            <img 
-                                                data-src="${imgurlThree}" 
-                                                class="rich_pages wxw-img" 
-                                                style="width:100%;height:auto;max-width:100vw;max-height:45vw;object-fit:cover;display:block;margin:0 auto;pointer-events:none;border-radius:16px;box-shadow:0 2px 8px 0 rgba(160,160,160,0.15);" 
-                                                src="${imgurlThree}"
                                             >
                                         </span>
                                     </section>
