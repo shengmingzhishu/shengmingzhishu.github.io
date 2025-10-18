@@ -504,7 +504,7 @@
             }
 
             // 双图模式
-            for(let i = 0; i < sentenceUrlArr.length; i+=2){
+            for(let i = 0; i < 2*(sentenceUrlArr.length % 2); i+=2){
                  const imgurlLeft = sentenceUrlArr[i]
                 const imgurlRight = sentenceUrlArr[i+1]
 
