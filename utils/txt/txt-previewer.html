@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TXT文件拖放查看器</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#10B981',
+                        neutral: '#64758B',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Consolas', 'Monaco', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .drop-highlight {
+                @apply border-primary bg-indigo-50;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen flex flex-col">
+    <!-- 页面标题 -->
+    <header class="bg-white shadow-sm py-6">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-[clamp(1.5rem,3vw,2.2rem)] font-bold text-gray-800 mb-2 flex items-center justify-center">
+                <i class="fa fa-file-text-o text-primary mr-3"></i>
+                TXT文件拖放查看器
+            </h1>
+            <p class="text-neutral max-w-2xl mx-auto">将TXT文件直接拖放到下方区域，或点击选择文件查看内容</p>
+        </div>
+    </header>
+    
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧：文件选择区 -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden h-full">
+                    <div class="p-6 border-b border-gray-100">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fa fa-upload text-primary mr-2"></i>选择文件
+                        </h2>
+                        
+                        <!-- 文件选择按钮 -->
+                        <label for="file-input" class="block w-full mb-6">
+                            <div class="relative cursor-pointer bg-primary hover:bg-primary/90 text-white font-medium py-4 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg text-center">
+                                <i class="fa fa-file-text mr-2"></i>选择TXT文件
+                                <p class="text-sm mt-1 text-indigo-100">支持单个或多个TXT文件</p>
+                                <input id="file-input" type="file" accept=".txt" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            </div>
+                        </label>
+                        
+                        <!-- 拖放区域 -->
+                        <div id="drop-area" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center transition-all duration-300">
+                            <i class="fa fa-arrow-down text-4xl text-gray-400 mb-3 transition-colors duration-300"></i>
+                            <p class="text-gray-600">或将文件拖放到此处</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 已选文件列表 -->
+                    <div class="p-4">
+                        <h3 class="font-medium text-gray-700 mb-3 flex items-center">
+                            <i class="fa fa-files-o text-primary mr-2"></i>已选文件
+                        </h3>
+                        <div id="file-list" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                            <p id="no-files" class="text-gray-400 text-sm italic text-center py-4">暂无文件</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：内容显示区 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-md h-full flex flex-col">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                            <i class="fa fa-eye text-primary mr-2"></i>文件内容
+                        </h2>
+                        <button id="clear-btn" class="text-neutral hover:text-red-500 text-sm flex items-center transition-colors duration-200 hidden">
+                            <i class="fa fa-trash-o mr-1"></i> 清空所有
+                        </button>
+                    </div>
+                    
+                    <!-- 内容显示区域 -->
+                    <div id="content-placeholder" class="flex-grow flex flex-col items-center justify-center p-6 text-gray-400">
+                        <i class="fa fa-file-text-o text-5xl mb-4"></i>
+                        <p class="text-center max-w-md">选择或拖放TXT文件后，内容将显示在这里</p>
+                    </div>
+                    
+                    <div id="content-container" class="flex-grow overflow-hidden hidden">
+                        <div id="file-tabs" class="border-b border-gray-200 flex overflow-x-auto bg-gray-50"></div>
+                        <div id="content-display" class="flex-grow overflow-y-auto p-6 font-mono text-sm text-gray-800 leading-relaxed whitespace-pre-wrap"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 py-4 mt-8">
+        <div class="container mx-auto px-4 text-center text-neutral text-sm">
+            <p>TXT文件拖放查看器 &copy; 2023</p>
+        </div>
+    </footer>
+
+    <script>
+        // 获取DOM元素
+        const fileInput = document.getElementById('file-input');
+        const dropArea = document.getElementById('drop-area');
+        const fileList = document.getElementById('file-list');
+        const noFiles = document.getElementById('no-files');
+        const contentPlaceholder = document.getElementById('content-placeholder');
+        const contentContainer = document.getElementById('content-container');
+        const fileTabs = document.getElementById('file-tabs');
+        const contentDisplay = document.getElementById('content-display');
+        const clearBtn = document.getElementById('clear-btn');
+        
+        // 存储已选择的文件及内容
+        let filesData = [];
+        let activeFileIndex = -1;
+        
+        // 初始化事件监听
+        function initEventListeners() {
+            // 文件选择事件
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 拖放事件
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlightDropArea, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlightDropArea, false);
+            });
+            
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            // 清空按钮事件
+            clearBtn.addEventListener('click', clearAllFiles);
+        }
+        
+        // 阻止默认拖放行为
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // 高亮拖放区域
+        function highlightDropArea() {
+            dropArea.classList.add('drop-highlight');
+            dropArea.querySelector('i').classList.add('text-primary');
+            dropArea.querySelector('i').classList.remove('text-gray-400');
+        }
+        
+        // 取消高亮拖放区域
+        function unhighlightDropArea() {
+            dropArea.classList.remove('drop-highlight');
+            dropArea.querySelector('i').classList.remove('text-primary');
+            dropArea.querySelector('i').classList.add('text-gray-400');
+        }
+        
+        // 处理文件选择
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            processFiles(files);
+            // 重置input值，允许重复选择同一文件
+            fileInput.value = '';
+        }
+        
+        // 处理拖放文件
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            processFiles(files);
+        }
+        
+        // 处理文件
+        function processFiles(files) {
+            if (!files.length) return;
+            
+            // 过滤非TXT文件
+            const txtFiles = Array.from(files).filter(file => file.name.toLowerCase().endsWith('.txt'));
+            
+            if (!txtFiles.length) {
+                alert('请选择TXT文件（.txt）');
+                return;
+            }
+            
+            // 读取并处理每个TXT文件
+            txtFiles.forEach(file => {
+                // 检查是否已添加相同文件
+                const isDuplicate = filesData.some(f => f.name === file.name && f.size === file.size);
+                if (isDuplicate) return;
+                
+                const reader = new FileReader();
+                
+                reader.onloadstart = () => {
+                    // 添加到文件列表（加载中状态）
+                    addFileToUI(file, true);
+                };
+                
+                reader.onload = (e) => {
+                    // 存储文件数据
+                    const fileData = {
+                        name: file.name,
+                        size: file.size,
+                        content: e.target.result,
+                        lastModified: file.lastModified
+                    };
+                    
+                    filesData.push(fileData);
+                    
+                    // 更新UI（完成加载状态）
+                    updateFileInUI(file.name, false);
+                    
+                    // 如果是第一个文件，自动显示
+                    if (filesData.length === 1) {
+                        showFileContent(0);
+                    }
+                    
+                    // 更新标签页
+                    updateFileTabs();
+                    
+                    // 显示清空按钮
+                    clearBtn.classList.remove('hidden');
+                };
+                
+                reader.onerror = () => {
+                    alert(`无法读取文件: ${file.name}`);
+                    removeFileFromUI(file.name);
+                };
+                
+                // 以文本形式读取文件
+                reader.readAsText(file, 'utf-8');
+            });
+        }
+        
+        // 添加文件到UI（加载中）
+        function addFileToUI(file, isLoading) {
+            // 隐藏"暂无文件"提示
+            noFiles.classList.add('hidden');
+            
+            const fileItem = document.createElement('div');
+            fileItem.className = 'flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 transition-all duration-200';
+            fileItem.dataset.filename = file.name;
+            
+            const sizeText = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fa fa-file-text-o text-primary mr-2"></i>
+                    <div class="truncate max-w-[180px]">
+                        <p class="text-sm font-medium text-gray-800 truncate">${file.name}</p>
+                        <p class="text-xs text-gray-500">${sizeText} ${isLoading ? '- 加载中...' : ''}</p>
+                    </div>
+                </div>
+                ${isLoading ? 
+                    '<i class="fa fa-spinner fa-spin text-gray-400"></i>' : 
+                    '<button class="delete-file text-gray-400 hover:text-red-500 transition-colors"><i class="fa fa-times"></i></button>'
+                }
+            `;
+            
+            fileList.appendChild(fileItem);
+            
+            // 如果不是加载中，添加删除事件
+            if (!isLoading) {
+                fileItem.querySelector('.delete-file').addEventListener('click', () => {
+                    removeFile(file.name);
+                });
+            }
+        }
+        
+        // 更新文件在UI中的状态（完成加载）
+        function updateFileInUI(filename, isLoading) {
+            const fileItem = fileList.querySelector(`[data-filename="${filename}"]`);
+            if (!fileItem) return;
+            
+            // 更新状态和删除按钮
+            const sizeElem = fileItem.querySelector('.text-xs');
+            const iconElem = fileItem.querySelector('div:last-child');
+            
+            if (!isLoading) {
+                sizeElem.textContent = sizeElem.textContent.replace(' - 加载中...', '');
+                iconElem.innerHTML = '<button class="delete-file text-gray-400 hover:text-red-500 transition-colors"><i class="fa fa-times"></i></button>';
+                iconElem.querySelector('.delete-file').addEventListener('click', () => {
+                    removeFile(filename);
+                });
+            }
+        }
+        
+        // 从UI中移除文件
+        function removeFileFromUI(filename) {
+            const fileItem = fileList.querySelector(`[data-filename="${filename}"]`);
+            if (fileItem) {
+                // 添加淡出动画
+                fileItem.style.opacity = '0';
+                fileItem.style.transform = 'translateX(10px)';
+                fileItem.style.height = fileItem.offsetHeight + 'px';
+                
+                setTimeout(() => {
+                    fileItem.remove();
+                    // 如果没有文件了，显示提示
+                    if (fileList.children.length === 0) {
+                        noFiles.classList.remove('hidden');
+                    }
+                }, 300);
+            }
+        }
+        
+        // 更新文件标签页
+        function updateFileTabs() {
+            fileTabs.innerHTML = '';
+            
+            filesData.forEach((file, index) => {
+                const tab = document.createElement('button');
+                tab.className = `px-4 py-2 text-sm whitespace-nowrap transition-all duration-200 ${
+                    index === activeFileIndex ? 'text-primary border-b-2 border-primary font-medium' : 'text-gray-500 hover:text-gray-700'
+                }`;
+                tab.textContent = file.name;
+                tab.dataset.index = index;
+                
+                tab.addEventListener('click', () => {
+                    showFileContent(index);
+                });
+                
+                fileTabs.appendChild(tab);
+            });
+        }
+        
+        // 显示文件内容
+        function showFileContent(index) {
+            if (index < 0 || index >= filesData.length) return;
+            
+            const file = filesData[index];
+            activeFileIndex = index;
+            
+            // 显示内容区域，隐藏占位符
+            contentPlaceholder.classList.add('hidden');
+            contentContainer.classList.remove('hidden');
+            
+            // 更新内容
+            contentDisplay.textContent = file.content;
+            
+            // 更新标签页状态
+            updateFileTabs();
+            
+            // 添加淡入动画
+            contentDisplay.style.opacity = '0';
+            setTimeout(() => {
+                contentDisplay.style.opacity = '1';
+            }, 50);
+        }
+        
+        // 移除文件
+        function removeFile(filename) {
+            // 找到文件索引
+            const index = filesData.findIndex(file => file.name === filename);
+            if (index === -1) return;
+            
+            // 从数据中移除
+            filesData.splice(index, 1);
+            
+            // 从UI中移除
+            removeFileFromUI(filename);
+            
+            // 更新标签页和内容
+            if (filesData.length === 0) {
+                // 如果没有文件了，显示占位符
+                contentContainer.classList.add('hidden');
+                contentPlaceholder.classList.remove('hidden');
+                clearBtn.classList.add('hidden');
+                activeFileIndex = -1;
+            } else {
+                // 如果删除的是当前显示的文件，切换到第一个文件
+                if (index === activeFileIndex) {
+                    const newIndex = index === 0 ? 0 : index - 1;
+                    showFileContent(newIndex);
+                } else if (index < activeFileIndex) {
+                    // 如果删除的是当前文件之前的文件，调整索引
+                    activeFileIndex--;
+                    updateFileTabs();
+                }
+            }
+        }
+        
+        // 清空所有文件
+        function clearAllFiles() {
+            if (filesData.length === 0) return;
+            
+            if (confirm('确定要清空所有文件吗？')) {
+                // 清空数据
+                filesData = [];
+                activeFileIndex = -1;
+                
+                // 清空UI
+                fileList.innerHTML = '';
+                noFiles.classList.remove('hidden');
+                contentContainer.classList.add('hidden');
+                contentPlaceholder.classList.remove('hidden');
+                clearBtn.classList.add('hidden');
+            }
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 初始化应用
+        initEventListeners();
+    </script>
+</body>
+</html>

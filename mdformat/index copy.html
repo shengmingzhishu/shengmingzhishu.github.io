@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具导航</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 
+                        "Helvetica Neue", "PingFang SC", 
+                        "Microsoft YaHei", sans-serif;
+        }
+        
+        /* 返回顶部按钮 */
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 20px;
+        }
+        
+        .back-to-top.visible {
+            opacity: 0.8;
+        }
+        
+        .back-to-top:hover {
+            opacity: 1;
+            transform: translateY(-3px);
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #fff6e5, #ffeaf4);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .title {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin: 0;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: #7f8c8d;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 90%;
+            padding: 40px 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 0 auto;
+        }
+
+        .tool-card {
+            text-decoration: none;
+            padding: 25px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            min-height: 180px;
+            opacity: 1;
+            transform: scale(1);
+            transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .tool-card[style*="display: none"] {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+/* 马卡龙配色方案 */
+        .tool-card:nth-child(1) {
+            background: #FFE6E6;
+            color: #D86464;
+        }
+
+        .tool-card:nth-child(2) {
+            background: #E8F8E8;
+            color: #2F8F6B;
+        }
+
+        .tool-card:nth-child(3) {
+            background: #EDE8FF;
+            color: #6F6FC8;
+        }
+
+        .tool-card:nth-child(4) {
+            background: #FFE8F6;
+            color: #B65BA4;
+        }
+
+        .tool-card:nth-child(5) {
+            background: #FFF7CC;
+            color: #A68A00;
+        }
+
+        .tool-card:nth-child(6) {
+            background: #E6F4FF;
+            color: #2B79C2;
+        }
+
+        .tool-card:nth-child(7) {
+            background: #26267a;
+            color: #3d3d8b;
+        }
+
+        .tool-card:nth-child(8) {
+            background: #1a4e85;
+            color: #2c5470;
+        }
+
+
+        .tool-card:nth-child(9) {
+            background: #76c720;
+            color: #0e240e;
+        }
+
+        .tool-card:nth-child(10) {
+            background: #2f2f81;
+            color: #7B7BFF;
+        }
+
+        .tool-card:nth-child(11) {
+            background: #136b86;
+            color: #5c095c;
+        }
+
+        .tool-card:nth-child(12) {
+            background: #FFE5FF;
+            color: #e0ff7b;
+        }
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border-color: currentColor;
+        }
+
+        .tool-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .tool-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .tool-desc {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .title {
+                font-size: 2em;
+            }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #95a5a6;
+            font-size: 0.9em;
+            margin-top: auto;
+        }
+        
+        /* 搜索框样式 */
+        .search-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        #search-input {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px 0 0 25px;
+            width: 70%;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        
+        #search-input:focus {
+            border-color: #2c3e50;
+            box-shadow: 0 0 5px rgba(44, 62, 80, 0.3);
+        }
+        
+        #search-button {
+            padding: 10px 20px;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 0 25px 25px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        #search-button:hover {
+            background: #1a252f;
+        }
+        
+        #clear-search {
+            padding: 10px 15px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        
+        #clear-search:hover {
+            background: #c0392b;
+        }
+        
+        /* 分类过滤按钮样式 */
+        .category-filter {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .category-btn {
+            padding: 8px 15px;
+            background: #ecf0f1;
+            color: #2c3e50;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .category-btn:hover {
+            background: #d5dbdb;
+        }
+        
+        .category-btn.active {
+            background: #2c3e50;
+            color: white;
+        }
+
+        /* 工具组样式 */
+        .tool-group {
+            margin-bottom: 40px;
+        }
+
+        .group-title {
+            color: #2c3e50;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="title">在线工具集</h1>
+        <p class="subtitle">简单、高效的在线工具集合</p>
+        <div class="category-filter">
+            <button class="category-btn active" data-category="all">全部</button>
+            <button class="category-btn" data-category="wxformat">微信排版</button>
+            <button class="category-btn" data-category="markdown">Markdown</button>
+            <button class="category-btn" data-category="data-converter">数据转换</button>
+            <button class="category-btn" data-category="games">小游戏</button>
+        </div>
+    </header>
+    
+
+    <div class="container">
+        <!-- Markdown工具组 -->
+        <div class="tool-group">
+            <h2 class="group-title">图片排版</h2>
+            <div class="tool-grid">
+ 
+                <a href="imgformat/md-custom-style-demo0.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍎</div>
+                    <div class="tool-name">双排图片排版</div>
+                    <div class="tool-desc">双排图片文字排版，适用于微信公众号</div>
+                </a>
+ 
+                <a href="imgformat/md-custom-style-demo1.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍎</div>
+                    <div class="tool-name">三排图片排版</div>
+                    <div class="tool-desc">三排图片文字排版，适用于微信公众号</div>
+                </a>
+ 
+                <a href="imgformat/md-custom-style-demo2.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍎</div>
+                    <div class="tool-name">双排句子排版</div>
+                    <div class="tool-desc">双排句子文字排版，适用于微信公众号</div>
+                </a>
+ 
+                <a href="imgformat/md-custom-style-demo3.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍎</div>
+                    <div class="tool-name">简单句子排版</div>
+                    <div class="tool-desc">简单句子文字排版，适用于微信公众号</div>
+                </a>
+
+                <a href="imgformat/md-custom-style-demo4.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍉</div>
+                    <div class="tool-name">朋友圈句子排版</div>
+                    <div class="tool-desc">朋友圈句子文字排版，适用于微信公众号</div>
+                </a>
+
+                <a href="imgformat/md-custom-style-demo5.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍊</div>
+                    <div class="tool-name">音乐图书排版</div>
+                    <div class="tool-desc">音乐图书排版文字排版，适用于微信公众号</div>
+                </a>
+
+                <a href="imgformat/md-custom-style-demo6.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍊</div>
+                    <div class="tool-name">头像壁纸排版</div>
+                    <div class="tool-desc">头像壁纸排版，适用于微信公众号</div>
+                </a>
+                 
+                <a href="imgformat/image-previewer.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍎</div>
+                    <div class="tool-name">拖拽文件预览</div>
+                    <div class="tool-desc">拖拽文件预览</div>
+                </a>
+
+
+                <a href="imgformat/imgformat/txt-viewer.html" class="tool-card" data-category="wxformat">
+                    <div class="tool-icon">🍎</div>
+                    <div class="tool-name">拖拽TXT预览</div>
+                    <div class="tool-desc">拖TXT预览</div>
+                </a>
+                
+
+            </div>
+        </div>
+    </div>
+
+
+    <div class="container">
+        <!-- Markdown工具组 -->
+        <div class="tool-group">
+            <h2 class="group-title">Markdown工具</h2>
+            <div class="tool-grid">
+                <!-- 第一排：Markdown工具 -->
+                <a href="markdown/md-custom-style-youhua-page.html" class="tool-card" data-category="markdown">
+                    <div class="tool-icon">🌵</div>
+                    <div class="tool-name">Markdown→排版预览</div>
+                    <div class="tool-desc">预览Markdown排版效果</div>
+                </a>
+
+                <a href="markdown/format-content.html" class="tool-card" data-category="markdown">
+                    <div class="tool-icon">🌳</div>
+                    <div class="tool-name">文本→Markdown</div>
+                    <div class="tool-desc">文本转为Markdown格式</div>
+                </a>
+
+                <a href="markdown/md-preview-index-mark-page.html" class="tool-card" data-category="markdown">
+                    <div class="tool-icon">🍑</div>
+                    <div class="tool-name">Markdown→预览</div>
+                    <div class="tool-desc">Markdown→预览</div>
+                </a>
+                
+                <a href="mdformat/md-custom-format-demo1.html" class="tool-card" data-category="markdown">
+                    <div class="tool-icon">📱</div>
+                    <div class="tool-name">公众号格式化</div>
+                    <div class="tool-desc">专为公众号内容优化的格式化工具</div>
+                </a>
+
+                <a href="markdown/md-custom-style.html" class="tool-card" data-category="markdown">
+                    <div class="tool-icon">💰</div>
+                    <div class="tool-name">自定义样式</div>
+                    <div class="tool-desc">自定义Markdown渲染HTML样式</div>
+                </a>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 数据转换工具组 -->
+        <div class="tool-group">
+            <h2 class="group-title">数据转换</h2>
+            <div class="tool-grid">
+                <!-- 第二排：数据转换工具 -->
+                <a href="data-converter/CSV_JSON.html" class="tool-card" data-category="data-converter">
+                    <div class="tool-icon">🍟</div>
+                    <div class="tool-name">CSV转JSON</div>
+                    <div class="tool-desc">快速将CSV数据转换为JSON格式，支持自定义列名</div>
+                </a>
+
+                <a href="data-converter/JSON_CSV.html" class="tool-card" data-category="data-converter">
+                    <div class="tool-icon">🍔</div>
+                    <div class="tool-name">JSON转CSV</div>
+                    <div class="tool-desc">将JSON数组数据转换为CSV格式，自动识别所有字段</div>
+                </a>
+
+                <a href="htmltag/html-custom-url-tools.html" class="tool-card" data-category="data-converter">
+                    <div class="tool-icon">🍔</div>
+                    <div class="tool-name">HTML-URL</div>
+                    <div class="tool-desc">用于提取HTML标签的URL</div>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- 游戏工具 -->
+        <div class="tool-group">
+            <h2 class="group-title">小游戏</h2>
+            <div class="tool-grid">
+             
+                <a href="games/CS_GO.html" class="tool-card" data-category="games">
+                    <div class="tool-icon">🍭</div>
+                    <div class="tool-name">CS_GO</div>
+                    <div class="tool-desc">CS_GO小游戏，练枪小游戏</div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>© 2025 在线工具集 | 让工作更轻松</p>
+    </footer>
+    <a href="#" class="back-to-top">↑</a>
+    
+    <script>
+        // 返回顶部按钮逻辑
+        const backToTopButton = document.querySelector('.back-to-top');
+        
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+        });
+        
+        backToTopButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        
+        // 搜索功能逻辑
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const clearSearchButton = document.getElementById('clear-search');
+        const toolCards = document.querySelectorAll('.tool-card');
+        
+        // 搜索函数
+        function searchTools() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            
+            // 如果搜索词为空，显示所有工具
+            if (searchTerm === '') {
+                toolCards.forEach(card => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'scale(1)';
+                    card.style.display = 'flex';
+                });
+                return;
+            }
+            
+            // 遍历所有工具卡片，根据搜索词过滤
+            toolCards.forEach(card => {
+                const toolName = card.querySelector('.tool-name').textContent.toLowerCase();
+                const toolDesc = card.querySelector('.tool-desc').textContent.toLowerCase();
+                
+                // 如果工具名称或描述包含搜索词，显示该工具，否则隐藏
+                if (toolName.includes(searchTerm) || toolDesc.includes(searchTerm)) {
+                    card.style.opacity = '1';
+                    card.style.transform = 'scale(1)';
+                    card.style.display = 'flex';
+                } else {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.8)';
+                    setTimeout(() => {
+                        if (card.style.opacity === '0') {
+                            card.style.display = 'none';
+                        }
+                    }, 300);
+                }
+            });
+        }
+        
+        // 点击搜索按钮时执行搜索
+        searchButton.addEventListener('click', searchTools);
+        
+        // 按下回车键时也执行搜索
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchTools();
+            }
+        });
+        
+        // 清除搜索功能
+        function clearSearch() {
+            searchInput.value = '';
+            toolCards.forEach(card => {
+                card.style.opacity = '1';
+                card.style.transform = 'scale(1)';
+                card.style.display = 'flex';
+            });
+            
+            // 重置分类过滤按钮
+            categoryButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.category-btn[data-category="all"]').classList.add('active');
+        }
+        
+        // 点击清除按钮时清除搜索
+        clearSearchButton.addEventListener('click', clearSearch);
+        
+        // 分类过滤功能
+        const categoryButtons = document.querySelectorAll('.category-btn');
+        
+        // 过滤函数
+        function filterByCategory(category) {
+            toolCards.forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.opacity = '1';
+                    card.style.transform = 'scale(1)';
+                    card.style.display = 'flex';
+                } else {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.8)';
+                    setTimeout(() => {
+                        if (card.style.opacity === '0') {
+                            card.style.display = 'none';
+                        }
+                    }, 300);
+                }
+            });
+        }
+        
+        // 为每个分类按钮添加点击事件
+        categoryButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // 移除所有按钮的active类
+                categoryButtons.forEach(btn => btn.classList.remove('active'));
+                // 为当前点击的按钮添加active类
+                button.classList.add('active');
+                // 执行过滤
+                filterByCategory(button.dataset.category);
+                // 清空搜索框
+                searchInput.value = '';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>贪吃蛇游戏 - WordPlay</title>
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 统一的 Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#60a5fa',
+            accent: '#93c5fd',
+            light: '#dbeafe',
+            dark: '#1e40af'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s infinite',
+            'bounce-slow': 'bounce 2s infinite',
+            'fade-in': 'fadeIn 0.5s ease-in-out',
+            'slide-up': 'slideUp 0.5s ease-in-out',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' }
+            },
+            slideUp: {
+              '0%': { transform: 'translateY(20px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .btn-primary {
+        @apply bg-primary text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-dark transition-all duration-300 transform hover:-translate-y-0.5;
+      }
+      .btn-secondary {
+        @apply bg-white text-primary font-bold py-2 px-4 rounded-lg shadow-md border border-primary hover:bg-light transition-all duration-300 transform hover:-translate-y-0.5;
+      }
+      .btn-direction {
+        @apply bg-white text-primary font-bold w-12 h-12 rounded-full shadow-md border border-primary flex items-center justify-center hover:bg-light transition-all duration-300 transform hover:-translate-y-0.5;
+      }
+      .word-star {
+        clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex flex-col">
+  <!-- 导航栏 -->
+  <nav class="bg-white shadow-md">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <a href="index.html" class="flex items-center space-x-2">
+          <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/0feaa3d8d07648db8be3cee30fce02ce~tplv-a9rns2rl98-image.image?rcl=2025102317315274449F0D0DEFF02F0731&rk3s=8e244e95&rrcfp=f06b921b&x-expires=1763803961&x-signature=r5y%2BCQdJNrXKLLw9NfsuckNWkrQ%3D" alt="WordPlay Logo" class="h-10">
+          <span class="text-xl font-bold text-primary">WordPlay</span>
+        </a>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="pause-btn" class="btn-secondary text-sm">
+          <i class="fa fa-pause mr-1"></i> 暂停
+        </button>
+        <button id="restart-btn" class="btn-secondary text-sm">
+          <i class="fa fa-refresh mr-1"></i> 重新开始
+        </button>
+        <a href="index.html" class="btn-primary text-sm">
+          <i class="fa fa-home mr-1"></i> 返回主页
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 游戏标题和信息 -->
+  <header class="container mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row justify-between items-center">
+      <h1 class="text-3xl font-bold text-primary mb-4 md:mb-0">贪吃蛇游戏</h1>
+      <div class="flex items-center space-x-6">
+        <div class="flex items-center">
+          <span class="text-gray-600 mr-2">得分:</span>
+          <span id="score" class="text-primary font-bold text-xl">0</span>
+        </div>
+        <div class="flex items-center">
+          <span class="text-gray-600 mr-2">长度:</span>
+          <span id="length" class="text-primary font-bold text-xl">3</span>
+        </div>
+        <div class="flex items-center">
+          <span class="text-gray-600 mr-2">时间:</span>
+          <span id="timer" class="text-primary font-bold text-xl">00:00</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 游戏区域 -->
+  <main class="container mx-auto px-4 py-6 flex-grow flex flex-col md:flex-row">
+    <!-- 游戏说明 -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6 md:mb-0 md:mr-6 md:w-64">
+      <h3 class="text-lg font-bold text-primary mb-3">游戏说明</h3>
+      <ul class="text-gray-600 space-y-2">
+        <li><i class="fa fa-arrow-up text-primary mr-2"></i> 上移</li>
+        <li><i class="fa fa-arrow-down text-primary mr-2"></i> 下移</li>
+        <li><i class="fa fa-arrow-left text-primary mr-2"></i> 左移</li>
+        <li><i class="fa fa-arrow-right text-primary mr-2"></i> 右移</li>
+        <li class="mt-4"><i class="fa fa-star text-yellow-400 mr-2"></i> 吃掉星星学习单词</li>
+        <li><i class="fa fa-info-circle text-primary mr-2"></i> 不要撞到边界或自己</li>
+      </ul>
+      
+      <div class="mt-6">
+        <h3 class="text-lg font-bold text-primary mb-3">已学单词</h3>
+        <div id="learned-words" class="max-h-48 overflow-y-auto space-y-2">
+          <p class="text-gray-400 italic text-sm">暂无学习记录</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 游戏画布 -->
+    <div class="flex-grow flex flex-col items-center">
+      <div class="relative">
+        <canvas id="game-canvas" class="bg-white rounded-lg shadow-lg border-4 border-primary"></canvas>
+        
+        <!-- 游戏开始弹窗 -->
+        <div id="game-start-modal" class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-10">
+          <div class="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4 animate-fade-in">
+            <div class="text-center mb-6">
+              <img src="https://p9-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/5eedd5e532f54819937bc881c6fa93d1~tplv-a9rns2rl98-image.image?rcl=2025102317315274449F0D0DEFF02F0731&rk3s=8e244e95&rrcfp=f06b921b&x-expires=1763803976&x-signature=to6H2br2sQbE%2FxdbzuWZAFJaWdk%3D" alt="贪吃蛇游戏" class="w-32 h-32 mx-auto mb-4">
+              <h2 class="text-2xl font-bold text-primary">贪吃蛇游戏</h2>
+              <p class="text-gray-600 mt-2">控制蛇吃掉单词星星，学习新词汇！</p>
+            </div>
+            <div class="flex justify-center">
+              <button id="start-btn" class="btn-primary">
+                开始游戏
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 游戏暂停弹窗 -->
+        <div id="game-pause-modal" class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-10 hidden">
+          <div class="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4 animate-fade-in">
+            <div class="text-center mb-6">
+              <h2 class="text-2xl font-bold text-primary">游戏暂停</h2>
+            </div>
+            <div class="flex space-x-4">
+              <button id="resume-btn" class="btn-primary flex-1">
+                继续游戏
+              </button>
+              <button id="restart-from-pause-btn" class="btn-secondary flex-1">
+                重新开始
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 游戏结束弹窗 -->
+        <div id="game-over-modal" class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-10 hidden">
+          <div class="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4 animate-fade-in">
+            <div class="text-center mb-6">
+              <div class="inline-block p-3 rounded-full bg-red-100 text-red-500 mb-4">
+                <i class="fa fa-times-circle text-4xl"></i>
+              </div>
+              <h2 class="text-2xl font-bold text-primary">游戏结束</h2>
+              <p class="text-gray-600 mt-2">你撞到了边界或自己！</p>
+            </div>
+            <div class="bg-blue-50 rounded-lg p-4 mb-6">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-600">最终得分:</span>
+                <span id="final-score" class="font-bold text-primary">0</span>
+              </div>
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-600">蛇长度:</span>
+                <span id="final-length" class="font-bold text-primary">3</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-600">用时:</span>
+                <span id="final-time" class="font-bold text-primary">00:00</span>
+              </div>
+            </div>
+            <div class="flex space-x-4">
+              <button id="play-again-btn" class="btn-primary flex-1">
+                再玩一次
+              </button>
+              <a href="index.html" class="btn-secondary flex-1">
+                返回主页
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 单词提示弹窗 -->
+        <div id="word-popup" class="absolute inset-0 flex items-center justify-center z-10 hidden">
+          <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-slide-up">
+            <div class="text-center">
+              <div class="inline-block p-3 rounded-full bg-yellow-100 text-yellow-500 mb-4">
+                <i class="fa fa-star text-3xl"></i>
+              </div>
+              <h3 id="popup-word-en" class="text-2xl font-bold text-primary mb-1">apple</h3>
+              <p id="popup-word-yb" class="text-gray-500 mb-3">/ˈæpl/</p>
+              <p id="popup-word-cn" class="text-xl font-medium text-dark mb-4">苹果</p>
+              <div class="bg-blue-50 rounded-lg p-3 mb-4 text-left">
+                <p id="popup-word-ljen" class="text-sm text-gray-700 mb-1">She ate an apple for breakfast.</p>
+                <p id="popup-word-ljcn" class="text-sm text-gray-500">她早餐吃了一个苹果。</p>
+              </div>
+              <button id="close-word-popup" class="btn-primary">
+                继续游戏
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 移动端方向控制 -->
+      <div class="mt-6 md:hidden">
+        <div class="flex justify-center mb-2">
+          <button id="mobile-up" class="btn-direction">
+            <i class="fa fa-arrow-up"></i>
+          </button>
+        </div>
+        <div class="flex justify-center space-x-4">
+          <button id="mobile-left" class="btn-direction">
+            <i class="fa fa-arrow-left"></i>
+          </button>
+          <button id="mobile-down" class="btn-direction">
+            <i class="fa fa-arrow-down"></i>
+          </button>
+          <button id="mobile-right" class="btn-direction">
+            <i class="fa fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-dark text-white py-6 mt-auto">
+    <div class="container mx-auto px-4 text-center">
+      <p>&copy; 2025 WordPlay. 保留所有权利。</p>
+    </div>
+  </footer>
+
+  <!-- 共享的单词数据 -->
+  <script src="dict.js"></script>
+  
+  <!-- 贪吃蛇游戏脚本 -->
+  <script>
+    // 游戏变量
+    let gameState = {
+      canvas: null,
+      ctx: null,
+      width: 800,
+      height: 600,
+      cellSize: 20,
+      snake: [],
+      direction: 'RIGHT',
+      nextDirection: 'RIGHT',
+      stars: [],
+      score: 0,
+      gameLoop: null,
+      speed: 150,
+      startTime: null,
+      elapsedTime: 0,
+      isPaused: false,
+      learnedWords: []
+    };
+    
+    // DOM元素
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const lengthElement = document.getElementById('length');
+    const timerElement = document.getElementById('timer');
+    const gameStartModal = document.getElementById('game-start-modal');
+    const gamePauseModal = document.getElementById('game-pause-modal');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const wordPopup = document.getElementById('word-popup');
+    const popupWordEn = document.getElementById('popup-word-en');
+    const popupWordYb = document.getElementById('popup-word-yb');
+    const popupWordCn = document.getElementById('popup-word-cn');
+    const popupWordLjen = document.getElementById('popup-word-ljen');
+    const popupWordLjcn = document.getElementById('popup-word-ljcn');
+    const learnedWordsElement = document.getElementById('learned-words');
+    const finalScoreElement = document.getElementById('final-score');
+    const finalLengthElement = document.getElementById('final-length');
+    const finalTimeElement = document.getElementById('final-time');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const resumeBtn = document.getElementById('resume-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const restartFromPauseBtn = document.getElementById('restart-from-pause-btn');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const closeWordPopupBtn = document.getElementById('close-word-popup');
+    const mobileUpBtn = document.getElementById('mobile-up');
+    const mobileMobileDownBtn = document.getElementById('mobile-down');
+    const mobileLeftBtn = document.getElementById('mobile-left');
+    const mobileRightBtn = document.getElementById('mobile-right');
+    
+    // 初始化游戏
+    function initGame() {
+      // 设置画布尺寸
+      canvas.width = gameState.width;
+      canvas.height = gameState.height;
+      
+      // 重置游戏状态
+      gameState.canvas = canvas;
+      gameState.ctx = ctx;
+      gameState.snake = [];
+      gameState.direction = 'RIGHT';
+      gameState.nextDirection = 'RIGHT';
+      gameState.stars = [];
+      gameState.score = 0;
+      gameState.elapsedTime = 0;
+      gameState.isPaused = false;
+      gameState.learnedWords = [];
+      
+      // 更新UI
+      scoreElement.textContent = '0';
+      lengthElement.textContent = '3';
+      timerElement.textContent = '00:00';
+      updateLearnedWordsDisplay();
+      
+      // 创建初始蛇
+      createSnake();
+      
+      // 创建初始星星
+      createStars();
+      
+      // 显示游戏开始弹窗
+      gameStartModal.classList.remove('hidden');
+    }
+    
+    // 创建初始蛇
+    function createSnake() {
+      const centerX = Math.floor(gameState.width / 2 / gameState.cellSize) * gameState.cellSize;
+      const centerY = Math.floor(gameState.height / 2 / gameState.cellSize) * gameState.cellSize;
+      
+      // 创建蛇的初始身体
+      gameState.snake = [
+        { x: centerX, y: centerY },
+        { x: centerX - gameState.cellSize, y: centerY },
+        { x: centerX - 2 * gameState.cellSize, y: centerY }
+      ];
+    }
+    
+    // 创建星星
+    function createStars() {
+      // 清空现有星星
+      gameState.stars = [];
+      
+      // 获取随机单词
+      const words = getRandomWords(3);
+      
+      // 创建星星
+      words.forEach(word => {
+        let x, y;
+        let isColliding;
+        
+        // 找到不与蛇碰撞的位置
+        do {
+          isColliding = false;
+          x = Math.floor(Math.random() * (gameState.width / gameState.cellSize)) * gameState.cellSize;
+          y = Math.floor(Math.random() * (gameState.height / gameState.cellSize)) * gameState.cellSize;
+          
+          // 检查是否与蛇碰撞
+          for (let i = 0; i < gameState.snake.length; i++) {
+            if (gameState.snake[i].x === x && gameState.snake[i].y === y) {
+              isColliding = true;
+              break;
+            }
+          }
+          
+          // 检查是否与其他星星碰撞
+          for (let i = 0; i < gameState.stars.length; i++) {
+            if (gameState.stars[i].x === x && gameState.stars[i].y === y) {
+              isColliding = true;
+              break;
+            }
+          }
+        } while (isColliding);
+        
+        // 添加星星
+        gameState.stars.push({
+          x: x,
+          y: y,
+          word: word
+        });
+      });
+    }
+    
+    // 开始游戏
+    function startGame() {
+      // 隐藏游戏开始弹窗
+      gameStartModal.classList.add('hidden');
+      
+      // 记录开始时间
+      gameState.startTime = Date.now();
+      
+      // 开始游戏循环
+      gameState.gameLoop = setInterval(gameLoop, gameState.speed);
+    }
+    
+    // 游戏循环
+    function gameLoop() {
+      // 如果游戏暂停，不执行游戏逻辑
+      if (gameState.isPaused) return;
+      
+      // 更新游戏时间
+      gameState.elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+      updateTimerDisplay();
+      
+      // 更新方向
+      gameState.direction = gameState.nextDirection;
+      
+      // 移动蛇
+      moveSnake();
+      
+      // 检查碰撞
+      if (checkCollision()) {
+        endGame();
+        return;
+      }
+      
+      // 检查是否吃到星星
+      checkEatStar();
+      
+      // 绘制游戏
+      drawGame();
+    }
+    
+    // 移动蛇
+    function moveSnake() {
+      // 获取蛇头
+      const head = { ...gameState.snake[0] };
+      
+      // 根据方向移动蛇头
+      switch (gameState.direction) {
+        case 'UP':
+          head.y -= gameState.cellSize;
+          break;
+        case 'DOWN':
+          head.y += gameState.cellSize;
+          break;
+        case 'LEFT':
+          head.x -= gameState.cellSize;
+          break;
+        case 'RIGHT':
+          head.x += gameState.cellSize;
+          break;
+      }
+      
+      // 将新的蛇头添加到蛇的前面
+      gameState.snake.unshift(head);
+    }
+    
+    // 检查碰撞
+    function checkCollision() {
+      const head = gameState.snake[0];
+      
+      // 检查是否撞到边界
+      if (
+        head.x < 0 ||
+        head.x >= gameState.width ||
+        head.y < 0 ||
+        head.y >= gameState.height
+      ) {
+        return true;
+      }
+      
+      // 检查是否撞到自己
+      for (let i = 1; i < gameState.snake.length; i++) {
+        if (head.x === gameState.snake[i].x && head.y === gameState.snake[i].y) {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+    
+    // 检查是否吃到星星
+    function checkEatStar() {
+      const head = gameState.snake[0];
+      
+      // 检查是否吃到星星
+      for (let i = 0; i < gameState.stars.length; i++) {
+        const star = gameState.stars[i];
+        if (head.x === star.x && head.y === star.y) {
+          // 吃到星星，增加分数
+          gameState.score += 10;
+          scoreElement.textContent = gameState.score;
+          
+          // 更新蛇的长度
+          lengthElement.textContent = gameState.snake.length;
+          
+          // 添加到已学单词列表
+          gameState.learnedWords.push(star.word);
+          updateLearnedWordsDisplay();
+          
+          // 显示单词弹窗
+          showWordPopup(star.word);
+          
+          // 暂停游戏
+          gameState.isPaused = true;
+          
+          // 从星星列表中移除被吃掉的星星
+          gameState.stars.splice(i, 1);
+          
+          // 创建新的星星
+          createNewStar();
+          
+          return;
+        }
+      }
+      
+      // 如果没有吃到星星，移除蛇尾
+      gameState.snake.pop();
+    }
+    
+    // 创建新的星星
+    function createNewStar() {
+      let x, y;
+      let isColliding;
+      
+      // 获取随机单词
+      const word = getRandomWords(1)[0];
+      
+      // 找到不与蛇碰撞的位置
+      do {
+        isColliding = false;
+        x = Math.floor(Math.random() * (gameState.width / gameState.cellSize)) * gameState.cellSize;
+        y = Math.floor(Math.random() * (gameState.height / gameState.cellSize)) * gameState.cellSize;
+        
+        // 检查是否与蛇碰撞
+        for (let i = 0; i < gameState.snake.length; i++) {
+          if (gameState.snake[i].x === x && gameState.snake[i].y === y) {
+            isColliding = true;
+            break;
+          }
+        }
+        
+        // 检查是否与其他星星碰撞
+        for (let i = 0; i < gameState.stars.length; i++) {
+          if (gameState.stars[i].x === x && gameState.stars[i].y === y) {
+            isColliding = true;
+            break;
+          }
+        }
+      } while (isColliding);
+      
+      // 添加星星
+      gameState.stars.push({
+        x: x,
+        y: y,
+        word: word
+      });
+    }
+    
+    // 显示单词弹窗
+    function showWordPopup(word) {
+      popupWordEn.textContent = word.en;
+      popupWordYb.textContent = word.yb;
+      popupWordCn.textContent = word.cn;
+      popupWordLjen.textContent = word.ljen;
+      popupWordLjcn.textContent = word.ljcn;
+      
+      wordPopup.classList.remove('hidden');
+    }
+    
+    // 更新已学单词显示
+    function updateLearnedWordsDisplay() {
+      if (gameState.learnedWords.length === 0) {
+        learnedWordsElement.innerHTML = '<p class="text-gray-400 italic text-sm">暂无学习记录</p>';
+        return;
+      }
+      
+      learnedWordsElement.innerHTML = '';
+      gameState.learnedWords.slice(-5).forEach(word => {
+        const wordElement = document.createElement('div');
+        wordElement.className = 'bg-blue-50 rounded p-2';
+        wordElement.innerHTML = `
+          <p class="font-bold text-primary text-sm">${word.en}</p>
+          <p class="text-gray-600 text-xs">${word.cn}</p>
+        `;
+        learnedWordsElement.appendChild(wordElement);
+      });
+      
+      // 滚动到底部
+      learnedWordsElement.scrollTop = learnedWordsElement.scrollHeight;
+    }
+    
+    // 更新计时器显示
+    function updateTimerDisplay() {
+      const minutes = Math.floor(gameState.elapsedTime / 60);
+      const seconds = gameState.elapsedTime % 60;
+      timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // 绘制游戏
+    function drawGame() {
+      // 清空画布
+      ctx.fillStyle = '#f0f9ff';
+      ctx.fillRect(0, 0, gameState.width, gameState.height);
+      
+      // 绘制网格
+      drawGrid();
+      
+      // 绘制蛇
+      drawSnake();
+      
+      // 绘制星星
+      drawStars();
+    }
+    
+    // 绘制网格
+    function drawGrid() {
+      ctx.strokeStyle = '#dbeafe';
+      ctx.lineWidth = 1;
+      
+      // 绘制垂直线
+      for (let x = 0; x <= gameState.width; x += gameState.cellSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, gameState.height);
+        ctx.stroke();
+      }
+      
+      // 绘制水平线
+      for (let y = 0; y <= gameState.height; y += gameState.cellSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(gameState.width, y);
+        ctx.stroke();
+      }
+    }
+    
+    // 绘制蛇
+    function drawSnake() {
+      // 绘制蛇头
+      const head = gameState.snake[0];
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(head.x, head.y, gameState.cellSize, gameState.cellSize);
+      
+      // 绘制蛇眼
+      ctx.fillStyle = 'white';
+      const eyeSize = gameState.cellSize / 4;
+      const eyeOffset = gameState.cellSize / 4;
+      
+      switch (gameState.direction) {
+        case 'UP':
+          ctx.fillRect(head.x + eyeOffset, head.y + eyeOffset, eyeSize, eyeSize);
+          ctx.fillRect(head.x + gameState.cellSize - eyeOffset - eyeSize, head.y + eyeOffset, eyeSize, eyeSize);
+          break;
+        case 'DOWN':
+          ctx.fillRect(head.x + eyeOffset, head.y + gameState.cellSize - eyeOffset - eyeSize, eyeSize, eyeSize);
+          ctx.fillRect(head.x + gameState.cellSize - eyeOffset - eyeSize, head.y + gameState.cellSize - eyeOffset - eyeSize, eyeSize, eyeSize);
+          break;
+        case 'LEFT':
+          ctx.fillRect(head.x + eyeOffset, head.y + eyeOffset, eyeSize, eyeSize);
+          ctx.fillRect(head.x + eyeOffset, head.y + gameState.cellSize - eyeOffset - eyeSize, eyeSize, eyeSize);
+          break;
+        case 'RIGHT':
+          ctx.fillRect(head.x + gameState.cellSize - eyeOffset - eyeSize, head.y + eyeOffset, eyeSize, eyeSize);
+          ctx.fillRect(head.x + gameState.cellSize - eyeOffset - eyeSize, head.y + gameState.cellSize - eyeOffset - eyeSize, eyeSize, eyeSize);
+          break;
+      }
+      
+      // 绘制蛇身
+      for (let i = 1; i < gameState.snake.length; i++) {
+        const segment = gameState.snake[i];
+        
+        // 交替颜色
+        if (i % 2 === 0) {
+          ctx.fillStyle = '#60a5fa';
+        } else {
+          ctx.fillStyle = '#93c5fd';
+        }
+        
+        ctx.fillRect(segment.x, segment.y, gameState.cellSize, gameState.cellSize);
+      }
+    }
+    
+    // 绘制星星
+    function drawStars() {
+      gameState.stars.forEach(star => {
+        // 绘制星星
+        ctx.fillStyle = '#fcd34d';
+        drawStar(star.x + gameState.cellSize / 2, star.y + gameState.cellSize / 2, gameState.cellSize / 2, gameState.cellSize / 4, 5);
+        
+        // 绘制单词
+        ctx.fillStyle = '#1e40af';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // 如果单词太长，缩小字体
+        const word = star.word.en;
+        if (word.length > 6) {
+          ctx.font = '8px Arial';
+        }
+        
+        ctx.fillText(word, star.x + gameState.cellSize / 2, star.y + gameState.cellSize / 2);
+      });
+    }
+    
+    // 绘制星星形状
+    function drawStar(cx, cy, outerRadius, innerRadius, npoints) {
+      let rot = Math.PI / 2 * 3;
+      let x = cx;
+      let y = cy;
+      let step = Math.PI / npoints;
+      
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - outerRadius);
+      
+      for (let i = 0; i < npoints; i++) {
+        x = cx + Math.cos(rot) * outerRadius;
+        y = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+        
+        x = cx + Math.cos(rot) * innerRadius;
+        y = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+      }
+      
+      ctx.lineTo(cx, cy - outerRadius);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // 暂停游戏
+    function pauseGame() {
+      if (gameState.isPaused) return;
+      
+      gameState.isPaused = true;
+      gamePauseModal.classList.remove('hidden');
+    }
+    
+    // 继续游戏
+    function resumeGame() {
+      gameState.isPaused = false;
+      gamePauseModal.classList.add('hidden');
+    }
+    
+    // 结束游戏
+    function endGame() {
+      // 停止游戏循环
+      clearInterval(gameState.gameLoop);
+      
+      // 更新最终结果
+      finalScoreElement.textContent = gameState.score;
+      finalLengthElement.textContent = gameState.snake.length;
+      finalTimeElement.textContent = timerElement.textContent;
+      
+      // 显示游戏结束弹窗
+      gameOverModal.classList.remove('hidden');
+    }
+    
+    // 处理键盘输入
+    function handleKeyDown(e) {
+      switch (e.key) {
+        case 'ArrowUp':
+          if (gameState.direction !== 'DOWN') {
+            gameState.nextDirection = 'UP';
+          }
+          break;
+        case 'ArrowDown':
+          if (gameState.direction !== 'UP') {
+            gameState.nextDirection = 'DOWN';
+          }
+          break;
+        case 'ArrowLeft':
+          if (gameState.direction !== 'RIGHT') {
+            gameState.nextDirection = 'LEFT';
+          }
+          break;
+        case 'ArrowRight':
+          if (gameState.direction !== 'LEFT') {
+            gameState.nextDirection = 'RIGHT';
+          }
+          break;
+        case ' ':
+          if (!gameStartModal.classList.contains('hidden') && gameOverModal.classList.contains('hidden')) {
+            startGame();
+          } else if (!gameOverModal.classList.contains('hidden')) {
+            restartGame();
+          }
+          break;
+        case 'p':
+        case 'P':
+          if (!gameStartModal.classList.contains('hidden') && gameOverModal.classList.contains('hidden')) {
+            if (gameState.isPaused) {
+              resumeGame();
+            } else {
+              pauseGame();
+            }
+          }
+          break;
+      }
+    }
+    
+    // 重新开始游戏
+    function restartGame() {
+      // 停止游戏循环
+      clearInterval(gameState.gameLoop);
+      
+      // 隐藏所有弹窗
+      gameStartModal.classList.add('hidden');
+      gamePauseModal.classList.add('hidden');
+      gameOverModal.classList.add('hidden');
+      wordPopup.classList.add('hidden');
+      
+      // 重新初始化游戏
+      initGame();
+    }
+    
+    // 事件监听器
+    window.addEventListener('load', initGame);
+    window.addEventListener('keydown', handleKeyDown);
+    startBtn.addEventListener('click', startGame);
+    pauseBtn.addEventListener('click', pauseGame);
+    resumeBtn.addEventListener('click', resumeGame);
+    restartBtn.addEventListener('click', restartGame);
+    restartFromPauseBtn.addEventListener('click', restartGame);
+    playAgainBtn.addEventListener('click', restartGame);
+    closeWordPopupBtn.addEventListener('click', () => {
+      wordPopup.classList.add('hidden');
+      gameState.isPaused = false;
+    });
+    
+    // 移动端方向控制
+    mobileUpBtn.addEventListener('click', () => {
+      if (gameState.direction !== 'DOWN') {
+        gameState.nextDirection = 'UP';
+      }
+    });
+    
+    mobileDownBtn.addEventListener('click', () => {
+      if (gameState.direction !== 'UP') {
+        gameState.nextDirection = 'DOWN';
+      }
+    });
+    
+    mobileLeftBtn.addEventListener('click', () => {
+      if (gameState.direction !== 'RIGHT') {
+        gameState.nextDirection = 'LEFT';
+      }
+    });
+    
+    mobileRightBtn.addEventListener('click', () => {
+      if (gameState.direction !== 'LEFT') {
+        gameState.nextDirection = 'RIGHT';
+      }
+    });
+  </script>
+</body>
+</html>

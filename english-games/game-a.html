@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻牌子游戏 - WordPlay</title>
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 统一的 Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#60a5fa',
+            accent: '#93c5fd',
+            light: '#dbeafe',
+            dark: '#1e40af'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'flip': 'flip 0.6s ease-in-out',
+            'fade-out': 'fadeOut 0.5s ease-in-out',
+            'shake': 'shake 0.5s ease-in-out',
+          },
+          keyframes: {
+            flip: {
+              '0%': { transform: 'rotateY(0deg)' },
+              '100%': { transform: 'rotateY(180deg)' }
+            },
+            fadeOut: {
+              '0%': { opacity: '1' },
+              '100%': { opacity: '0' }
+            },
+            shake: {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '25%': { transform: 'translateX(-5px)' },
+              '50%': { transform: 'translateX(5px)' },
+              '75%': { transform: 'translateX(-5px)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .card-flip {
+        perspective: 1000px;
+      }
+      .card-inner {
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
+      }
+      .card-flipped .card-inner {
+        transform: rotateY(180deg);
+      }
+      .card-front, .card-back {
+        backface-visibility: hidden;
+      }
+      .card-back {
+        transform: rotateY(180deg);
+      }
+      .card-matched {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+      .btn-primary {
+        @apply bg-primary text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-dark transition-all duration-300 transform hover:-translate-y-0.5;
+      }
+      .btn-secondary {
+        @apply bg-white text-primary font-bold py-2 px-4 rounded-lg shadow-md border border-primary hover:bg-light transition-all duration-300 transform hover:-translate-y-0.5;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen">
+  <!-- 导航栏 -->
+  <nav class="bg-white shadow-md">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <a href="index.html" class="flex items-center space-x-2">
+          <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/0feaa3d8d07648db8be3cee30fce02ce~tplv-a9rns2rl98-image.image?rcl=2025102317315274449F0D0DEFF02F0731&rk3s=8e244e95&rrcfp=f06b921b&x-expires=1763803961&x-signature=r5y%2BCQdJNrXKLLw9NfsuckNWkrQ%3D" alt="WordPlay Logo" class="h-10">
+          <span class="text-xl font-bold text-primary">WordPlay</span>
+        </a>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="restart-btn" class="btn-secondary text-sm">
+          <i class="fa fa-refresh mr-1"></i> 重新开始
+        </button>
+        <a href="index.html" class="btn-primary text-sm">
+          <i class="fa fa-home mr-1"></i> 返回主页
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 游戏标题和信息 -->
+  <header class="container mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row justify-between items-center">
+      <h1 class="text-3xl font-bold text-primary mb-4 md:mb-0">翻牌子游戏</h1>
+      <div class="flex items-center space-x-6">
+        <div class="flex items-center">
+          <span class="text-gray-600 mr-2">配对数:</span>
+          <span id="matches-count" class="text-primary font-bold text-xl">0</span>
+          <span class="text-gray-400 font-bold text-xl">/</span>
+          <span id="total-pairs" class="text-gray-400 font-bold text-xl">10</span>
+        </div>
+        <div class="flex items-center">
+          <span class="text-gray-600 mr-2">时间:</span>
+          <span id="timer" class="text-primary font-bold text-xl">00:00</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 游戏区域 -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- 游戏说明 -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+      <p class="text-gray-600">
+        <i class="fa fa-info-circle text-primary mr-2"></i>
+        找出配对的单词卡片。点击卡片翻开，连续翻开相同的单词或翻译即可消除。
+      </p>
+    </div>
+    
+    <!-- 游戏卡片区域 -->
+    <div id="game-board" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-6 gap-4">
+      <!-- 卡片将通过JavaScript动态生成 -->
+    </div>
+    
+    <!-- 游戏结束弹窗 -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+      <div class="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4">
+        <div class="text-center mb-6">
+          <div class="inline-block p-3 rounded-full bg-green-100 text-green-500 mb-4">
+            <i class="fa fa-trophy text-4xl"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-primary">恭喜你！</h2>
+          <p class="text-gray-600 mt-2">你成功完成了所有配对！</p>
+        </div>
+        <div class="bg-blue-50 rounded-lg p-4 mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-gray-600">用时:</span>
+            <span id="final-time" class="font-bold text-primary">00:00</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600">配对数:</span>
+            <span id="final-matches" class="font-bold text-primary">10/10</span>
+          </div>
+        </div>
+        <div class="flex space-x-4">
+          <button id="play-again-btn" class="btn-primary flex-1">
+            再玩一次
+          </button>
+          <a href="index.html" class="btn-secondary flex-1">
+            返回主页
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-dark text-white py-6 mt-auto">
+    <div class="container mx-auto px-4 text-center">
+      <p>&copy; 2025 WordPlay. 保留所有权利。</p>
+    </div>
+  </footer>
+
+  <!-- 共享的单词数据 -->
+  <script src="dict.js"></script>
+  
+  <!-- 翻牌子游戏脚本 -->
+  <script>
+    // 游戏变量
+    let gameState = {
+      cards: [],
+      flippedCards: [],
+      matchedPairs: 0,
+      totalPairs: 0,
+      isProcessing: false,
+      startTime: null,
+      timerInterval: null,
+      elapsedTime: 0
+    };
+    
+    // DOM元素
+    const gameBoard = document.getElementById('game-board');
+    const matchesCountElement = document.getElementById('matches-count');
+    const totalPairsElement = document.getElementById('total-pairs');
+    const timerElement = document.getElementById('timer');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const finalTimeElement = document.getElementById('final-time');
+    const finalMatchesElement = document.getElementById('final-matches');
+    const restartBtn = document.getElementById('restart-btn');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    
+    // 初始化游戏
+    function initGame() {
+      // 重置游戏状态
+      gameState = {
+        cards: [],
+        flippedCards: [],
+        matchedPairs: 0,
+        totalPairs: 0,
+        isProcessing: false,
+        startTime: null,
+        timerInterval: null,
+        elapsedTime: 0
+      };
+      
+      // 清空游戏面板
+      gameBoard.innerHTML = '';
+      
+      // 更新UI
+      matchesCountElement.textContent = '0';
+      timerElement.textContent = '00:00';
+      
+      // 获取随机单词
+      const pairCount = 10; // 10对卡片，共20张
+      const words = getRandomWords(pairCount);
+      
+      // 创建卡片数据
+      const cardData = [];
+      words.forEach(word => {
+        // 添加英文卡片
+        cardData.push({
+          id: `en-${word.en}`,
+          type: 'en',
+          content: word.en,
+          pairId: word.en,
+          matched: false
+        });
+        
+        // 添加中文卡片
+        cardData.push({
+          id: `cn-${word.en}`,
+          type: 'cn',
+          content: word.cn,
+          pairId: word.en,
+          matched: false
+        });
+      });
+      
+      // 洗牌
+      shuffleArray(cardData);
+      
+      // 更新游戏状态
+      gameState.cards = cardData;
+      gameState.totalPairs = pairCount;
+      totalPairsElement.textContent = pairCount;
+      
+      // 创建卡片元素
+      createCards();
+      
+      // 开始计时
+      startTimer();
+    }
+    
+    // 创建卡片元素
+    function createCards() {
+      gameState.cards.forEach(card => {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'card-flip h-24 sm:h-28 md:h-32';
+        cardElement.dataset.id = card.id;
+        
+        cardElement.innerHTML = `
+          <div class="card-inner w-full h-full relative">
+            <div class="card-front absolute w-full h-full bg-primary rounded-lg flex items-center justify-center shadow-md cursor-pointer">
+              <i class="fa fa-question text-white text-2xl"></i>
+            </div>
+            <div class="card-back absolute w-full h-full bg-white rounded-lg flex items-center justify-center shadow-md p-2">
+              <span class="text-center font-bold text-lg sm:text-xl ${card.type === 'en' ? 'text-primary' : 'text-dark'}">${card.content}</span>
+            </div>
+          </div>
+        `;
+        
+        // 添加点击事件
+        cardElement.addEventListener('click', () => handleCardClick(card.id));
+        
+        gameBoard.appendChild(cardElement);
+      });
+    }
+    
+    // 处理卡片点击
+    function handleCardClick(cardId) {
+      // 如果正在处理配对或游戏已结束，不做任何操作
+      if (gameState.isProcessing) return;
+      
+      // 获取卡片数据和元素
+      const cardIndex = gameState.cards.findIndex(card => card.id === cardId);
+      const card = gameState.cards[cardIndex];
+      const cardElement = document.querySelector(`[data-id="${cardId}"]`);
+      
+      // 如果卡片已经翻开或匹配，不做任何操作
+      if (card.matched || gameState.flippedCards.includes(cardId)) return;
+      
+      // 翻开卡片
+      cardElement.classList.add('card-flipped');
+      gameState.flippedCards.push(cardId);
+      
+      // 如果翻开了两张卡片，检查是否匹配
+      if (gameState.flippedCards.length === 2) {
+        const card1Id = gameState.flippedCards[0];
+        const card2Id = gameState.flippedCards[1];
+        const card1Index = gameState.cards.findIndex(card => card.id === card1Id);
+        const card2Index = gameState.cards.findIndex(card => card.id === card2Id);
+        const card1 = gameState.cards[card1Index];
+        const card2 = gameState.cards[card2Index];
+        
+        // 标记为正在处理
+        gameState.isProcessing = true;
+        
+        // 检查是否匹配
+        if (card1.pairId === card2.pairId) {
+          // 匹配成功
+          setTimeout(() => {
+            // 标记为已匹配
+            gameState.cards[card1Index].matched = true;
+            gameState.cards[card2Index].matched = true;
+            
+            // 获取卡片元素
+            const card1Element = document.querySelector(`[data-id="${card1Id}"]`);
+            const card2Element = document.querySelector(`[data-id="${card2Id}"]`);
+            
+            // 添加匹配效果
+            card1Element.classList.add('card-matched');
+            card2Element.classList.add('card-matched');
+            
+            // 播放匹配成功的音效（可选）
+            // playSound('match');
+            
+            // 更新匹配数
+            gameState.matchedPairs++;
+            matchesCountElement.textContent = gameState.matchedPairs;
+            
+            // 重置翻开的卡片
+            gameState.flippedCards = [];
+            
+            // 取消处理状态
+            gameState.isProcessing = false;
+            
+            // 检查游戏是否结束
+            checkGameOver();
+          }, 600);
+        } else {
+          // 匹配失败
+          setTimeout(() => {
+            // 获取卡片元素
+            const card1Element = document.querySelector(`[data-id="${card1Id}"]`);
+            const card2Element = document.querySelector(`[data-id="${card2Id}"]`);
+            
+            // 翻回卡片
+            card1Element.classList.remove('card-flipped');
+            card2Element.classList.remove('card-flipped');
+            
+            // 添加抖动效果
+            card1Element.classList.add('animate-shake');
+            card2Element.classList.add('animate-shake');
+            
+            // 移除抖动效果
+            setTimeout(() => {
+              card1Element.classList.remove('animate-shake');
+              card2Element.classList.remove('animate-shake');
+            }, 500);
+            
+            // 播放匹配失败的音效（可选）
+            // playSound('mismatch');
+            
+            // 重置翻开的卡片
+            gameState.flippedCards = [];
+            
+            // 取消处理状态
+            gameState.isProcessing = false;
+          }, 1000);
+        }
+      }
+    }
+    
+    // 开始计时器
+    function startTimer() {
+      gameState.startTime = Date.now();
+      gameState.timerInterval = setInterval(() => {
+        gameState.elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+        updateTimerDisplay();
+      }, 1000);
+    }
+    
+    // 更新计时器显示
+    function updateTimerDisplay() {
+      const minutes = Math.floor(gameState.elapsedTime / 60);
+      const seconds = gameState.elapsedTime % 60;
+      timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // 检查游戏是否结束
+    function checkGameOver() {
+      if (gameState.matchedPairs === gameState.totalPairs) {
+        // 停止计时器
+        clearInterval(gameState.timerInterval);
+        
+        // 更新最终结果
+        finalTimeElement.textContent = timerElement.textContent;
+        finalMatchesElement.textContent = `${gameState.matchedPairs}/${gameState.totalPairs}`;
+        
+        // 显示游戏结束弹窗
+        setTimeout(() => {
+          gameOverModal.classList.remove('hidden');
+        }, 1000);
+      }
+    }
+    
+    // 洗牌函数（Fisher-Yates 算法）
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+    
+    // 事件监听器
+    restartBtn.addEventListener('click', initGame);
+    playAgainBtn.addEventListener('click', () => {
+      gameOverModal.classList.add('hidden');
+      initGame();
+    });
+    
+    // 初始化游戏
+    window.addEventListener('load', initGame);
+  </script>
+</body>
+</html>

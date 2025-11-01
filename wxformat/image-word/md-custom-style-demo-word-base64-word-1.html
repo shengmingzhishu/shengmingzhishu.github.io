@@ -6,8 +6,8 @@
     <meta name="description" content="微信Markdown转换器">
     <title>MD转公众号HTML工具</title>
     <!-- Markdown解析和样式 -->
-    <script src="../js/marked.min.js"></script>
-    <link rel="stylesheet" href="../css/github.min.css">
+    <script src="../../js/marked.min.js"></script>
+    <link rel="stylesheet" href="../../css/github.min.css">
     <style>
         body {
             margin: 0;
@@ -168,7 +168,7 @@
     </style>
 </head>
 <body>
-    <a href="../index.html" class="back-home"> 返回主页</a>
+    <a href="../../index.html" class="back-home"> 返回主页</a>
     <div class="container">
         <div class="editor-box">
             <div class="options-bar">
@@ -178,22 +178,15 @@
                     <label><input type="radio" name="paragraphMode" value="off" id="para-off">否</label>
                     <span style="display: inline-block; width: 20px;margin: 10px 0px;"></span>
                     <span>对齐：</span>
-                    <label><input type="radio" name="alignMode" value="left" id="align-left" >居左</label>
-                    <label><input type="radio" name="alignMode" value="center" id="align-center" checked>居中</label>
-                </div>
-                <div style="text-align: right;"><input type="button" name="clearEnter" value="删除空行" id="clear-enter"/></div>
-                <div style="text-align: right;"><input type="button" name="clearSort" value="内容乱序" id="clear-sort"/></div>
-                <div style="text-align: right;"><input type="button" name="clearShort" value="删除短词" id="clear-short"/></div>
-                <div style="text-align: right;"><input type="button" name="formatUrl" value="提取URL" id="format-url"/></div>
-                <div text-align: right;><input type="button" name="periodLine" value="句号换行" id="period-line"/></div>
-            </div>
-            <div class="options-bar">
-                <span style="display: inline-block; width: 20px;margin: 10px 0px;"></span>
-                    <span>URL：</span>
-                    <label><input type="radio" name="urlMode" value="qpic.cn" id="url-pic" checked>图片URL</label>
-                    <label><input type="radio" name="urlMode" value="mp.weixin.qq.com" id="url-wz">文章URL</label>
-                    <label><input type="radio" name="urlMode" value="fullurl" id="url-fullurl">全部URL</label>
+                    <label><input type="radio" name="alignMode" value="left" id="align-left" checked>居左</label>
+                    <label><input type="radio" name="alignMode" value="center" id="align-center">居中</label>
+                    <label><input type="radio" name="alignMode" value="right" id="align-right">居右</label>
                     <span style="display: inline-block; width: 20px;margin: 10px 0px;"></span>
+                </div>
+                <div text-align: right;"><input type="button" name="clearEnter" value="删除空行" id="clear-enter"/></div>
+                <div text-align: right;"><input type="button" name="clearSort" value="内容乱序" id="clear-sort"/></div>
+                <div text-align: right;"><input type="button" name="clearShort" value="删除短词" id="clear-short"/></div>
+                <div text-align: right;"><input type="button" name="periodLine" value="句号换行" id="period-line"/></div>
                 <div class="mt-4">
                     <button id="pick-images-btn"
                             class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg shadow">
@@ -208,21 +201,10 @@
                     <input id="valueDisplay" type="hidden" />
                 </div> 
             </div>
-			<div class="options-bar">
-				<div style="text-align: right;">
-					<label for="user-id" style="margin-right: 5px;">用户ID：</label>
-					<input type="text" name="userid" value="MzI2OTQ4MDcxOA==" id="user-id" title="请输入用户ID" placeholder="请输入用户ID"/>
-				</div>
-				<div style="text-align: right;">
-					<label for="user-name" style="margin-right: 5px;">用户名：</label>
-					<input type="text" name="username" value="北屿的蓝色" id="user-name" title="请输入用户名" placeholder="请输入用户名"/>
-				</div>
-            </div>
             <div class="options-bar" style="width: 100%;"> 
                  <div id="image-list" style="float: left; width: 100%; min-height:60px; border: #444 1px solid;"></div>
-
+                
             </div>
-
             <textarea id="editor" placeholder="输入Markdown内容..."></textarea>
         </div>
         <div class="editor-box">
@@ -237,14 +219,13 @@
     <script>
     // 段落模式和对齐方式的全局变量
     let paragraphMode = true; // true: 段落分割，false: 每行为一个块
-    let alignMode = 'center';   // 'left' or 'center'
-
+    let alignMode = 'left';   // 'left' or 'center'
+    
     // 圖片列表
     let imageFiles = [];
 
     // 全局 src 列表（存储可直接用于 img.src 的字符串）
     let imageSrcList = [];
-
 
     // 监听段落模式切换
     document.addEventListener('DOMContentLoaded', function() {
@@ -272,15 +253,13 @@
                 updatePreview();
             }
         });
-        // 这里可以正常取值。change事件会在输入框失去焦点或内容改变后触发，能获取到最新的值。
-        document.getElementById('user-id').addEventListener('change', function(e) {
-            userId =  e.target.value;
-            updatePreview();
+        document.getElementById('align-right').addEventListener('change', function() {
+            if (this.checked) {
+                alignMode = 'right';
+                updatePreview();
+            }
         });
-        document.getElementById('user-name').addEventListener('change', function(e) {
-            userName = e.target.value;
-            updatePreview();
-        });
+
         document.getElementById('clear-enter').addEventListener('click', function() {
             clearEnter()
         });
@@ -290,12 +269,11 @@
         document.getElementById('clear-short').addEventListener('click', function() {
             clearShort()
         });
-        document.getElementById('format-url').addEventListener('click', function() {
-            setUniqueUrlsToEditor()
-        });
         document.getElementById('period-line').addEventListener('click', function() {
             periodLine()
-        });    });
+        });
+        
+    });
 
     
     function clearEnter(){
@@ -332,7 +310,6 @@
             updatePreview();
     } 
     
-    
     function clearSort(){
             let textArea = document.getElementById('editor');
             let text = textArea.value;
@@ -355,57 +332,71 @@
             textArea.value = filteredLines.join('\n');
             updatePreview();
     } 
+
     
-    const imgtx = [
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687305",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687508",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687629",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687710",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687826",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400743924",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744121",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744211",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744290",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744476",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400792184",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400792381",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002298",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002474",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059143",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059323",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059410",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059538",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059708",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059631",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059802",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059885",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059997",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111082",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111208",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111291",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111388",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111471",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111558",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111635",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111744",   
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401137939", 
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687024", 
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687121", 
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687217"   
+        
+        let imgtx = [
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687305",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687508",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687629",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687710",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687826",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400743924",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744121",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744211",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744290",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744476",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400792184",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400792381",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002298",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002474",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059143",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059323",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059410",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059538",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059708",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059631",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059802",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059885",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059997",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111082",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111208",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111291",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111388",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111471",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111558",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111635",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111744",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401137939", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687024", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687121", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687217"   
 
-    ]
+        ]
 
-    let imgLinks = [
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221577",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221748",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221929",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222005",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222116",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221856",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222370",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222487",
-        "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222229"
-    ]
+        
+        let imgLinks = [
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242579", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242375", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242155", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242488", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242881", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242781", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277068", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277220", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400410984", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400500142", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551667", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551875", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400552275", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400552092", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551984", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400586661", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400625211", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400625413", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400686838"  
+        ]
+
 
     function autoFormatText(rawText) {
         // 段落分割
@@ -420,8 +411,6 @@
 
         let html = [];
         let index = 0;
-        userId = document.getElementById("user-id").value
-        userName = document.getElementById("user-name").value
 
         // 随机标签数据
         const times = [
@@ -443,8 +432,6 @@
             '𝓈𝓁𝑒𝑒𝓅 💤 𝒮𝑜𝓊𝓁'
         ];
 
-        
-    
         function getRandomItem(arr) {
             const randomIndex = Math.floor(Math.random() * arr.length);
             return arr[randomIndex];
@@ -465,171 +452,91 @@
 
         // 遍历每个段落或行
         paragraphs.forEach((para) => {
-            // // 段落内容按换行分句
-            // // 将段落内容按行分割，提取所有以 https:// 开头的图片链接
-            // let lines = para
-            //     .split('\n')
-            //     .map(line => line.trim())
-            //     .filter(line => line.length > 0);
+            // 段落内容按换行分句
+            let lines = para.split('\n').filter(line => line.trim() !== '');
+            if (lines.length === 0) return;
 
-            // // 提取所有以 https:// 开头的图片链接
-            // let imageLinks = [];
-            // lines.forEach(line => {
-            //     // 允许一行有多个链接，用正则提取
-            //     const matches = line.match(/https:\/\/[^\s",]+/g);
-            //     if (matches) {
-            //         imageLinks.push(...matches);
-            //     }
-            // });
- 
-            debugger
-            if (imgLinks.length === 0) return;
- 
-            index++; 
-            // const name = getRandomItem(names);
-            // const time = getRandomItem(times);
+            index++;
+            const symbol = getRandomItem(symbols);
+            const name = getRandomItem(names);
+            const time = getRandomItem(times);
+            const imgurl_1 = getRandomItem(imgLinks);
+            const imgurl_2 = getRandomItem(imgLinks);
+
             // 句子分割（可根据需要更细致分割）
-            
-            
             let sentenceHtmlArr = [];
-            let sentenceUrlArr = imgLinks
+            lines.forEach(line => {
+                // 以句号、问号、感叹号、分号、换行等分句
+                let sentences = line.split(/(?<=[。！？；;.!?])\s*/g).filter(s => s.trim() !== '');
+                sentences.forEach(sentence => {
+                    const trimmed = processInlineMarkdown(sentence.trim());
+                    if (trimmed !== '') {
+                        sentenceHtmlArr.push(`
+                        <section
+                        style="text-align: ${alignMode};margin-right: 8px; margin-bottom: 0px; margin-left: 8px; outline: 0px; text-wrap: wrap; visibility: visible;">
+                    <span style="outline: 0px; font-size: 12px; visibility: visible;">${trimmed}</span></section>
+                        `);
+                    }
+                });
+            });
 
-            sentenceUrlArr = [...sentenceUrlArr]
-                .sort(() => Math.random() - 0.5)
-                .slice(0, 20);
+            // const block = `
+            //       <section style="margin: 30px auto; text-align: center;padding: 0px; width: 680px; visibility: visible;" data-color="#08247f">
+            //         <section
+            //                 style="display: inline-block; width: 85%; vertical-align: top; border-style: solid; border-width: 1px; border-color: rgb(62, 62, 62); padding-top: 20px; padding-bottom: 20px; max-width: 85% !important; visibility: visible;">
+            //             <section style="">
+            //                 <section
+            //                         style="">
+            //                     <section
+            //                             style="margin-right: 0%; margin-left: 10px; text-align: left; transform: translate3d(-20px, 0px, 0px); visibility: visible;">
+            //                         <section
+            //                                 style="display: inline-block; border-width: 2px; border-style: solid; border-color: rgb(218, 109, 131); padding-right: 10px; padding-left: 10px; background-color: rgb(218, 109, 131); color: rgb(204, 204, 204); font-size: 12px; line-height: 2; letter-spacing: 1px; visibility: visible;">
+            //                             <p style="visibility: visible; padding-left: 5px;">${index}、</p></section>
+            //                     </section>
+            //                 </section>
+            //             </section>
+            //             <section style="margin-top: 20px; margin-right: 0%; margin-left: 0%; visibility: visible;">
+            //                 <section
+            //                         style="text-align: left; font-size: 12px; padding-right: 10px; padding-left: 10px; line-height: 2; letter-spacing: 1px; visibility: visible;">
+            //                         <p style="text-align: ${alignMode};">${symbol}</p>
+            //                          ${sentenceHtmlArr.join('\n')}
+            //                     <p style="margin-right: 8px; margin-bottom: 0px; margin-left: 8px; outline: 0px; color: rgb(0, 0, 0); font-family: system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;PingFang SC&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif; font-size: 14px; text-wrap: wrap; background-color: rgb(255, 255, 255); letter-spacing: 0.578px; visibility: visible;">
+            //                         <br style="visibility: visible;"></p></section>
+            //             </section>
+            //         </section>
+            //     </section>
+            //     <section
+            //         style="font-size: 12px; text-align: center; border: 0px solid black; width: 680px; text-align: center;padding: 0px; box-sizing: border-box;  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);">
+            //         <img src="${imgurl}"
+            //             alt="ipad" style="width: 100%; height: 100%;">
+            //     </section>
+            // `;
 
-            debugger
-            if(sentenceUrlArr.length>0 && sentenceUrlArr.length %2 !== 0){
-                sentenceUrlArr.pop(); // 删除最后一个元素
-            }
-
-            // 双图模式
-            for(let i = 0; i < 2*(sentenceUrlArr.length % 2); i+=2){
-                 const imgurlLeft = sentenceUrlArr[i]
-                const imgurlRight = sentenceUrlArr[i+1]
-
-                const block = `
-
-                <section style="width:100%;text-align:center;">
-                    <section style="max-width:100%;width:100%;margin:0 auto;padding:6px 2vw;font-size:16px;font-weight:400;font-style:normal;text-align:center;justify-content:center;display:flex;flex-flow:row;box-sizing:border-box;visibility:visible;gap:1vw;">
-                        <section style="display:inline-block;vertical-align:top;width:48%;min-width:0;align-self:flex-start;flex:1 1 0;padding:0;margin:0;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px 0 rgba(160,160,160,0.15);height:auto;box-sizing:border-box;visibility:visible;" data-eusoft-scrollable-element="1">
-                            <section style="margin:0;line-height:0;pointer-events:none;box-sizing:border-box;visibility:visible;">
-                                <section style="visibility:visible;">
-                                    <section style="display:inline-block;visibility:visible;width:100%;">
-                                        <span leaf="">
-                                            <img 
-                                                data-src="${imgurlLeft}" 
-                                                class="rich_pages wxw-img" 
-                                                style="width:100%;height:auto;max-width:100vw;max-height:45vw;object-fit:cover;display:block;margin:0 auto;pointer-events:none;border-radius:16px;box-shadow:0 2px 8px 0 rgba(160,160,160,0.15);" 
-                                                src="${imgurlLeft}"
-                                            >
-                                        </span>
-                                    </section>
-                                </section>
-                                <section style="box-shadow: rgb(0, 0, 0) 0px 0px 10px 0px;max-width:100%;vertical-align:middle;display:inline-block;line-height:0;width:100%;height:auto;pointer-events:none;box-sizing:border-box;visibility:visible;">
-                                    <span leaf=""><br></span>
-                                </section>
-                            </section>
-                        </section>
-                        <section style="display:inline-block;vertical-align:top;width:48%;min-width:0;align-self:flex-start;flex:1 1 0;padding:0;margin:0 0 0 1vw;border-radius:16px;overflow:hidden;height:auto;box-shadow:0 2px 8px 0 rgba(160,160,160,0.15);box-sizing:border-box;visibility:visible;" data-eusoft-scrollable-element="1">
-                            <section style="margin:0;line-height:0;pointer-events:none;box-sizing:border-box;visibility:visible;">
-                                <section style="visibility:visible;">
-                                    <section style="display:inline-block;visibility:visible;width:100%;">
-                                        <span leaf="">
-                                            <img 
-                                                data-src="${imgurlRight}" 
-                                                class="rich_pages wxw-img" 
-                                                style="width:100%;height:auto;max-width:100vw;max-height:45vw;object-fit:cover;display:block;margin:0 auto;pointer-events:none;border-radius:16px;box-shadow:0 2px 8px 0 rgba(160,160,160,0.15);" 
-                                                src="${imgurlRight}"
-                                            >
-                                        </span>
-                                    </section>
-                                </section>
-                                <section style="box-shadow: rgb(0, 0, 0) 0px 0px 10px 0px;max-width:100%;vertical-align:middle;display:inline-block;line-height:0;width:100%;height:auto;pointer-events:none;box-sizing:border-box;visibility:visible;">
-                                    <span leaf=""><br></span>
-                                </section>
-                            </section>
-                        </section>
-                    </section>
-                </section>
-                <p style="font-size:16px;font-weight:400;font-style:normal;white-space:normal;margin:0;padding:0;box-sizing:border-box;visibility:visible;">
-                    <span leaf=""><br></span>
-                </p> 
-                `
-                sentenceHtmlArr.push(block)
-            }
-            html.push(sentenceHtmlArr.join(''))
+            html.push(htmlShuangPaiImg(imgurl_1,imgurl_2))
+            
+            html.push(htmlLineWord(sentenceHtmlArr,alignMode,symbol))
+            
         });
 
         
- 
+        html.push(htmlCardBeiYu())
+
+        html.push(htmlWenan())
+        html.push(htmlCloudImg())
+        
+        
+
+
+        return htmlWxw(html)
+    }
+
+    function htmlWxw(htmlArray){
+        
+        debugger
+        document.getElementById('valueDisplay').value =  imgLinks.join('\r\n') ;
         return `
             <article class="wechat-article">
-
-                                
-                <section style="width:100%;text-align:center;">
-                    <section style="">
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                        <section class="" nodeleaf="">
-                            <mp-common-profile class="js_uneditable custom_select_card mp_profile_iframe" data-pluginname="mpprofile" data-nickname="${userName}" data-alias="hot-books" data-from="0" data-headimg="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" data-signature="欢迎～关注后菜单栏里取图🫰" data-id="${userId}" data-is_biz_ban="0" data-service_type="1" data-verify_status="0">
-                                            <section data-pm-slice="0 0 []" nodeleaf="">
-                                            <img class="wx_profile_avatar" data-ratio="1" data-w="272" style="max-width: 300px;height: 100px;margin: 1em auto;display: block;border-radius: 4px;text-align: center;max-height: 300px;width: 100px;" data-imgqrcoded="1" data-src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png">
-                                            </section>
-                                            <p style="text-align: center;">
-                                            <strong id="js_a11y_wx_profile_nickname" class="wx_profile_nickname" style="font-weight: 600;color: rgb(52, 152, 219);"><span leaf="">${userName}</span></strong>
-                                            <span class="wx_follow_verify"></span>
-                                            </p>
-                                            <p style="text-align: center;">
-                                            <span leaf="">欢迎～关注后菜单栏里取图🫰</span>
-                                            </p>
-                            </mp-common-profile>
-                        </section>
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                    </section>
-                </section>
-                <section style="width:95%;text-align:center;">
-                    ${html.join('')}
-                </section>
-
-                <p style="font-size: 16px;font-weight: 400;font-style: normal;white-space: normal;margin: 0px;padding: 0px;box-sizing: border-box;">
-                    <span leaf=""><br></span>
-                </p>
-                <section style="text-align: ${alignMode};box-sizing: border-box;">
-                    <p style="font-size: 16px;font-weight: 400;font-style: normal;margin: 0px;padding: 0px;box-sizing: border-box;">
-                    <strong style="box-sizing: border-box;"><em style="box-sizing: border-box;"><span leaf="">今日自喜文案</span></em></strong>
-                    </p>
-                    <p style="margin: 0px;padding: 0px;box-sizing: border-box;">
-                        <span style="box-sizing: border-box;"><span style="box-sizing: border-box;font-size: 14px;line-height: 1.7;">
-                            <span leaf="">时间是良药明天会比今天好</span><span leaf=""><br></span>
-                            <span leaf="">只要不做思想的囚笼我们有的是未来</span><span leaf=""><br></span>
-                            <span leaf="">断舍离是成年人的顶级自律</span>
-                        </span>
-                    </span>
-                    </p>
-                </section>
-                
-                <section style="color: rgb(51, 51, 51);font-family: -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, sans-serif;font-size: 16px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: normal;orphans: 2;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;text-align: center;margin-top: 10px;margin-bottom: 10px;line-height: 0;pointer-events: none;box-sizing: border-box;">
-                    <section style="max-width: 100%;vertical-align: middle;display: inline-block;pointer-events: none;box-sizing: border-box;">
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                        <p>
-                        <span leaf=""><img data-src="https://mmbiz.qpic.cn/mmbiz_png/ACniaqxEkPMbLHYbxKibaLEtCXayCeAQuiaiaZUiaJL8FvAmqMtsq0YkiavxgR0zEKBic6zNOAb0HLzOKsDPJJnH38TYQ/640?wx_fmt=png&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1" alt="图片" data-ratio="0.13848920863309352" data-s="300,640" data-type="png" data-w="556" style="pointer-events: none;-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box;overflow-wrap: break-word !important;display: block;height: auto !important;color: rgb(62, 62, 62);font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-size: 16px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: 0.544px;orphans: 2;text-align: center;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;vertical-align: middle;width: 556px !important;visibility: visible !important;" src="https://mmbiz.qpic.cn/mmbiz_png/ACniaqxEkPMbLHYbxKibaLEtCXayCeAQuiaiaZUiaJL8FvAmqMtsq0YkiavxgR0zEKBic6zNOAb0HLzOKsDPJJnH38TYQ/640?wx_fmt=png&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1"></span>
-                        </p>
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                    </section>
-                </section>
-                <p style="display: none;">
-                    <mp-style-type data-value="10000"></mp-style-type>
-                </p>
-
-
+                ${htmlArray.join('')}
             </article>
             <style>
                 .wechat-article {
@@ -758,7 +665,7 @@
                 img {
                     max-width: 100%;
                     height: auto;
-                    margin: 1em auto;
+                    margin: 0px;
                     display: block;
                     border-radius: 4px;
                 }
@@ -778,24 +685,9 @@
         `;
     }
 
-    const rawText = `"https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242579", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242375", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242155", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242488", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242881", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242781", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277068", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277220", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400410984", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400500142", 
-            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551667", 
-			
-			
-		    n2.AAA\n1.BBB\n1.CCC\n并均匀分散于固体材料中的一类 高分子材料。`;
+    const rawText = `\n# 北屿的蓝色1\n\n## 北屿的蓝色2\n### 北屿的蓝色3\n#### 北屿的蓝色4\n##### 北屿的蓝色5\n###### 北屿的蓝色6\n####### 北屿的蓝色7 ######## 北屿的蓝色8+AI \n\n1月份的时候，市场曾炒作过一段时间的情感交互。彼时，**苏豪弘业连续涨停**。##昨天，\n-第一部分，\n*第二部分，\n+第三部分，\n在DeepSeek的加持之下，这个题材再度发酵，浙江众成等股票涨停，今天，硅宝科技、浙江众成、趣睡科技、\n2.AAA\n1.BBB\n1.CCC\n爱慕股份再度集体涨停。\n一份市场点评认为，AI大模型+柔性材料+生理传感技术驱动下，情趣机器人正从"生理工具"向"情感伴侣"跃迁，打开新市场空间。据测算，全球情趣机器人市场规模2031年将突破3亿美元，技术迭代与伦理破冰下，具备材料、AI交互、健康监测能力的厂商将率先受益。\n\n#集体涨停\n\n今天，有一个赛道跑出来了，那就是2025年人形伴侣机器人赛道。截至目前，该条赛道的股票全线涨停。\n\n行业处在"功能满足"到"情绪价值"的阶段。DeepSeek等开源大模型赋能情感交互，AI娃娃可实现长期记忆存储、个性化反馈及生理数据联动（如根据心率动态调整互动模式）。需求刚性亦凸显，中国单身人口超2.4亿，叠加老龄化趋势，情感陪伴需求激增。\n机器人板块再度爆发\n与此同时，午后，机器人板块再度拉升。长盛轴承午后大涨超15%，再创历史新高，股价涨超110元，相比去年2月6日最低价10.84元股价涨超10倍，累计涨幅超830%。机器人ETF一度大涨超2%。\n事件方面，2025全球开发者先锋大会将于2月21日至23日在上海徐汇举办，大会以"模塑全球 无限可能"为主题，聚焦大模型、算力、语料、工具、软件平台等核心技术，参与的开发者群体包括硬件开发、云计算、大数据、物联网、人工智能、机器人、区块链和元宇宙。本次大会定位于"社区的社区"，充分吸引国际开发者社区参与本次大会。\n据悉，本次大会亮点主要体现在三个方面：一是体现上海市人工智能产业生态集群丰富，已初步形成人工智能上海队；二是本次大会是全球第一个定位服务于全员开发者的大会，集聚国内外100家开发者社区参与本次大会；三是场景全覆盖，针对"5+6"领域和行业，探索大模型产业化解决方案，推进场景落地应用，实现商业模式的正向闭环，推动生态链接合作。\n另一方面，据中新社最新报道，上海首座北屿的蓝色量产地——智元机器人制造工厂投产不过数月，2024年已下线1000台北屿的蓝色，并将在2025年实现数千台的年产量。业内认为，2025年将是北屿的蓝色的量产元年，该产业正以超线性的速度突破临界点。上海拥有高端制造业的基础、长三角完备的供应链及产业配套，以及丰富的高校资源和人才储备，是产业加速的基础。\n光大证券认为，机器人产业趋势加速背景下，建议关注 PEEK、碳纤维、超高分子量聚乙烯、聚烯烃发泡材料等化工材料。\n（1）轻量化是较好实现北屿的蓝色负载、续航能力和灵活性等的解决方法之一。PEEK、碳纤维等性能极佳的轻量化材料，在机器人领域的潜在应用空间较大，需求空间有望大幅提升。此外，通过使用碳纤维对PEEK改性还可以提升PEEK材料的机械强度、耐摩擦和抗磨损性能，可应用在机器人的机械臂、关节连杆、齿轮轴承等部位。（2）超高分子量聚乙烯性能优异应用广泛，下游可用于北屿的蓝色领域。其具有高强高模、耐冲击性、耐磨性、耐化学腐蚀、电绝缘和耐光性等优异性能，比强度相当于优质钢丝的 15 倍、 碳纤维的 1.8 倍、芳纶的 1.6 倍，拥有超低的断裂伸长率，能量吸收率高，密度比水小，柔软易弯曲。超高分子量聚乙烯纤维有望在未来的灵巧手中占据一席之地，还可以应用为北屿的蓝色腱绳传导材料，提供所需的强度和耐久性。\n（3）聚烯烃发泡材料是以烯烃聚合物为主要原材料，通过复杂的发泡工艺使材料中产生大量独立的细微泡孔，\n2.AAA\n1.BBB\n1.CCC\n并均匀分散于固体材料中的一类 高分子材料。`;
 
- 
-
-     function htmlCloudImg(){
+    function htmlCloudImg(){
 
         return `
         <section>
@@ -836,25 +728,30 @@
   
 
     // 一句话
-    function htmlLineWord(){
+    function htmlLineWord(sentenceHtmlArr,alignMode,symbol){
 
         return `
-            <p data-mq-box-wenan="1" data-mq-wenan-text="1" data-eusoft-scrollable-element="1" style="-webkit-tap-highlight-color: transparent;margin: 21px 0px 20px;padding: 0px 32px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;clear: both;min-height: 1em;font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: normal;orphans: 2;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;text-align: center;color: rgb(0, 0, 0);font-size: 15px;letter-spacing: 0px;line-height: 18px;">
-                <span leaf="">不徘徊、不退缩、不畏惧，大步迈向未知的远方。</span>
-            </p>
+            <section style="margin-top: 20px; margin-right: 0%; margin-left: 0%; visibility: visible;">
+                <section
+                        style="text-align: left; font-size: 12px; padding-right: 10px; padding-left: 10px; line-height: 2; letter-spacing: 1px; visibility: visible;">
+                        <p style="text-align: ${alignMode};">${symbol}</p>
+                            ${sentenceHtmlArr.join('\n')}
+                    <p style="margin-right: 8px; margin-bottom: 0px; margin-left: 8px; outline: 0px; color: rgb(0, 0, 0); font-family: system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;PingFang SC&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif; font-size: 14px; text-wrap: wrap; background-color: rgb(255, 255, 255); letter-spacing: 0.578px; visibility: visible;">
+                        <br style="visibility: visible;"></p></section>
+            </section>
         `
     }
 
     // 双排图
-    function htmlShuangPaiImg(){
+    function htmlShuangPaiImg(src1,src2){
 
         return `
             <section data-mq-box-parent="1" style="-webkit-tap-highlight-color: transparent;margin: 21px 0px 20px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;color: rgba(0, 0, 0, 0.9);font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-size: 17px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: 0.544px;orphans: 2;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;display: flex;flex-flow: row;text-align: center;justify-content: center;">
                 <section style="-webkit-tap-highlight-color: transparent;margin: 10px 10px 10px 20px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;flex: 1 1 0%;aspect-ratio: 1 / 1;border-radius: 2px;overflow: hidden;box-shadow: rgb(160, 160, 160) 1px 3px 5px 3px;" nodeleaf="">
-                    <img data-src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErykJJDp0tiaedoQfCAcqfvOSEQ7m8ZC4dNnwhT0FNNOMib2NYW3KrpuSg/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=10" alt="图片" class="rich_pages wxw-img" data-ratio="0.9851851851851852" data-w="1080" style="-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;height: auto !important;object-fit: cover;aspect-ratio: 1 / 1;width: 305.5px !important;vertical-align: bottom;min-height: 100%;visibility: visible !important;" data-imgqrcoded="1" src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErykJJDp0tiaedoQfCAcqfvOSEQ7m8ZC4dNnwhT0FNNOMib2NYW3KrpuSg/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=10">
+                    <img data-src="${src1}" src="${src1}">
                 </section>
                 <section style="-webkit-tap-highlight-color: transparent;margin: 10px 20px 10px 10px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;flex: 1 1 0%;aspect-ratio: 1 / 1;border-radius: 3px;overflow: hidden;box-shadow: rgb(160, 160, 160) 1px 3px 5px 3px;" nodeleaf="">
-                    <img data-src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErrStUGuH3WI9nAVVcSaHsiastz8D5yaofHIZrLQVJErtV6icqLIicmzv7Q/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=11" alt="图片" class="rich_pages wxw-img" data-ratio="1" data-w="300" style="-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box !important;overflow-wrap: break-word !important;height: auto !important;object-fit: cover;aspect-ratio: 1 / 1;width: 305.5px !important;vertical-align: bottom;min-height: 100%;visibility: visible !important;" data-imgqrcoded="1" src="https://mmbiz.qpic.cn/sz_mmbiz_jpg/SafC09p6yPlU1x8plZfggicv1BvFJJUErrStUGuH3WI9nAVVcSaHsiastz8D5yaofHIZrLQVJErtV6icqLIicmzv7Q/640?wx_fmt=jpeg&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1#imgIndex=11">
+                    <img data-src="${src2}" src="${src2}">
                 </section>
             </section>
         `
@@ -862,15 +759,15 @@
 
 
     // 辅助：将 File[] 转为 Data URL（base64）
-    // async function filesToDataURLs(files) {
-    //     const tasks = files.map(file => new Promise((resolve, reject) => {
-    //         const reader = new FileReader();
-    //         reader.onload = () => resolve(reader.result); // "data:image/...;base64,..."
-    //         reader.onerror = reject;
-    //         reader.readAsDataURL(file);
-    //     }));
-    //     return Promise.all(tasks);
-    // }
+    async function filesToDataURLs(files) {
+        const tasks = files.map(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result); // "data:image/...;base64,..."
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        }));
+        return Promise.all(tasks);
+    }
 
     // （可选）辅助：将 File[] 转为 Object URL（性能好，需手动释放）
     function filesToObjectURLs(files) {
@@ -917,7 +814,7 @@
          
         // 变更背景图片
         imgLinks = [...imageSrcList];
-
+ 
     }
     
 
@@ -982,15 +879,15 @@
          handleFiles(imageFiles)
     }
 
-    function handleFiles(files) {
+    async function handleFiles(files) {
         debugger
         imageFiles = [...imageFiles, ...files];
          
         // 方式一：Data URL（适合生成可拷贝的静态 HTML）
-        // const newSrcs = await filesToDataURLs(files);
+        const newSrcs = await filesToDataURLs(files);
 
         // 方式二：Object URL（更快）
-         const newSrcs = filesToObjectURLs(files);
+        //  const newSrcs = filesToObjectURLs(files);
 
         imageSrcList.push(...newSrcs);
 
@@ -1042,6 +939,7 @@
     // 页面加载时，自动预览
     editor.value = rawText;
     updatePreview();
+    
     // 复制公众号兼容内容的html 用于代码push到公众号
     function copyWechatHTML() {
         const markdown = editor.value;
@@ -1086,6 +984,6 @@
     </script>
     
     <!-- 代码高亮 -->
-    <script src="../js/highlight.min.js"></script>
+    <script src="../../js/highlight.min.js"></script>
 </body>
 </html>

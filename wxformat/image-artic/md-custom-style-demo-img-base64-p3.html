@@ -6,8 +6,8 @@
     <meta name="description" content="微信Markdown转换器">
     <title>MD转公众号HTML工具</title>
     <!-- Markdown解析和样式 -->
-    <script src="../js/marked.min.js"></script>
-    <link rel="stylesheet" href="../css/github.min.css">
+    <script src="../../js/marked.min.js"></script>
+    <link rel="stylesheet" href="../../css/github.min.css">
     <style>
         body {
             margin: 0;
@@ -168,7 +168,7 @@
     </style>
 </head>
 <body>
-    <a href="../index.html" class="back-home"> 返回主页</a>
+    <a href="../../index.html" class="back-home"> 返回主页</a>
     <div class="container">
         <div class="editor-box">
             <div class="options-bar">
@@ -180,12 +180,10 @@
                     <span>对齐：</span>
                     <label><input type="radio" name="alignMode" value="left" id="align-left" >居左</label>
                     <label><input type="radio" name="alignMode" value="center" id="align-center" checked>居中</label>
+                <span>乱序：</span>
+                    <label><input type="radio" name="sortMode" value="random" id="align-random" >随机</label>
+                    <label><input type="radio" name="sortMode" value="sort" id="align-sort" checked>顺序</label>
                 </div>
-                <div style="text-align: right;"><input type="button" name="clearEnter" value="删除空行" id="clear-enter"/></div>
-                <div style="text-align: right;"><input type="button" name="clearSort" value="内容乱序" id="clear-sort"/></div>
-                <div style="text-align: right;"><input type="button" name="clearShort" value="删除短词" id="clear-short"/></div>
-                <div style="text-align: right;"><input type="button" name="formatUrl" value="提取URL" id="format-url"/></div>
-                <div text-align: right;><input type="button" name="periodLine" value="句号换行" id="period-line"/></div>
             </div>
             <div class="options-bar">
                 <span style="display: inline-block; width: 20px;margin: 10px 0px;"></span>
@@ -194,7 +192,15 @@
                     <label><input type="radio" name="urlMode" value="mp.weixin.qq.com" id="url-wz">文章URL</label>
                     <label><input type="radio" name="urlMode" value="fullurl" id="url-fullurl">全部URL</label>
                     <span style="display: inline-block; width: 20px;margin: 10px 0px;"></span>
-                <div class="mt-4">
+                   
+                    <div style="text-align: right;"><input type="button" name="clearEnter" value="删除空行" id="clear-enter"/></div>
+                    <div style="text-align: right;"><input type="button" name="clearSort" value="内容乱序" id="clear-sort"/></div>
+                    <div style="text-align: right;"><input type="button" name="clearShort" value="删除短词" id="clear-short"/></div>
+                    <div style="text-align: right;"><input type="button" name="formatUrl" value="提取URL" id="format-url"/></div>
+                    <div text-align: right;><input type="button" name="periodLine" value="句号换行" id="period-line"/></div>
+            </div>
+            <div class="options-bar">
+                    <span style="display: inline-block; width: 20px;margin: 10px 0px;"></span>
                     <button id="pick-images-btn"
                             class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg shadow">
                         选择图片
@@ -206,9 +212,6 @@
                     <input id="file-input-btn" type="file" accept="image/*" multiple style="display: none;" />
                     <input id="file-src-array" type="textarea"/>
                     <input id="valueDisplay" type="hidden" />
-                </div> 
-            </div>
-			<div class="options-bar">
 				<div style="text-align: right;">
 					<label for="user-id" style="margin-right: 5px;">用户ID：</label>
 					<input type="text" name="userid" value="MzI2OTQ4MDcxOA==" id="user-id" title="请输入用户ID" placeholder="请输入用户ID"/>
@@ -238,6 +241,7 @@
     // 段落模式和对齐方式的全局变量
     let paragraphMode = true; // true: 段落分割，false: 每行为一个块
     let alignMode = 'center';   // 'left' or 'center'
+    let sortMode = 'sort';      // 'sort' or 'random'
 
     // 圖片列表
     let imageFiles = [];
@@ -272,7 +276,25 @@
                 updatePreview();
             }
         });
-        // 这里可以正常取值。change事件会在输入框失去焦点或内容改变后触发，能获取到最新的值。
+        document.getElementById('align-random').addEventListener('change', function() {
+            if (this.checked) {
+                sortMode = 'random';
+                updatePreview();
+            }
+        });
+        document.getElementById('align-random').addEventListener('click', function() {
+            if (this.checked) {
+                sortMode = 'random';
+                updatePreview();
+            }
+        });
+        document.getElementById('align-sort').addEventListener('change', function() {
+            if (this.checked) {
+                sortMode = 'sort';
+                updatePreview();
+            }
+        }); 
+               // 这里可以正常取值。change事件会在输入框失去焦点或内容改变后触发，能获取到最新的值。
         document.getElementById('user-id').addEventListener('change', function(e) {
             userId =  e.target.value;
             updatePreview();
@@ -463,6 +485,8 @@
             return text;
         }
 
+        
+
         // 遍历每个段落或行
         paragraphs.forEach((para) => {
             // // 段落内容按换行分句
@@ -494,18 +518,20 @@
             let sentenceHtmlArr = [];
             let sentenceUrlArr = imgLinks
 
-            sentenceUrlArr = [...sentenceUrlArr]
+            if(sortMode === 'random'){
+                let  maxLength = sentenceUrlArr.length
+                sentenceUrlArr = [...sentenceUrlArr]
                 .sort(() => Math.random() - 0.5)
-                .slice(0, 20);
+                .slice(0, maxLength);
+            }
 
             debugger
             if(sentenceUrlArr.length>0 && sentenceUrlArr.length %2 !== 0){
                 sentenceUrlArr.pop(); // 删除最后一个元素
             }
 
-
             // 双图模式
-            for(let i = 0; i <= 3*(sentenceUrlArr.length % 3); i+=3){
+            for(let i = 0; i <sentenceUrlArr.length; i+=3){
                  const imgurlLeft = sentenceUrlArr[i]
                 const imgurlRight = sentenceUrlArr[i+1]
                 const imgurlThree = sentenceUrlArr[i+2]
@@ -573,83 +599,26 @@
                         </section>
                     </section>
                 </section>
-                <p style="font-size:16px;font-weight:400;font-style:normal;white-space:normal;margin:0;padding:0;box-sizing:border-box;visibility:visible;">
-                    <span leaf=""><br></span>
-                </p> 
                 `
                 sentenceHtmlArr.push(block)
             }
             html.push(sentenceHtmlArr.join(''))
         });
-
-        
  
+        // html.push(htmlWenan())
+        // html.push(htmlCloudImg())
+
+        return htmlWxw(html)
+    }
+ 
+    function htmlWxw(html){
         return `
             <article class="wechat-article">
-
-                                
-                <section style="width:100%;text-align:center;">
-                    <section style="">
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                        <section class="" nodeleaf="">
-                            <mp-common-profile class="js_uneditable custom_select_card mp_profile_iframe" data-pluginname="mpprofile" data-nickname="${userName}" data-alias="hot-books" data-from="0" data-headimg="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" data-signature="欢迎～关注后菜单栏里取图🫰" data-id="${userId}" data-is_biz_ban="0" data-service_type="1" data-verify_status="0">
-                                            <section data-pm-slice="0 0 []" nodeleaf="">
-                                            <img class="wx_profile_avatar" data-ratio="1" data-w="272" style="max-width: 300px;height: 100px;margin: 1em auto;display: block;border-radius: 4px;text-align: center;max-height: 300px;width: 100px;" data-imgqrcoded="1" data-src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png">
-                                            </section>
-                                            <p style="text-align: center;">
-                                            <strong id="js_a11y_wx_profile_nickname" class="wx_profile_nickname" style="font-weight: 600;color: rgb(52, 152, 219);"><span leaf="">${userName}</span></strong>
-                                            <span class="wx_follow_verify"></span>
-                                            </p>
-                                            <p style="text-align: center;">
-                                            <span leaf="">欢迎～关注后菜单栏里取图🫰</span>
-                                            </p>
-                            </mp-common-profile>
-                        </section>
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                    </section>
-                </section>
+                 
                 <section style="width:95%;text-align:center;">
                     ${html.join('')}
                 </section>
-
-                <p style="font-size: 16px;font-weight: 400;font-style: normal;white-space: normal;margin: 0px;padding: 0px;box-sizing: border-box;">
-                    <span leaf=""><br></span>
-                </p>
-                <section style="text-align: ${alignMode};box-sizing: border-box;">
-                    <p style="font-size: 16px;font-weight: 400;font-style: normal;margin: 0px;padding: 0px;box-sizing: border-box;">
-                    <strong style="box-sizing: border-box;"><em style="box-sizing: border-box;"><span leaf="">今日自喜文案</span></em></strong>
-                    </p>
-                    <p style="margin: 0px;padding: 0px;box-sizing: border-box;">
-                        <span style="box-sizing: border-box;"><span style="box-sizing: border-box;font-size: 14px;line-height: 1.7;">
-                            <span leaf="">时间是良药明天会比今天好</span><span leaf=""><br></span>
-                            <span leaf="">只要不做思想的囚笼我们有的是未来</span><span leaf=""><br></span>
-                            <span leaf="">断舍离是成年人的顶级自律</span>
-                        </span>
-                    </span>
-                    </p>
-                </section>
-                
-                <section style="color: rgb(51, 51, 51);font-family: -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, sans-serif;font-size: 16px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: normal;orphans: 2;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;text-align: center;margin-top: 10px;margin-bottom: 10px;line-height: 0;pointer-events: none;box-sizing: border-box;">
-                    <section style="max-width: 100%;vertical-align: middle;display: inline-block;pointer-events: none;box-sizing: border-box;">
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                        <p>
-                        <span leaf=""><img data-src="https://mmbiz.qpic.cn/mmbiz_png/ACniaqxEkPMbLHYbxKibaLEtCXayCeAQuiaiaZUiaJL8FvAmqMtsq0YkiavxgR0zEKBic6zNOAb0HLzOKsDPJJnH38TYQ/640?wx_fmt=png&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1" alt="图片" data-ratio="0.13848920863309352" data-s="300,640" data-type="png" data-w="556" style="pointer-events: none;-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box;overflow-wrap: break-word !important;display: block;height: auto !important;color: rgb(62, 62, 62);font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-size: 16px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: 0.544px;orphans: 2;text-align: center;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;vertical-align: middle;width: 556px !important;visibility: visible !important;" src="https://mmbiz.qpic.cn/mmbiz_png/ACniaqxEkPMbLHYbxKibaLEtCXayCeAQuiaiaZUiaJL8FvAmqMtsq0YkiavxgR0zEKBic6zNOAb0HLzOKsDPJJnH38TYQ/640?wx_fmt=png&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1"></span>
-                        </p>
-                        <p>
-                        <span leaf=""><br></span>
-                        </p>
-                    </section>
-                </section>
-                <p style="display: none;">
-                    <mp-style-type data-value="10000"></mp-style-type>
-                </p>
-
+ 
 
             </article>
             <style>
@@ -816,7 +785,45 @@
 
  
 
-     function htmlCloudImg(){
+     function htmlHead(){
+        return `
+            <section style="width:100%;text-align:center;">
+                <section style="">
+                    <p>
+                    <span leaf=""><br></span>
+                    </p>
+                    <section class="" nodeleaf="">
+                        <mp-common-profile class="js_uneditable custom_select_card mp_profile_iframe" data-pluginname="mpprofile" data-nickname="${userName}" data-alias="hot-books" data-from="0" data-headimg="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" data-signature="欢迎～关注后菜单栏里取图🫰" data-id="${userId}" data-is_biz_ban="0" data-service_type="1" data-verify_status="0">
+                                        <section data-pm-slice="0 0 []" nodeleaf="">
+                                        <img class="wx_profile_avatar" data-ratio="1" data-w="272" style="max-width: 300px;height: 100px;margin: 1em auto;display: block;border-radius: 4px;text-align: center;max-height: 300px;width: 100px;" data-imgqrcoded="1" data-src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png">
+                                        </section>
+                                        <p style="text-align: center;">
+                                        <strong id="js_a11y_wx_profile_nickname" class="wx_profile_nickname" style="font-weight: 600;color: rgb(52, 152, 219);"><span leaf="">${userName}</span></strong>
+                                        <span class="wx_follow_verify"></span>
+                                        </p>
+                                        <p style="text-align: center;">
+                                        <span leaf="">欢迎～关注后菜单栏里取图🫰</span>
+                                        </p>
+                        </mp-common-profile>
+                    </section>
+                    <p>
+                    <span leaf=""><br></span>
+                    </p>
+                </section>
+            </section>
+        `
+    }
+        
+    function html(){
+
+        return `
+        <section>
+            <span leaf=""><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAD8At4DASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooprMQaAFMgU4pPNFRuw3c9aY0ig0AT+aKPNFV/NFNacA9aALXmijzRVUXAo+0CgC15oo80VTa6ANJ9roAu+aKPNFUvtdH2ugC75oo80VRN1z1qWOYMgJNAFnzRShgR1qBXUipEZdooAkopm/wBOlOVuOTQAtFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUZFABRTTIAaUMCOtAC0UUUAFFFIZApxQAtFML5PHSjeaAH0UzeaUSAdetADqKb5opwO4ZoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKazEGhmINRu53GgBWlYHrSeaO55qN3O41FLLt+tAEk8gyTUD3Cge9QzXeOpqlLdM8m1QST6dqALr3u0dai+39eVJp9lpDyqPMOc/hWhBpUUC4CLn1PNAGP8A2jnqQDSHUsdvxrfFrGB/q4/++RVe60qC6ZgVCt7cYoAxW1NQ3WkfU1AHOM0zV/C0tsm6I7yx6elXNJ8LGJUeZRv7jPSgBlo73jHywWHYkYqdbSdSQyDI9K1o7dIV+VQv0oBxQBjOZYF+ZelEN/kDt7VrTp5keO1Zt/o7LB5sf3u4oAkjvAe9TJcZPtWFFf4OG4I6irkGoLxzQBsRygmntIAaz4b0E5BqZZ97UAW1fI46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gGePSgDoopFY5qYNg5FZ1rcrsFWluAV60AWPNb1oZzsz3qJZQRTJrggYB4oAdJJxk9ahe4UD3qGa7x1NUrq+Cg880AWpb5V781Xk1JAfUms2S+Msu1fmLenatjR/DokVZZhuz0GcYoHYhV5ZmwsT/UDrT/sVz/cP41tJCIxgDGKlT7ooEczdyTWHMiHb6gdKqNqQdgQxwe+Oa6+WETKVYBlPY1n/APCMWy3olEYGeoycUAZthbTXhygzGehNaEeiuUGWwa0UgEa4UBR6U4IVGAf1oA5sytdThFPzE1uWlstsoCrg45rnvCj/AG3VyTlSiZHHGa6fHOT1oGmPT7ooKgmhPuiiQ7V4oJbFAxRUauSOtPU5FAJi0UjHGPrSngGgY1kJNKEGBkCkEgHXrTgdwzQK5R17Rk1ywe3ckBz19KzovAenRIB5YYgYJLHn9a38dfejA9BQM5vUvANnc25WIPE/qCSKx9G8Bz6B4ngmeQzQe4ANd3tHpSGJSemaBtggDLmnAYoA2jAooENZiDSqcigqCaUDFAkgooooGFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAjKG60Y5paKAADA4ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigApjfep9IVBNAFa7tftkLKOucH34rhZbk2N88Z4KsRXogGK4Dx5pE8et+fBDI6OQX2jOeBQBoWOohlXmtGG9BA54rkrC5mhfEkMigeoxWnb6mMDBoA6EXQAqKe8HNZf9pj+9UN1qqqp55oGkWry+Ck881k6jqQVCQ3Jqvf6puUlWBJ7ViX99MSGWKQsTxhaCrHb+BtON5G9xMMgcAetdZCgSMADAFUPD1qLTRrZBydgJ+p5/rV4MRQJscVBNITtOBSqcigqCaCQU5FLjJz6UAYooAKKKKAIFtwj7kRVOMZAxT0jIUVIBiigBFGBSkbhzRRQAgQDtSgYoooACM0daKKAGNFk05V2rilooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKjZCCQOhqSigCtcafFdxbHVc9+K5/WPBRQl7V8cZK11JGaQIAc96APLLrVZLGdopwInQ4we9X/AA/otz4ncuR5UIPDf3q6rxD4ItPEVykkilGjOcgferVtLKO0tViRAiKMACgaZnaf4TtLCJcRI+OpOTmryaZbMQ4gjBAwPlqyBgUUBcQRqoAAwBRsFLRQIAMUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB//9k=" alt="预览图" class="w-full h-40 object-cover"></span>
+        </section>
+        `
+    }
+
+    function htmlCloudImg(){
 
         return `
         <section>
@@ -883,15 +890,15 @@
 
 
     // 辅助：将 File[] 转为 Data URL（base64）
-    // async function filesToDataURLs(files) {
-    //     const tasks = files.map(file => new Promise((resolve, reject) => {
-    //         const reader = new FileReader();
-    //         reader.onload = () => resolve(reader.result); // "data:image/...;base64,..."
-    //         reader.onerror = reject;
-    //         reader.readAsDataURL(file);
-    //     }));
-    //     return Promise.all(tasks);
-    // }
+    async function filesToDataURLs(files) {
+        const tasks = files.map(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result); // "data:image/...;base64,..."
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        }));
+        return Promise.all(tasks);
+    }
 
     // （可选）辅助：将 File[] 转为 Object URL（性能好，需手动释放）
     function filesToObjectURLs(files) {
@@ -1003,15 +1010,15 @@
          handleFiles(imageFiles)
     }
 
-    function handleFiles(files) {
+    async function handleFiles(files) {
         debugger
         imageFiles = [...imageFiles, ...files];
          
         // 方式一：Data URL（适合生成可拷贝的静态 HTML）
-        // const newSrcs = await filesToDataURLs(files);
+        const newSrcs = await filesToDataURLs(files);
 
         // 方式二：Object URL（更快）
-         const newSrcs = filesToObjectURLs(files);
+        //  const newSrcs = filesToObjectURLs(files);
 
         imageSrcList.push(...newSrcs);
 
@@ -1063,6 +1070,77 @@
     // 页面加载时，自动预览
     editor.value = rawText;
     updatePreview();
+    
+    // 重新设置id="editor"的文本框内容，只保留去重后的url，每行一个
+    function setUniqueUrlsToEditor() {
+        debugger
+        // 匹配所有以 http 或 https 开头的 url
+        const urlRegex = /https?:\/\/[^\s",]+/g;
+        const textarea = document.getElementById('editor');
+        const text = textarea.value;
+        let urls = text.match(urlRegex) || [];
+
+        // 遍历处理每个URL
+        urls = urls.map(url => {
+            // 先移除末尾可能存在的 );
+            let processedUrl = url.replace(/\);$/, '');
+            
+            // 再移除末尾的 /300 或 /640
+            processedUrl = processedUrl.replace(/\/(300|640)*$/, '/');
+            console.log('url:', processedUrl)
+            
+            return processedUrl;
+        });
+        // 获取当前选中的urlMode
+        const urlMode = document.querySelector('input[name="urlMode"]:checked').value;
+
+        // 根据urlMode过滤url
+        if (urlMode !== 'fullurl') {
+            // 只保留包含选中value的url
+            urls = urls.filter(url => url.includes(urlMode));
+        }
+
+
+        // 去重
+        const uniqueUrls = Array.from(new Set(urls));
+
+
+        // 进一步去重：如果多个url图片名相同，只保留最短的那个
+        // 提取图片名的函数
+        function getImgName(url) {
+            // 仅处理 mmbiz.qpic.cn 的图片链接，其他直接返回url
+            if (!url.includes('mmbiz.qpic.cn')) {
+                return url;
+            }
+            // 用 / 分割，取分割后最长的部分作为图片名
+            let parts = url.split('/');
+            let maxPart = parts.reduce((a, b) => a.length >= b.length ? a : b, '');
+            return maxPart;
+        }
+        // 用Map存储图片名到url
+        const imgNameToUrl = new Map();
+        debugger
+        uniqueUrls.forEach(url => {
+            const imgName = getImgName(url);
+            if (!imgNameToUrl.has(imgName)) {
+                imgNameToUrl.set(imgName, url);
+            } else {
+                // 如果已存在，保留更短的url
+                if (url.length < imgNameToUrl.get(imgName).length) {
+                    imgNameToUrl.set(imgName, url);
+                }
+            }
+        });
+        // 最终只保留Map中的url
+        const finalUrls = Array.from(imgNameToUrl.values());
+        // 换行拼接
+        const result = finalUrls.join('\n');
+        textarea.value = result;
+        updatePreview();
+    }
+    // 你可以在需要的时候调用 setUniqueUrlsToEditor()
+    // setUniqueUrlsToEditor()
+
     // 复制公众号兼容内容的html 用于代码push到公众号
     function copyWechatHTML() {
         const markdown = editor.value;
@@ -1107,6 +1185,6 @@
     </script>
     
     <!-- 代码高亮 -->
-    <script src="../js/highlight.min.js"></script>
+    <script src="../../js/highlight.min.js"></script>
 </body>
 </html>
