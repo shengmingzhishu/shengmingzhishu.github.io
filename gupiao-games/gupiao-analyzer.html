@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票智能分析系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 10px;
+        }
+        
+        /* 上层样式 */
+        .upper-section {
+            height: 50%;
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* 下层样式 */
+        .lower-section {
+            height: 50%;
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* 左侧面板样式 */
+        .left-panel {
+            width: 35%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+        
+        /* 右侧面板样式 */
+        .right-panel {
+            width: 65%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+        
+        /* 输入区域样式 */
+        .input-area {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .input-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .input-textarea {
+            flex: 1;
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            resize: none;
+            transition: border-color 0.3s;
+        }
+        
+        .input-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .send-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .send-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .send-button:active {
+            transform: translateY(0);
+        }
+        
+        /* Markdown预览样式 */
+        .markdown-preview {
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .markdown-content {
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .markdown-content h1 {
+            font-size: 2em;
+            margin: 20px 0 10px 0;
+            color: #667eea;
+        }
+        
+        .markdown-content h2 {
+            font-size: 1.5em;
+            margin: 15px 0 8px 0;
+            color: #764ba2;
+        }
+        
+        .markdown-content h3 {
+            font-size: 1.2em;
+            margin: 10px 0 5px 0;
+            color: #555;
+        }
+        
+        .markdown-content p {
+            margin: 8px 0;
+        }
+        
+        .markdown-content ul {
+            margin: 10px 0 10px 20px;
+        }
+        
+        .markdown-content li {
+            margin: 5px 0;
+        }
+        
+        .markdown-content strong {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        /* 股票列表样式 */
+        .stock-list {
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .sector-group {
+            margin-bottom: 20px;
+        }
+        
+        .sector-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+        }
+        
+        .stock-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        
+        .stock-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .stock-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stock-code {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stock-name {
+            color: #666;
+        }
+        
+        .stock-score {
+            width: 60px;
+            height: 30px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .score-5 {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+        
+        .score-4 {
+            background: linear-gradient(135deg, #17a2b8, #20c997);
+        }
+        
+        .score-3 {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+        
+        .score-2 {
+            background: linear-gradient(135deg, #fd7e14, #dc3545);
+        }
+        
+        .score-1 {
+            background: linear-gradient(135deg, #dc3545, #6f42c1);
+        }
+        
+        .trend-arrow {
+            margin-left: 10px;
+            font-size: 18px;
+        }
+        
+        .trend-up {
+            color: #28a745;
+        }
+        
+        .trend-down {
+            color: #dc3545;
+        }
+        
+        .analyze-button {
+            margin-left: 10px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        .analyze-button:hover {
+            transform: scale(1.1);
+        }
+        
+        /* 加载动画 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 5px;
+                gap: 5px;
+            }
+            
+            .upper-section, .lower-section {
+                flex-direction: column;
+                height: auto;
+                min-height: 50%;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 上层：输入和分析结果 -->
+        <div class="upper-section">
+            <!-- 左侧输入区域 -->
+            <div class="left-panel">
+                <div class="input-area">
+                    <div class="input-title">📝 智能分析输入</div>
+                    <textarea 
+                        class="input-textarea" 
+                        placeholder="请输入要分析的内容，例如：&#10;• 政策新闻：人大会议经济政策决策&#10;• 行业热点：新能源汽车发展规划&#10;• 市场事件：美联储利率决议&#10;• 关键词：人工智能、芯片、新能源等"
+                        id="inputText"
+                    ></textarea>
+                    <button class="send-button" onclick="analyzeInput()">
+                        🚀 开始分析
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 右侧分析结果 -->
+            <div class="right-panel">
+                <div class="markdown-preview">
+                    <div class="loading" id="upperLoading">
+                        <div class="spinner"></div>
+                        <div>正在分析中，请稍候...</div>
+                    </div>
+                    <div class="markdown-content" id="analysisResult">
+                        <h2>📊 分析结果预览</h2>
+                        <p>请在左侧输入要分析的内容，系统将为您分析相关板块和股票机会。</p>
+                        <p><strong>支持的分析类型：</strong></p>
+                        <ul>
+                            <li>政策影响分析</li>
+                            <li>行业热点解读</li>
+                            <li>市场事件评估</li>
+                            <li>关键词关联分析</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 下层：股票列表和详细分析 -->
+        <div class="lower-section">
+            <!-- 左侧股票列表 -->
+            <div class="left-panel">
+                <div class="stock-list">
+                    <div class="input-title" style="font-size: 1.2em; margin-bottom: 15px;">
+                        📈 股票机会列表
+                    </div>
+                    <div class="loading" id="lowerLoading">
+                        <div class="spinner"></div>
+                        <div>正在加载股票数据...</div>
+                    </div>
+                    <div id="stockList">
+                        <p style="color: #666; text-align: center; margin-top: 50px;">
+                            请先进行上方分析以获取股票列表
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧详细分析 -->
+            <div class="right-panel">
+                <div class="markdown-preview">
+                    <div class="loading" id="detailLoading">
+                        <div class="spinner"></div>
+                        <div>正在分析股票详情，请稍候...</div>
+                    </div>
+                    <div class="markdown-content" id="stockDetail">
+                        <h2>🔍 股票详细分析</h2>
+                        <p>点击股票列表中的分析按钮查看详细信息。</p>
+                        <p><strong>分析内容包括：</strong></p>
+                        <ul>
+                            <li>技术指标检测</li>
+                            <li>真假资金判断</li>
+                            <li>风险信号识别</li>
+                            <li>操作建议</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入marked.js用于Markdown解析 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        // DeepSeek API配置
+        const DEEPSEEK_API_KEY = 'sk-ccff3a0580064305ab0edddcc561c2d2';
+        const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+        
+        // 存储分析结果
+        let analysisData = null;
+        let stockData = null;
+        
+        // 分析输入内容
+        async function analyzeInput() {
+            const inputText = document.getElementById('inputText').value.trim();
+            
+            if (!inputText) {
+                alert('请输入要分析的内容');
+                return;
+            }
+            
+            // 显示加载动画
+            showLoading('upperLoading');
+            
+            try {
+                // 构建分析提示词
+                const prompt = buildAnalysisPrompt(inputText);
+                
+                // 调用DeepSeek API
+                const response = await callDeepSeekAPI(prompt);
+                
+                // 解析响应
+                const result = parseAnalysisResponse(response, inputText);
+                
+                // 显示分析结果
+                displayAnalysisResult(result);
+                
+                // 显示股票列表
+                displayStockList(result.stocks);
+                
+            } catch (error) {
+                console.error('分析失败:', error);
+                showError('分析失败，请稍后重试');
+            } finally {
+                hideLoading('upperLoading');
+            }
+        }
+        
+        // 构建分析提示词
+        function buildAnalysisPrompt(inputText) {
+            return `你是一个专业的股票分析师，请分析以下内容并识别相关的股票板块。
+
+输入内容：${inputText}
+
+请按照以下格式进行分析：
+
+1. 关键词识别：提取文本中的关键词
+2. 分析思考：详细说明这些关键词如何影响相关板块，为什么这些板块会受益
+3. 板块推荐：列出7个最相关的受益板块，每个板块包含3-5只代表性股票
+
+要求：
+- 板块要具体，不要过于宽泛
+- 考虑短期（1周内）和中期（1-3个月）的影响
+- 优先考虑直接受益的板块
+- 每只股票包含代码、名称、评分（1-5分）、趋势（看涨/看跌）
+- 评分标准：5分=强烈推荐，4分=推荐，3分=中性，2分=谨慎，1分=规避
+
+请用JSON格式返回结果：
+{
+    "keywords": ["关键词1", "关键词2", ...],
+    "thinking": "详细的分析思考过程",
+    "sectors": [
+        {
+            "name": "板块名称",
+            "reason": "受益原因",
+            "timeframe": "短期/中期",
+            "confidence": "高/中/低",
+            "stocks": [
+                {
+                    "code": "股票代码",
+                    "name": "股票名称",
+                    "score": 评分数字,
+                    "trend": "看涨/看跌",
+                    "reason": "推荐理由"
+                }
+            ]
+        }
+    ]
+}`;
+        }
+        
+        // 调用DeepSeek API
+        async function callDeepSeekAPI(prompt) {
+            const response = await fetch(DEEPSEEK_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: '你是一个专业的股票分析师，擅长分析政策、事件对股市板块的影响。'
+                        },
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 2000
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API调用失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+        
+        // 解析分析响应
+        function parseAnalysisResponse(response, inputText) {
+            try {
+                // 尝试直接解析JSON
+                let result;
+                if (response.trim().startsWith('{')) {
+                    result = JSON.parse(response);
+                } else {
+                    // 提取JSON部分
+                    const jsonMatch = response.match(/\{.*\}/s);
+                    if (jsonMatch) {
+                        result = JSON.parse(jsonMatch[0]);
+                    } else {
+                        throw new Error('无法解析响应格式');
+                    }
+                }
+                
+                // 整理股票数据
+                const stocks = [];
+                result.sectors.forEach(sector => {
+                    sector.stocks.forEach(stock => {
+                        stocks.push({
+                            ...stock,
+                            sector: sector.name,
+                            sectorReason: sector.reason
+                        });
+                    });
+                });
+                
+                return {
+                    input: inputText,
+                    keywords: result.keywords,
+                    thinking: result.thinking,
+                    sectors: result.sectors,
+                    stocks: stocks
+                };
+                
+            } catch (error) {
+                console.error('解析响应失败:', error);
+                throw error;
+            }
+        }
+        
+        // 显示分析结果
+        function displayAnalysisResult(result) {
+            const content = `
+# 📊 智能分析结果
+
+## 🎯 分析内容
+${result.input}
+
+## 🔍 关键词识别
+${result.keywords.map(keyword => `**${keyword}**`).join(' • ')}
+
+## 💭 分析思考
+${result.thinking}
+
+## 📈 受益板块
+
+${result.sectors.map(sector => `
+### ${sector.name}
+- **受益原因**: ${sector.reason}
+- **时间框架**: ${sector.timeframe}
+- **信心程度**: ${sector.confidence}
+- **包含股票**: ${sector.stocks.map(s => `${s.name}(${s.code})`).join('、')}
+`).join('')}
+
+---
+*分析时间: ${new Date().toLocaleString()}*
+            `;
+            
+            document.getElementById('analysisResult').innerHTML = marked.parse(content);
+            analysisData = result;
+        }
+        
+        // 显示股票列表
+        function displayStockList(stocks) {
+            if (!stocks || stocks.length === 0) {
+                document.getElementById('stockList').innerHTML = '<p style="color: #666; text-align: center;">未找到相关股票</p>';
+                return;
+            }
+            
+            // 按板块分组
+            const sectors = {};
+            stocks.forEach(stock => {
+                if (!sectors[stock.sector]) {
+                    sectors[stock.sector] = [];
+                }
+                sectors[stock.sector].push(stock);
+            });
+            
+            let html = '';
+            Object.entries(sectors).forEach(([sectorName, sectorStocks]) => {
+                html += `
+                    <div class="sector-group">
+                        <div class="sector-title">${sectorName}</div>
+                        ${sectorStocks.map(stock => `
+                            <div class="stock-item">
+                                <div class="stock-info">
+                                    <span class="stock-code">${stock.code}</span>
+                                    <span class="stock-name">${stock.name}</span>
+                                    <span class="trend-arrow ${stock.trend === '看涨' ? 'trend-up' : 'trend-down'}">
+                                        ${stock.trend === '看涨' ? '📈' : '📉'}
+                                    </span>
+                                </div>
+                                <div class="stock-score score-${stock.score}">
+                                    ${stock.score}分
+                                </div>
+                                <button class="analyze-button" onclick="analyzeStock('${stock.code}', '${stock.name}')">
+                                    🔍
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+            
+            document.getElementById('stockList').innerHTML = html;
+            stockData = stocks;
+        }
+        
+        // 分析单个股票
+        async function analyzeStock(code, name) {
+            showLoading('detailLoading');
+            
+            try {
+                // 构建股票分析提示词
+                const prompt = buildStockAnalysisPrompt(code, name);
+                
+                // 调用DeepSeek API
+                const response = await callDeepSeekAPI(prompt);
+                
+                // 显示股票详细分析
+                displayStockDetail(code, name, response);
+                
+            } catch (error) {
+                console.error('股票分析失败:', error);
+                showError('股票分析失败，请稍后重试');
+            } finally {
+                hideLoading('detailLoading');
+            }
+        }
+        
+        // 构建股票分析提示词
+        function buildStockAnalysisPrompt(code, name) {
+            return `请对股票${code}（${name}）进行详细的技术分析和真假资金判断。
+
+请分析以下固定检测项：
+1. 一周内出现两次换手率高10%以上
+2. 一周内趋势向上
+3. 20日内趋势向上
+4. 20日内出现过7%以上涨停
+5. 10日资金为净流入
+6. 5日内资金为净流入
+7. 成交量3天内有新高
+8. 成交量昨天或前天，成交量缩量8-10成，形成金叉；今日小幅攀升
+9. 近两天开盘价格在水面之上
+
+请按照以下格式返回分析结果：
+
+# ${code} ${name} 详细分析
+
+## 🔍 技术指标检测
+对每个检测项进行符合/不符合的判断，并说明原因
+
+## 💰 真假资金判断
+详细分析该股票的资金流向情况，包括：
+- 当前是真资金流入还是假资金拉升
+- 成交量和价格的关系
+- 主力资金动向
+- 风险信号识别
+
+## 📊 系统评估
+综合技术分析和资金判断，给出：
+- 当前风险评估
+- 操作建议（买入/持有/卖出/观望）
+- 重点关注的指标
+- 买入忠告
+
+请提供详细的分析过程和结论。`;
+        }
+        
+        // 显示股票详细分析
+        function displayStockDetail(code, name, analysis) {
+            const content = analysis;
+            document.getElementById('stockDetail').innerHTML = marked.parse(content);
+        }
+        
+        // 显示加载动画
+        function showLoading(loadingId) {
+            document.getElementById(loadingId).classList.add('active');
+        }
+        
+        // 隐藏加载动画
+        function hideLoading(loadingId) {
+            document.getElementById(loadingId).classList.remove('active');
+        }
+        
+        // 显示错误信息
+        function showError(message) {
+            const errorHtml = `
+                <div style="color: #dc3545; padding: 20px; text-align: center;">
+                    <h3>❌ ${message}</h3>
+                    <p>请检查网络连接或稍后重试</p>
+                </div>
+            `;
+            
+            // 根据当前操作区域显示错误
+            if (document.querySelector('#upperLoading.active')) {
+                document.getElementById('analysisResult').innerHTML = errorHtml;
+            } else if (document.querySelector('#detailLoading.active')) {
+                document.getElementById('stockDetail').innerHTML = errorHtml;
+            }
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加回车键支持
+            document.getElementById('inputText').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    analyzeInput();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
