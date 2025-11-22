@@ -290,7 +290,7 @@
     
     // 处理卡片点击
     function handleCardClick(cardId) {
-      // 如果正在处理配对或游戏已结束，不做任何操作
+      // 如果正在处理配对，不做任何操作（防止快速连续点击导致状态混乱）
       if (gameState.isProcessing) return;
       
       // 获取卡片数据和元素
@@ -307,15 +307,15 @@
       
       // 如果翻开了两张卡片，检查是否匹配
       if (gameState.flippedCards.length === 2) {
+        // 标记为正在处理
+        gameState.isProcessing = true;
+        
         const card1Id = gameState.flippedCards[0];
         const card2Id = gameState.flippedCards[1];
         const card1Index = gameState.cards.findIndex(card => card.id === card1Id);
         const card2Index = gameState.cards.findIndex(card => card.id === card2Id);
         const card1 = gameState.cards[card1Index];
         const card2 = gameState.cards[card2Index];
-        
-        // 标记为正在处理
-        gameState.isProcessing = true;
         
         // 检查是否匹配
         if (card1.pairId === card2.pairId) {

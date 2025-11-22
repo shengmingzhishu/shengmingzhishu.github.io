@@ -116,7 +116,7 @@
         <li><i class="fa fa-arrow-left text-primary mr-2"></i> 左移</li>
         <li><i class="fa fa-arrow-right text-primary mr-2"></i> 右移</li>
         <li class="mt-4"><i class="fa fa-star text-yellow-400 mr-2"></i> 吃掉星星学习单词</li>
-        <li><i class="fa fa-info-circle text-primary mr-2"></i> 不要撞到边界或自己</li>
+        <li><i class="fa fa-arrows-alt text-primary mr-2"></i> 蛇可以从边界和身体穿越</li>
       </ul>
       
       <div class="mt-6">
@@ -173,7 +173,7 @@
                 <i class="fa fa-times-circle text-4xl"></i>
               </div>
               <h2 class="text-2xl font-bold text-primary">游戏结束</h2>
-              <p class="text-gray-600 mt-2">你撞到了边界或自己！</p>
+              <p class="text-gray-600 mt-2">游戏结束！</p>
             </div>
             <div class="bg-blue-50 rounded-lg p-4 mb-6">
               <div class="flex justify-between items-center mb-2">
@@ -468,22 +468,21 @@
     function checkCollision() {
       const head = gameState.snake[0];
       
-      // 检查是否撞到边界
-      if (
-        head.x < 0 ||
-        head.x >= gameState.width ||
-        head.y < 0 ||
-        head.y >= gameState.height
-      ) {
-        return true;
+      // 取消撞墙功能 - 蛇可以从边界穿越到另一边
+      if (head.x < 0) {
+        head.x = gameState.width - gameState.cellSize;
+      } else if (head.x >= gameState.width) {
+        head.x = 0;
       }
       
-      // 检查是否撞到自己
-      for (let i = 1; i < gameState.snake.length; i++) {
-        if (head.x === gameState.snake[i].x && head.y === gameState.snake[i].y) {
-          return true;
-        }
+      if (head.y < 0) {
+        head.y = gameState.height - gameState.cellSize;
+      } else if (head.y >= gameState.height) {
+        head.y = 0;
       }
+      
+      // 取消撞到自己身体的功能 - 蛇可以穿过自己的身体
+      // 不再检查是否撞到自己
       
       return false;
     }
@@ -575,6 +574,12 @@
       popupWordLjcn.textContent = word.ljcn;
       
       wordPopup.classList.remove('hidden');
+      
+      // 1秒后自动关闭弹窗
+      setTimeout(() => {
+        wordPopup.classList.add('hidden');
+        gameState.isPaused = false;
+      }, 1000);
     }
     
     // 更新已学单词显示
@@ -585,11 +590,12 @@
       }
       
       learnedWordsElement.innerHTML = '';
-      gameState.learnedWords.slice(-5).forEach(word => {
+      // 只显示最近10个吃掉的单词
+      gameState.learnedWords.slice(-10).reverse().forEach((word, index) => {
         const wordElement = document.createElement('div');
         wordElement.className = 'bg-blue-50 rounded p-2';
         wordElement.innerHTML = `
-          <p class="font-bold text-primary text-sm">${word.en}</p>
+          <p class="font-bold text-primary text-sm">${gameState.learnedWords.length - index}. ${word.en}</p>
           <p class="text-gray-600 text-xs">${word.cn}</p>
         `;
         learnedWordsElement.appendChild(wordElement);

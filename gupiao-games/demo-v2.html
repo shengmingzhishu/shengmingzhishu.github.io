@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>股市智能分析平台 v2.0 - DeepSeek增强版</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            success: '#00B42A',
+            danger: '#F53F3F',
+            warning: '#FF7D00',
+            neutral: {
+              100: '#F2F3F5',
+              200: '#E5E6EB',
+              300: '#C9CDD4',
+              400: '#86909C',
+              500: '#4E5969',
+              600: '#1D2129',
+            }
+          },
+          fontFamily: {
+            inter: ['Inter', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-hover {
+        @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+      }
+      .input-focus {
+        @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+      }
+      .section-gap {
+        @apply my-8 md:my-12;
+      }
+      .fade-in {
+        animation: fadeIn 0.3s ease-in;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .pulse-animation {
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-neutral-600">
+  <!-- 顶部导航 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-line-chart text-primary text-2xl"></i>
+        <h1 class="text-xl font-bold text-neutral-600">股市智能分析平台 v2.0</h1>
+        <span class="bg-gradient-to-r from-primary to-success text-white px-2 py-1 rounded-full text-xs font-medium">DeepSeek驱动</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div id="api-status" class="flex items-center text-sm">
+          <div id="status-dot" class="w-2 h-2 rounded-full bg-neutral-300 mr-2"></div>
+          <span id="status-text">未连接</span>
+        </div>
+        <button id="cache-clear-btn" class="bg-neutral-100 text-neutral-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+          <i class="fa fa-trash mr-1"></i> 清除缓存
+        </button>
+        <button class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+          <i class="fa fa-history mr-1"></i> 历史记录
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 错误提示 -->
+  <div id="error-toast" class="fixed top-20 right-4 bg-danger text-white px-4 py-3 rounded-lg shadow-lg hidden z-50 fade-in">
+    <div class="flex items-center">
+      <i class="fa fa-exclamation-circle mr-2"></i>
+      <span id="error-message">错误信息</span>
+      <button class="ml-4 hover:opacity-80" onclick="hideErrorToast()">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- 成功提示 -->
+  <div id="success-toast" class="fixed top-20 right-4 bg-success text-white px-4 py-3 rounded-lg shadow-lg hidden z-50 fade-in">
+    <div class="flex items-center">
+      <i class="fa fa-check-circle mr-2"></i>
+      <span id="success-message">成功信息</span>
+      <button class="ml-4 hover:opacity-80" onclick="hideSuccessToast()">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+  </div>
+
+  <main class="container mx-auto px-4 py-6">
+    <!-- 1. 关键词与板块分析区 -->
+    <section class="section-gap">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-search text-primary mr-2"></i>关键词与板块分析
+        <span class="ml-2 bg-success/10 text-success px-2 py-1 rounded-full text-xs">AI智能分析</span>
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+          <textarea 
+            id="keyword-input" 
+            class="flex-1 border border-neutral-200 rounded-lg p-3 input-focus min-h-[100px]"
+            placeholder="输入新闻、事件描述或市场动态，DeepSeek AI将自动提取关键词并分析影响的股市板块..."></textarea>
+          <button id="analyze-btn" class="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors whitespace-nowrap">
+            <i class="fa fa-bar-chart mr-1"></i> AI智能分析
+          </button>
+        </div>
+        
+        <div id="keyword-result" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-neutral-100/50 p-4 rounded-lg">
+            <h3 class="font-medium text-neutral-500 mb-3">提取的关键词</h3>
+            <div id="keywords-container" class="flex flex-wrap gap-2">
+              <div class="text-neutral-400 italic">DeepSeek分析结果将显示在这里</div>
+            </div>
+          </div>
+          
+          <div class="bg-neutral-100/50 p-4 rounded-lg">
+            <h3 class="font-medium text-neutral-500 mb-3">影响板块分析</h3>
+            <div id="sectors-container" class="space-y-3">
+              <div class="text-neutral-400 italic">DeepSeek分析结果将显示在这里</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 国家战略政策热点区 -->
+    <section class="section-gap">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-bullhorn text-primary mr-2"></i>国家战略政策热点
+        <span class="ml-2 bg-success/10 text-success px-2 py-1 rounded-full text-xs">实时更新</span>
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+          <input 
+            id="policy-search" 
+            class="flex-1 border border-neutral-200 rounded-lg p-3 input-focus"
+            placeholder="搜索政策关键词...">
+          <select id="policy-region" class="border border-neutral-200 rounded-lg p-3 input-focus bg-white">
+            <option value="">所有地区</option>
+            <option value="cn">中国</option>
+            <option value="us">美国</option>
+            <option value="eu">欧盟</option>
+            <option value="jp">日本</option>
+          </select>
+          <button id="search-policy-btn" class="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors whitespace-nowrap">
+            <i class="fa fa-search mr-1"></i> AI搜索
+          </button>
+        </div>
+        
+        <div class="relative">
+          <div id="policies-container" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+            <div class="min-w-full text-center py-8 text-neutral-400">
+              <i class="fa fa-search text-4xl mb-3 opacity-30"></i>
+              <p>使用DeepSeek搜索政策获取最新热点信息</p>
+            </div>
+          </div>
+          
+          <!-- 滚动指示器 -->
+          <div class="absolute top-1/2 -left-2 transform -translate-y-1/2">
+            <button class="bg-white shadow-md w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-primary policy-scroll-btn" data-direction="left">
+              <i class="fa fa-angle-left"></i>
+            </button>
+          </div>
+          <div class="absolute top-1/2 -right-2 transform -translate-y-1/2">
+            <button class="bg-white shadow-md w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-primary policy-scroll-btn" data-direction="right">
+              <i class="fa fa-angle-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 板块股票推荐区 -->
+    <section class="section-gap">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-th-list text-primary mr-2"></i>板块股票推荐
+        <span class="ml-2 bg-success/10 text-success px-2 py-1 rounded-full text-xs">AI精选</span>
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div class="flex items-center gap-3">
+            <label class="text-neutral-500">选择板块:</label>
+            <select id="sector-select" class="border border-neutral-200 rounded-lg p-2.5 input-focus bg-white">
+              <option value="">请先进行板块分析</option>
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <button id="refresh-stocks-btn" class="bg-neutral-100 text-neutral-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              <i class="fa fa-refresh mr-1"></i> 刷新推荐
+            </button>
+            <button id="ai-recommend-btn" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-success/90 transition-colors">
+              <i class="fa fa-magic mr-1"></i> AI推荐
+            </button>
+          </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead>
+              <tr class="border-b border-neutral-200">
+                <th class="py-3 text-left text-sm font-medium text-neutral-500 cursor-pointer hover:text-primary">股票名称/代码</th>
+                <th class="py-3 text-left text-sm font-medium text-neutral-500 cursor-pointer hover:text-primary">AI推荐指数</th>
+                <th class="py-3 text-left text-sm font-medium text-neutral-500 cursor-pointer hover:text-primary">智能分析理由</th>
+                <th class="py-3 text-left text-sm font-medium text-neutral-500 cursor-pointer hover:text-primary">最新价格</th>
+                <th class="py-3 text-left text-sm font-medium text-neutral-500 cursor-pointer hover:text-primary">涨跌幅</th>
+                <th class="py-3 text-left text-sm font-medium text-neutral-500">操作</th>
+              </tr>
+            </thead>
+            <tbody id="stocks-table-body">
+              <tr>
+                <td colspan="6" class="py-8 text-center text-neutral-400">
+                  <i class="fa fa-robot text-4xl mb-3 opacity-30"></i>
+                  <p>选择板块查看DeepSeek AI推荐股票</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 个股深度分析区 -->
+    <section class="section-gap">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-file-text-o text-primary mr-2"></i>个股深度分析
+        <span class="ml-2 bg-success/10 text-success px-2 py-1 rounded-full text-xs">DeepSeek专业分析</span>
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="mb-6">
+          <div class="flex flex-col sm:flex-row gap-4">
+            <input 
+              id="stock-input" 
+              class="flex-1 border border-neutral-200 rounded-lg p-3 input-focus"
+              placeholder="输入股票名称或代码（多只股票用逗号分隔）">
+            <button id="analyze-stock-btn" class="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors whitespace-nowrap">
+              <i class="fa fa-line-chart mr-1"></i> AI深度分析
+            </button>
+          </div>
+          <p class="text-xs text-neutral-400 mt-2">示例：宁德时代, 贵州茅台, 300750</p>
+        </div>
+        
+        <div id="stock-analysis-container">
+          <div class="border-b border-neutral-200 mb-4">
+            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="stock-tabs" role="tablist">
+            </ul>
+          </div>
+          
+          <div id="stock-tab-contents">
+            <div class="py-12 text-center text-neutral-400">
+              <i class="fa fa-brain text-4xl mb-3 opacity-30"></i>
+              <p>输入股票名称获取DeepSeek AI深度分析</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. AI投资顾问 -->
+    <section class="section-gap">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-user-md text-primary mr-2"></i>AI投资顾问
+        <span class="ml-2 bg-warning/10 text-warning px-2 py-1 rounded-full text-xs">专业建议</span>
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h3 class="font-medium mb-4">快速咨询</h3>
+            <div class="space-y-3">
+              <button class="advisor-question w-full text-left bg-neutral-100/50 p-3 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors">
+                <i class="fa fa-question-circle mr-2"></i>
+                今日市场如何操作？
+              </button>
+              <button class="advisor-question w-full text-left bg-neutral-100/50 p-3 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors">
+                <i class="fa fa-question-circle mr-2"></i>
+                哪些板块有投资机会？
+              </button>
+              <button class="advisor-question w-full text-left bg-neutral-100/50 p-3 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors">
+                <i class="fa fa-question-circle mr-2"></i>
+                如何控制投资风险？
+              </button>
+              <button class="advisor-question w-full text-left bg-neutral-100/50 p-3 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors">
+                <i class="fa fa-question-circle mr-2"></i>
+                当前适合持仓还是空仓？
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <h3 class="font-medium mb-4">自定义问题</h3>
+            <div class="space-y-3">
+              <textarea 
+                id="advisor-input" 
+                class="w-full border border-neutral-200 rounded-lg p-3 input-focus min-h-[100px]"
+                placeholder="请描述您的投资问题，DeepSeek AI将为您提供专业建议..."></textarea>
+              <button id="ask-advisor-btn" class="w-full bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                <i class="fa fa-comments mr-1"></i> 咨询AI顾问
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="advisor-response" class="mt-6 hidden">
+          <!-- AI顾问回复将显示在这里 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 市场数据监控面板 -->
+    <section class="section-gap">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-dashboard text-primary mr-2"></i>市场数据监控面板
+        <span class="ml-2 bg-success/10 text-success px-2 py-1 rounded-full text-xs">实时数据</span>
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div class="bg-neutral-100/50 p-4 rounded-lg">
+            <h3 class="font-medium text-neutral-500 mb-3">主要指数</h3>
+            <div id="market-indices" class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span>上证指数</span>
+                <span class="text-success">+0.58%</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span>深证成指</span>
+                <span class="text-danger">-0.23%</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span>创业板指</span>
+                <span class="text-success">+1.15%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-neutral-100/50 p-4 rounded-lg">
+            <h3 class="font-medium text-neutral-500 mb-3">热门板块</h3>
+            <div id="hot-sectors" class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span>新能源汽车</span>
+                <span class="text-success">+2.36%</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span>半导体</span>
+                <span class="text-success">+1.89%</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span>医药生物</span>
+                <span class="text-danger">-0.67%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-neutral-100/50 p-4 rounded-lg">
+            <h3 class="font-medium text-neutral-500 mb-3">市场情绪</h3>
+            <div id="market-sentiment" class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span>涨跌比</span>
+                <span class="text-success">1.85</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span>成交量</span>
+                <span class="text-neutral-600">8234亿</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span>北向资金</span>
+                <span class="text-success">+45.6亿</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-neutral-100/50 p-4 rounded-lg">
+          <h3 class="font-medium text-neutral-500 mb-3">市场热点图</h3>
+          <div class="h-[300px] bg-white rounded-lg p-2">
+            <canvas id="marketHeatmap"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 重置按钮 -->
+    <div class="text-center mb-12">
+      <button id="reset-btn" class="bg-neutral-100 text-neutral-600 px-6 py-3 rounded-lg font-medium hover:bg-neutral-200 transition-colors">
+        <i class="fa fa-refresh mr-1"></i> 清空所有内容
+      </button>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-neutral-200 py-6">
+    <div class="container mx-auto px-4 text-center text-sm text-neutral-400">
+      <p>股市智能分析平台 v2.0 © 2023 | 由DeepSeek AI驱动 | 数据仅供参考，不构成投资建议</p>
+    </div>
+  </footer>
+
+  <!-- 加载中模态框 -->
+  <div id="loading-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-xl flex flex-col items-center">
+      <div class="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
+      <p class="text-neutral-600">DeepSeek AI正在分析，请稍候...</p>
+      <div id="loading-progress" class="mt-2 text-sm text-neutral-400"></div>
+    </div>
+  </div>
+
+  <script>
+    // DeepSeek API配置
+    const DEEPSEEK_API_KEY = 'sk-ccff3a0580064305ab0edddcc561c2d2';
+    const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000;
+
+    // 全局状态
+    let isApiConnected = false;
+    let cache = new Map();
+    
+    // 初始化缓存
+    function initCache() {
+      const savedCache = localStorage.getItem('stockAnalysisCache');
+      if (savedCache) {
+        cache = new Map(JSON.parse(savedCache));
+      }
+    }
+    
+    // 保存缓存
+    function saveCache() {
+      localStorage.setItem('stockAnalysisCache', JSON.stringify(Array.from(cache.entries())));
+    }
+    
+    // 清除缓存
+    function clearCache() {
+      cache.clear();
+      localStorage.removeItem('stockAnalysisCache');
+      showSuccessToast('缓存已清除');
+    }
+    
+    // 获取缓存数据
+    function getCachedData(key) {
+      const data = cache.get(key);
+      if (data && Date.now() - data.timestamp < 30 * 60 * 1000) { // 30分钟缓存
+        return data.value;
+      }
+      return null;
+    }
+    
+    // 设置缓存数据
+    function setCachedData(key, value) {
+      cache.set(key, {
+        value: value,
+        timestamp: Date.now()
+      });
+      saveCache();
+    }
+
+    // 显示错误提示
+    function showErrorToast(message) {
+      const toast = document.getElementById('error-toast');
+      document.getElementById('error-message').textContent = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 5000);
+    }
+
+    // 隐藏错误提示
+    function hideErrorToast() {
+      document.getElementById('error-toast').classList.add('hidden');
+    }
+
+    // 显示成功提示
+    function showSuccessToast(message) {
+      const toast = document.getElementById('success-toast');
+      document.getElementById('success-message').textContent = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // 隐藏成功提示
+    function hideSuccessToast() {
+      document.getElementById('success-toast').classList.add('hidden');
+    }
+
+    // 更新加载进度
+    function updateLoadingProgress(message) {
+      document.getElementById('loading-progress').textContent = message;
+    }
+
+    // 安全的JSON解析
+    function safeJsonParse(str, defaultValue = null) {
+      try {
+        return JSON.parse(str);
+      } catch (e) {
+        console.error('JSON解析失败:', e);
+        return defaultValue;
+      }
+    }
+
+    // 从AI响应中提取JSON
+    function extractJsonFromResponse(response) {
+      // 尝试直接解析
+      let result = safeJsonParse(response);
+      if (result) return result;
+      
+      // 尝试提取JSON部分
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = safeJsonParse(jsonMatch[0]);
+        if (result) return result;
+      }
+      
+      // 尝试提取代码块中的JSON
+      const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        result = safeJsonParse(codeBlockMatch[1]);
+        if (result) return result;
+      }
+      
+      return null;
+    }
+
+    // 检查API连接状态
+    async function checkApiConnection() {
+      try {
+        updateLoadingProgress('检查API连接...');
+        const response = await fetch(DEEPSEEK_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: '测试连接' }],
+            max_tokens: 10
+          })
+        });
+
+        if (response.ok) {
+          updateApiStatus(true);
+          isApiConnected = true;
+        } else {
+          updateApiStatus(false);
+          isApiConnected = false;
+        }
+      } catch (error) {
+        updateApiStatus(false);
+        isApiConnected = false;
+      }
+    }
+
+    // 更新API状态显示
+    function updateApiStatus(connected) {
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      
+      if (connected) {
+        statusDot.className = 'w-2 h-2 rounded-full bg-success mr-2 animate-pulse';
+        statusText.textContent = 'DeepSeek已连接';
+      } else {
+        statusDot.className = 'w-2 h-2 rounded-full bg-danger mr-2';
+        statusText.textContent = '连接失败';
+      }
+    }
+
+    // 调用DeepSeek API（带重试机制）
+    async function callDeepSeekAPI(prompt, systemPrompt = '', retryCount = 0) {
+      if (!isApiConnected) {
+        await checkApiConnection();
+        if (!isApiConnected) {
+          throw new Error('DeepSeek API连接失败，请检查网络或API密钥');
+        }
+      }
+
+      document.getElementById('loading-modal').classList.remove('hidden');
+      updateLoadingProgress(`正在分析${retryCount > 0 ? `(重试 ${retryCount}/${MAX_RETRIES})` : ''}...`);
+
+      try {
+        const messages = [
+          {
+            role: 'system',
+            content: systemPrompt || '你是一个专业的股市分析师，具有丰富的投资经验和深入的市场洞察力。请基于用户提供的信息，提供专业、准确、实用的股市分析和建议。请严格按照JSON格式返回结果。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ];
+
+        const response = await fetch(DEEPSEEK_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: messages,
+            max_tokens: 2000,
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+      } catch (error) {
+        console.error('DeepSeek API调用失败:', error);
+        
+        if (retryCount < MAX_RETRIES) {
+          updateLoadingProgress(`失败，${RETRY_DELAY/1000}秒后重试...`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return callDeepSeekAPI(prompt, systemPrompt, retryCount + 1);
+        }
+        
+        throw error;
+      } finally {
+        document.getElementById('loading-modal').classList.add('hidden');
+        updateLoadingProgress('');
+      }
+    }
+
+    // 初始化市场数据监控
+    function initMarketMonitoring() {
+      // 初始化市场热点图
+      const ctx = document.getElementById('marketHeatmap');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'bubble',
+          data: {
+            datasets: [{
+              label: '市场热点',
+              data: [
+                { x: 10, y: 20, r: 15, label: '新能源汽车' },
+                { x: 15, y: 10, r: 10, label: '半导体' },
+                { x: 25, y: 15, r: 8, label: '医药生物' },
+                { x: 30, y: 25, r: 12, label: '人工智能' },
+                { x: 20, y: 30, r: 6, label: '5G通信' },
+                { x: 35, y: 5, r: 9, label: '新材料' },
+                { x: 5, y: 35, r: 11, label: '消费电子' },
+                { x: 40, y: 20, r: 7, label: '金融科技' }
+              ],
+              backgroundColor: function(context) {
+                const value = context.dataset.data[context.dataIndex];
+                const colors = ['#00B42A', '#165DFF', '#FF7D00', '#F53F3F'];
+                return colors[Math.floor(Math.random() * colors.length)];
+              }
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return context.raw.label;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                display: false
+              },
+              y: {
+                display: false
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // 初始化事件监听
+    document.addEventListener('DOMContentLoaded', () => {
+      // 初始化缓存
+      initCache();
+      
+      // 初始化市场监控
+      initMarketMonitoring();
+      
+      // 检查API连接
+      checkApiConnection();
+
+      // 清除缓存按钮
+      document.getElementById('cache-clear-btn').addEventListener('click', clearCache);
+
+      // 关键词分析按钮
+      document.getElementById('analyze-btn').addEventListener('click', async () => {
+        const input = document.getElementById('keyword-input').value.trim();
+        if (!input) {
+          showErrorToast('请输入要分析的内容');
+          return;
+        }
+        
+        // 检查缓存
+        const cacheKey = `keyword_${input}`;
+        const cachedResult = getCachedData(cacheKey);
+        if (cachedResult) {
+          displayKeywordAnalysis(cachedResult);
+          showSuccessToast('使用缓存数据');
+          return;
+        }
+        
+        try {
+          const prompt = `请分析以下文本内容：${input}
+
+要求：
+1. 提取3-5个最重要的关键词
+2. 分析这些关键词对股市各板块的影响
+3. 对每个受影响的板块，说明影响程度（正面/负面/中性）和具体原因
+4. 必须严格按JSON格式返回结果，不要包含任何其他文字说明：
+{
+  "keywords": ["关键词1", "关键词2", "关键词3"],
+  "sectors": [
+    {
+      "name": "板块名称",
+      "impact": "正面/负面/中性",
+      "description": "具体影响描述"
+    }
+  ]
+}`;
+
+          const response = await callDeepSeekAPI(prompt);
+          const result = extractJsonFromResponse(response);
+          
+          if (!result) {
+            throw new Error('AI返回的格式不正确，请重试');
+          }
+          
+          // 缓存结果
+          setCachedData(cacheKey, result);
+          
+          // 显示结果
+          displayKeywordAnalysis(result);
+          showSuccessToast('分析完成');
+        } catch (error) {
+          showErrorToast(`分析失败：${error.message}`);
+        }
+      });
+
+      // 显示关键词分析结果
+      function displayKeywordAnalysis(result) {
+        // 显示关键词
+        const keywordsContainer = document.getElementById('keywords-container');
+        keywordsContainer.innerHTML = '';
+        result.keywords.forEach(keyword => {
+          const span = document.createElement('span');
+          span.className = 'bg-primary/10 text-primary px-3 py-1 rounded-full text-sm fade-in';
+          span.textContent = keyword;
+          keywordsContainer.appendChild(span);
+        });
+        
+        // 显示板块分析
+        const sectorsContainer = document.getElementById('sectors-container');
+        sectorsContainer.innerHTML = '';
+        result.sectors.forEach(sector => {
+          const div = document.createElement('div');
+          div.className = 'p-3 bg-white rounded-lg shadow-sm card-hover fade-in';
+          
+          const impactClass = sector.impact === '正面' ? 'text-success' : 
+                             sector.impact === '负面' ? 'text-danger' : 'text-neutral-500';
+          const impactIcon = sector.impact === '正面' ? 'fa-arrow-up' : 
+                            sector.impact === '负面' ? 'fa-arrow-down' : 'fa-minus';
+          
+          div.innerHTML = `
+            <div class="flex justify-between items-center">
+              <span class="font-medium">${sector.name}</span>
+              <span class="${impactClass} text-sm flex items-center">
+                <i class="fa ${impactIcon} mr-1"></i>${sector.impact}影响
+              </span>
+            </div>
+            <p class="text-sm text-neutral-400 mt-1">${sector.description}</p>
+          `;
+          sectorsContainer.appendChild(div);
+          
+          // 添加到板块选择下拉菜单
+          const select = document.getElementById('sector-select');
+          if (!Array.from(select.options).some(opt => opt.value === sector.name)) {
+            const option = document.createElement('option');
+            option.value = sector.name;
+            option.textContent = sector.name;
+            select.appendChild(option);
+          }
+        });
+      }
+
+      // 政策搜索按钮
+      document.getElementById('search-policy-btn').addEventListener('click', async () => {
+        const input = document.getElementById('policy-search').value.trim();
+        const region = document.getElementById('policy-region').value;
+        
+        // 检查缓存
+        const cacheKey = `policy_${input}_${region}`;
+        const cachedResult = getCachedData(cacheKey);
+        if (cachedResult) {
+          displayPolicyResults(cachedResult);
+          showSuccessToast('使用缓存数据');
+          return;
+        }
+        
+        try {
+          const regionText = region === 'cn' ? '中国' : 
+                           region === 'us' ? '美国' : 
+                           region === 'eu' ? '欧盟' : 
+                           region === 'jp' ? '日本' : '全球';
+          
+          const prompt = `请搜索${regionText}关于${input || '最新'}的政策信息，返回3-5个最重要的政策。
+要求：
+1. 包含政策标题、发布日期、发布机构
+2. 简要概述政策内容（100字以内）
+3. 说明对股市的潜在影响
+4. 必须严格按JSON格式返回，不要包含任何其他文字说明：
+{
+  "policies": [
+    {
+      "title": "政策标题",
+      "date": "2023-06-15",
+      "source": "发布机构",
+      "summary": "政策概述",
+      "impact": "对股市的影响"
+    }
+  ]
+}`;
+
+          const response = await callDeepSeekAPI(prompt);
+          const result = extractJsonFromResponse(response);
+          
+          if (!result) {
+            throw new Error('AI返回的格式不正确，请重试');
+          }
+          
+          // 缓存结果
+          setCachedData(cacheKey, result);
+          
+          // 显示结果
+          displayPolicyResults(result);
+          showSuccessToast('搜索完成');
+        } catch (error) {
+          showErrorToast(`搜索失败：${error.message}`);
+        }
+      });
+
+      // 显示政策搜索结果
+      function displayPolicyResults(result) {
+        const container = document.getElementById('policies-container');
+        container.innerHTML = '';
+        
+        result.policies.forEach(policy => {
+          const div = document.createElement('div');
+          div.className = 'min-w-[300px] bg-neutral-100 rounded-lg p-4 card-hover snap-start fade-in';
+          div.innerHTML = `
+            <div class="text-xs text-neutral-400 mb-2">${policy.date} · ${policy.source}</div>
+            <h3 class="font-medium mb-2 line-clamp-2">${policy.title}</h3>
+            <p class="text-sm text-neutral-500 line-clamp-3 mb-3">${policy.summary}</p>
+            <div class="text-xs text-primary mb-2">${policy.impact}</div>
+            <a href="#" class="text-primary text-sm flex items-center">
+              查看详情 <i class="fa fa-angle-right ml-1"></i>
+            </a>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      // 板块股票推荐
+      document.getElementById('sector-select').addEventListener('change', async function() {
+        const sector = this.value;
+        if (!sector) return;
+        
+        // 检查缓存
+        const cacheKey = `stocks_${sector}`;
+        const cachedResult = getCachedData(cacheKey);
+        if (cachedResult) {
+          displayStockRecommendations(cachedResult);
+          showSuccessToast('使用缓存数据');
+          return;
+        }
+        
+        try {
+          const prompt = `请为${sector}推荐3-5只优质股票，要求：
+1. 包含股票名称、代码
+2. 给出1-5星的推荐指数
+3. 列出推荐理由（业绩增长、政策利好、技术优势等）
+4. 提供参考价格和涨跌幅
+5. 必须严格按JSON格式返回，不要包含任何其他文字说明：
+{
+  "stocks": [
+    {
+      "name": "股票名称",
+      "code": "股票代码",
+      "rating": 4.5,
+      "reasons": ["理由1", "理由2"],
+      "price": "参考价格",
+      "change": "涨跌幅",
+      "analysis": "简要分析"
+    }
+  ]
+}`;
+
+          const response = await callDeepSeekAPI(prompt);
+          const result = extractJsonFromResponse(response);
+          
+          if (!result) {
+            throw new Error('AI返回的格式不正确，请重试');
+          }
+          
+          // 缓存结果
+          setCachedData(cacheKey, result);
+          
+          // 显示结果
+          displayStockRecommendations(result);
+          showSuccessToast('推荐完成');
+        } catch (error) {
+          showErrorToast(`获取推荐失败：${error.message}`);
+        }
+      });
+
+      // 显示股票推荐
+      function displayStockRecommendations(result) {
+        const tableBody = document.getElementById('stocks-table-body');
+        tableBody.innerHTML = '';
+        
+        result.stocks.forEach(stock => {
+          const row = document.createElement('tr');
+          row.className = 'border-b border-neutral-100 hover:bg-neutral-50 transition-colors fade-in';
+          
+          // 生成星级评分
+          let stars = '';
+          for (let i = 1; i <= 5; i++) {
+            if (i <= Math.floor(stock.rating)) {
+              stars += '<i class="fa fa-star text-yellow-400"></i>';
+            } else if (i - stock.rating <= 0.5) {
+              stars += '<i class="fa fa-star-half-o text-yellow-400"></i>';
+            } else {
+              stars += '<i class="fa fa-star-o text-yellow-400"></i>';
+            }
+          }
+          
+          // 生成理由标签
+          let reasonsHtml = '';
+          stock.reasons.forEach(reason => {
+            reasonsHtml += `<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs mr-1">${reason}</span>`;
+          });
+          
+          // 涨跌幅颜色
+          const changeClass = stock.change.startsWith('+') ? 'text-success' : 'text-danger';
+          
+          row.innerHTML = `
+            <td class="py-3 text-sm">
+              <div>
+                <div class="font-medium">${stock.name}</div>
+                <div class="text-neutral-400">${stock.code}</div>
+              </div>
+            </td>
+            <td class="py-3">
+              <div class="flex text-yellow-400">
+                ${stars}
+              </div>
+            </td>
+            <td class="py-3 text-sm">
+              <div>
+                ${reasonsHtml}
+                <div class="text-xs text-neutral-400 mt-1">${stock.analysis}</div>
+              </div>
+            </td>
+            <td class="py-3 text-sm font-medium">${stock.price}</td>
+            <td class="py-3 text-sm ${changeClass} font-medium">${stock.change}</td>
+            <td class="py-3 text-sm">
+              <button class="text-primary hover:text-primary/80 detail-btn" data-stock='${JSON.stringify(stock)}'>
+                <i class="fa fa-eye"></i> 详情
+              </button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+        
+        // 添加详情按钮事件
+        document.querySelectorAll('.detail-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const stock = JSON.parse(this.getAttribute('data-stock'));
+            showStockDetail(stock);
+          });
+        });
+      }
+
+      // 个股分析按钮
+      document.getElementById('analyze-stock-btn').addEventListener('click', async () => {
+        const input = document.getElementById('stock-input').value.trim();
+        if (!input) {
+          showErrorToast('请输入股票名称或代码');
+          return;
+        }
+        
+        // 检查缓存
+        const cacheKey = `stock_${input}`;
+        const cachedResult = getCachedData(cacheKey);
+        if (cachedResult) {
+          displayStockAnalysis(cachedResult);
+          showSuccessToast('使用缓存数据');
+          return;
+        }
+        
+        try {
+          const prompt = `请对${input}进行深度分析，要求：
+1. 基本面分析：财务指标、公司概况、行业地位
+2. 技术面分析：趋势判断、支撑位、压力位
+3. 市场情绪：机构关注度、新闻舆情
+4. 投资建议：综合评级、目标价位、风险提示
+5. 必须严格按JSON格式返回，不要包含任何其他文字说明：
+{
+  "stock": {
+    "name": "股票名称",
+    "code": "股票代码",
+    "basic": {
+      "pe": "市盈率",
+      "pb": "市净率",
+      "netProfitGrowth": "净利润增长",
+      "grossMargin": "毛利率",
+      "overview": "公司概述",
+      "industry": "所属行业",
+      "marketCap": "市值",
+      "rating": "投资评级",
+      "targetPrice": "目标价",
+      "potentialGain": "潜在涨幅"
+    },
+    "technical": {
+      "trend": "趋势判断",
+      "supportLevel": "支撑位",
+      "resistanceLevel": "压力位"
+    },
+    "sentiment": "市场情绪分析"
+  }
+}`;
+
+          const response = await callDeepSeekAPI(prompt);
+          const result = extractJsonFromResponse(response);
+          
+          if (!result) {
+            throw new Error('AI返回的格式不正确，请重试');
+          }
+          
+          // 缓存结果
+          setCachedData(cacheKey, result);
+          
+          // 显示结果
+          displayStockAnalysis(result);
+          showSuccessToast('分析完成');
+        } catch (error) {
+          showErrorToast(`分析失败：${error.message}`);
+        }
+      });
+
+      // 显示个股分析结果
+      function displayStockAnalysis(result) {
+        if (result.stock) {
+          const stock = result.stock;
+          
+          // 创建标签页
+          const tabsContainer = document.getElementById('stock-tabs');
+          tabsContainer.innerHTML = `
+            <li class="mr-2" role="presentation">
+              <button class="inline-block p-4 border-b-2 border-primary text-primary rounded-t-lg" id="basic-tab" data-tabs-target="#basic" type="button" role="tab" aria-selected="true">基本分析</button>
+            </li>
+            <li class="mr-2" role="presentation">
+              <button class="inline-block p-4 border-b-2 border-transparent text-neutral-400 hover:text-neutral-600 hover:border-neutral-300 rounded-t-lg" id="tech-tab" data-tabs-target="#tech" type="button" role="tab" aria-selected="false">技术面分析</button>
+            </li>
+            <li role="presentation">
+              <button class="inline-block p-4 border-b-2 border-transparent text-neutral-400 hover:text-neutral-600 hover:border-neutral-300 rounded-t-lg" id="sentiment-tab" data-tabs-target="#sentiment" type="button" role="tab" aria-selected="false">市场情绪</button>
+            </li>
+          `;
+          
+          // 创建标签页内容
+          const contentContainer = document.getElementById('stock-tab-contents');
+          contentContainer.innerHTML = `
+            <div class="block p-4 fade-in" id="basic" role="tabpanel">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-neutral-100/50 p-4 rounded-lg">
+                  <h4 class="font-medium text-neutral-500 mb-3">财务指标</h4>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span>市盈率(PE)</span>
+                      <span>${stock.basic.pe}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>市净率(PB)</span>
+                      <span>${stock.basic.pb}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>净利润增长率</span>
+                      <span class="text-success">${stock.basic.netProfitGrowth}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>毛利率</span>
+                      <span>${stock.basic.grossMargin}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="bg-neutral-100/50 p-4 rounded-lg">
+                  <h4 class="font-medium text-neutral-500 mb-3">公司概况</h4>
+                  <p class="text-sm text-neutral-600">${stock.basic.overview}</p>
+                  <div class="mt-3 text-sm">
+                    <div class="flex justify-between">
+                      <span>行业</span>
+                      <span>${stock.basic.industry}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>市值</span>
+                      <span>${stock.basic.marketCap}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="bg-neutral-100/50 p-4 rounded-lg">
+                  <h4 class="font-medium text-neutral-500 mb-3">综合评级</h4>
+                  <div class="flex justify-center my-4">
+                    <div class="text-4xl font-bold text-primary">${stock.basic.rating}</div>
+                  </div>
+                  <div class="text-center text-sm">
+                    <div class="mb-2">分析师平均目标价: <span class="font-medium">${stock.basic.targetPrice}</span></div>
+                    <div>潜在涨幅: <span class="text-success font-medium">${stock.basic.potentialGain}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="hidden p-4" id="tech" role="tabpanel">
+              <div class="bg-neutral-100/50 p-4 rounded-lg mb-6">
+                <h4 class="font-medium text-neutral-500 mb-3">技术指标分析</h4>
+                <div class="h-[300px] flex items-center justify-center bg-white rounded-lg">
+                  <canvas id="stockChart"></canvas>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-neutral-100/50 p-4 rounded-lg text-center">
+                  <div class="text-neutral-500 text-sm mb-1">趋势判断</div>
+                  <div class="font-medium">${stock.technical.trend}</div>
+                </div>
+                <div class="bg-neutral-100/50 p-4 rounded-lg text-center">
+                  <div class="text-neutral-500 text-sm mb-1">支撑位</div>
+                  <div class="font-medium">${stock.technical.supportLevel}</div>
+                </div>
+                <div class="bg-neutral-100/50 p-4 rounded-lg text-center">
+                  <div class="text-neutral-500 text-sm mb-1">压力位</div>
+                  <div class="font-medium">${stock.technical.resistanceLevel}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="hidden p-4" id="sentiment" role="tabpanel">
+              <div class="bg-neutral-100/50 p-4 rounded-lg">
+                <h4 class="font-medium text-neutral-500 mb-3">市场情绪分析</h4>
+                <p class="mb-4">${stock.sentiment}</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <h5 class="text-sm font-medium text-neutral-500 mb-3">机构持仓变化</h5>
+                    <div class="h-[200px] bg-white rounded-lg p-2">
+                      <canvas id="institutionChart"></canvas>
+                    </div>
+                  </div>
+                  <div>
+                    <h5 class="text-sm font-medium text-neutral-500 mb-3">近期新闻热度</h5>
+                    <div class="space-y-3">
+                      <div class="bg-white p-3 rounded-lg text-sm">
+                        <div class="font-medium mb-1">${stock.name}公告利好消息</div>
+                        <div class="text-neutral-400 text-xs">最新 · 正面</div>
+                      </div>
+                      <div class="bg-white p-3 rounded-lg text-sm">
+                        <div class="font-medium mb-1">机构发布研报评级</div>
+                        <div class="text-neutral-400 text-xs">近期 · 正面</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          // 初始化标签页切换
+          document.querySelectorAll('#stock-tabs button').forEach(button => {
+            button.addEventListener('click', () => {
+              // 移除所有活动状态
+              document.querySelectorAll('#stock-tabs button').forEach(btn => {
+                btn.classList.remove('border-primary', 'text-primary');
+                btn.classList.add('border-transparent', 'text-neutral-400');
+                btn.setAttribute('aria-selected', 'false');
+              });
+              
+              // 隐藏所有内容
+              document.querySelectorAll('#stock-tab-contents > div').forEach(content => {
+                content.classList.add('hidden');
+              });
+              
+              // 激活当前标签
+              button.classList.remove('border-transparent', 'text-neutral-400');
+              button.classList.add('border-primary', 'text-primary');
+              button.setAttribute('aria-selected', 'true');
+              
+              // 显示当前内容
+              const target = button.getAttribute('data-tabs-target');
+              document.querySelector(target).classList.remove('hidden');
+              
+              // 如果是技术面分析，初始化图表
+              if (target === '#tech') {
+                setTimeout(() => initStockChart(stock.name), 100);
+              }
+              
+              // 如果是市场情绪，初始化机构持仓图表
+              if (target === '#sentiment') {
+                setTimeout(() => initInstitutionChart(), 100);
+              }
+            });
+          });
+        }
+      }
+
+      // AI顾问按钮
+      document.getElementById('ask-advisor-btn').addEventListener('click', async () => {
+        const input = document.getElementById('advisor-input').value.trim();
+        if (!input) {
+          showErrorToast('请输入您的问题');
+          return;
+        }
+        
+        // 检查缓存
+        const cacheKey = `advisor_${input}`;
+        const cachedResult = getCachedData(cacheKey);
+        if (cachedResult) {
+          displayAdvisorResponse(cachedResult);
+          showSuccessToast('使用缓存数据');
+          return;
+        }
+        
+        try {
+          const prompt = `作为专业的投资顾问，请回答以下问题：${input}
+
+要求：
+1. 提供专业、准确的投资建议
+2. 分析当前市场环境
+3. 给出具体操作建议
+4. 提示相关风险
+5. 语言简洁明了，重点突出`;
+
+          const response = await callDeepSeekAPI(prompt, '你是一个经验丰富的专业投资顾问，具有深厚的金融市场知识和实战经验。请为投资者提供专业、客观、实用的投资建议。');
+          
+          // 缓存结果
+          setCachedData(cacheKey, response);
+          
+          // 显示结果
+          displayAdvisorResponse(response);
+          showSuccessToast('咨询完成');
+        } catch (error) {
+          showErrorToast(`咨询失败：${error.message}`);
+        }
+      });
+
+      // 显示AI顾问回复
+      function displayAdvisorResponse(response) {
+        const responseDiv = document.getElementById('advisor-response');
+        responseDiv.classList.remove('hidden');
+        responseDiv.innerHTML = `
+          <h4 class="font-medium mb-3 flex items-center">
+            <i class="fa fa-user-md text-primary mr-2"></i>AI投资顾问回复
+          </h4>
+          <div class="bg-neutral-100/50 p-4 rounded-lg fade-in">
+            <p class="text-sm whitespace-pre-line">${response}</p>
+          </div>
+        `;
+      }
+
+      // 快速咨询按钮
+      document.querySelectorAll('.advisor-question').forEach(button => {
+        button.addEventListener('click', async function() {
+          const question = this.textContent.trim();
+          document.getElementById('advisor-input').value = question;
+          document.getElementById('ask-advisor-btn').click();
+        });
+      });
+
+      // 重置按钮
+      document.getElementById('reset-btn').addEventListener('click', () => {
+        // 清空输入
+        document.getElementById('keyword-input').value = '';
+        document.getElementById('policy-search').value = '';
+        document.getElementById('stock-input').value = '';
+        document.getElementById('advisor-input').value = '';
+        
+        // 重置板块选择
+        const sectorSelect = document.getElementById('sector-select');
+        sectorSelect.innerHTML = '<option value="">请先进行板块分析</option>';
+        
+        // 重置结果区域
+        document.getElementById('keywords-container').innerHTML = '<div class="text-neutral-400 italic">DeepSeek分析结果将显示在这里</div>';
+        document.getElementById('sectors-container').innerHTML = '<div class="text-neutral-400 italic">DeepSeek分析结果将显示在这里</div>';
+        document.getElementById('policies-container').innerHTML = '<div class="min-w-full text-center py-8 text-neutral-400"><i class="fa fa-search text-4xl mb-3 opacity-30"></i><p>使用DeepSeek搜索政策获取最新热点信息</p></div>';
+        document.getElementById('stocks-table-body').innerHTML = '<tr><td colspan="6" class="py-8 text-center text-neutral-400"><i class="fa fa-robot text-4xl mb-3 opacity-30"></i><p>选择板块查看DeepSeek AI推荐股票</p></td></tr>';
+        document.getElementById('stock-tabs').innerHTML = '';
+        document.getElementById('stock-tab-contents').innerHTML = '<div class="py-12 text-center text-neutral-400"><i class="fa fa-brain text-4xl mb-3 opacity-30"></i><p>输入股票名称获取DeepSeek AI深度分析</p></div>';
+        document.getElementById('advisor-response').classList.add('hidden');
+        
+        showSuccessToast('已重置所有内容');
+      });
+
+      // 政策滚动按钮
+      document.querySelectorAll('.policy-scroll-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const container = document.getElementById('policies-container');
+          const scrollAmount = 320;
+          
+          if (this.getAttribute('data-direction') === 'left') {
+            container.scrollLeft -= scrollAmount;
+          } else {
+            container.scrollLeft += scrollAmount;
+          }
+        });
+      });
+
+      // 初始化股票图表
+      function initStockChart(stockName) {
+        const canvas = document.getElementById('stockChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // 生成模拟数据
+        const dates = [];
+        const prices = [];
+        const today = new Date();
+        
+        for (let i = 30; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          dates.push(date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }));
+          
+          // 生成随机价格
+          const basePrice = 100 + Math.random() * 100;
+          const randomPrice = basePrice + (Math.random() * 20 - 10);
+          prices.push(randomPrice.toFixed(2));
+        }
+        
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: dates,
+            datasets: [{
+              label: `${stockName} 股价 (元)`,
+              data: prices,
+              borderColor: '#165DFF',
+              backgroundColor: 'rgba(22, 93, 255, 0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+              pointHoverRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: false,
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+                }
+              },
+              x: {
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  maxTicksLimit: 8
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 初始化机构持仓图表
+      function initInstitutionChart() {
+        const canvas = document.getElementById('institutionChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+            datasets: [{
+              label: '机构数量',
+              data: [245, 312, 389, 456],
+              backgroundColor: 'rgba(22, 93, 255, 0.7)',
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+                }
+              },
+              x: {
+                grid: {
+                  display: false
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 显示股票详情
+      function showStockDetail(stock) {
+        const detailHtml = `
+          <div class="bg-white p-6 rounded-xl shadow-lg max-w-md mx-auto">
+            <h3 class="text-lg font-semibold mb-4">${stock.name} (${stock.code})</h3>
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-neutral-500">推荐指数:</span>
+                <div class="flex text-yellow-400">
+                  ${Array.from({length: 5}, (_, i) => 
+                    i < Math.floor(stock.rating) ? '<i class="fa fa-star"></i>' : 
+                    i - stock.rating < 1 ? '<i class="fa fa-star-half-o"></i>' : 
+                    '<i class="fa fa-star-o"></i>'
+                  ).join('')}
+                  <span class="ml-2 text-neutral-600">${stock.rating}</span>
+                </div>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-neutral-500">参考价格:</span>
+                <span class="font-medium">${stock.price}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-neutral-500">涨跌幅:</span>
+                <span class="${stock.change.startsWith('+') ? 'text-success' : 'text-danger'} font-medium">${stock.change}</span>
+              </div>
+              <div>
+                <span class="text-neutral-500">推荐理由:</span>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  ${stock.reasons.map(reason => 
+                    `<span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs">${reason}</span>`
+                  ).join('')}
+                </div>
+              </div>
+              <div>
+                <span class="text-neutral-500">简要分析:</span>
+                <p class="mt-2 text-sm text-neutral-600">${stock.analysis}</p>
+              </div>
+            </div>
+            <button class="mt-4 w-full bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors" onclick="this.closest('.bg-white').remove()">
+              关闭
+            </button>
+          </div>
+        `;
+        
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 fade-in';
+        modal.innerHTML = detailHtml;
+        document.body.appendChild(modal);
+        
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
