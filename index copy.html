@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<!-- saved from url=(0084)file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/mdformat/index%20copy.html -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线工具集</title>
+    <style>
+        :root {
+            --color-pink: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            --color-green: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            --color-blue: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+            --color-purple: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+            --color-orange: linear-gradient(135deg, #fdbb2d 0%, #22c1c3 100%);
+            --color-yellow: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            
+            --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.12);
+            --shadow-heavy: 0 12px 40px rgba(0, 0, 0, 0.15);
+            
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+            z-index: -2;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* 头部样式 */
+        .header {
+            text-align: center;
+            padding: 60px 20px 40px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            z-index: -1;
+        }
+        
+        .title {
+            font-size: 3.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            font-weight: 800;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .subtitle {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        /* 分类按钮 */
+        .category-filter {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .category-btn {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .category-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .category-btn:hover::before {
+            left: 100%;
+        }
+        
+        .category-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .category-btn.active {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        /* 工具组样式 */
+        .tool-group {
+            margin-bottom: 60px;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .group-title {
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 30px;
+        }
+
+        /* 工具卡片样式 */
+        .tool-card {
+            text-decoration: none;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 200px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: inherit;
+            filter: brightness(1.1);
+            transition: all 0.4s ease;
+            z-index: -1;
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .tool-card:hover::before {
+            filter: brightness(1.2);
+        }
+
+        .tool-card.pink { 
+            background: var(--color-pink); 
+            color: #d63384;
+        }
+        .tool-card.green { 
+            background: var(--color-green); 
+            color: #0d6efd;
+        }
+        .tool-card.blue { 
+            background: var(--color-blue); 
+            color: #6f42c1;
+        }
+        .tool-card.purple { 
+            background: var(--color-purple); 
+            color: #e91e63;
+        }
+        .tool-card.orange { 
+            background: var(--color-orange); 
+            color: #fd7e14;
+        }
+        .tool-card.yellow { 
+            background: var(--color-yellow); 
+            color: #198754;
+        }
+
+        .tool-card.hidden {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+            pointer-events: none;
+            filter: blur(3px);
+        }
+
+        .tool-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .tool-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .tool-desc {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            line-height: 1.6;
+            padding: 0 15px;
+            font-weight: 400;
+        }
+
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 80px;
+        }
+
+        /* 返回顶部按钮 */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-heavy);
+            z-index: 1000;
+            font-size: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .back-to-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .back-to-top:hover {
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5rem;
+            }
+            
+            .subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .tool-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .tool-card {
+                min-height: 160px;
+            }
+            
+            .category-filter {
+                gap: 10px;
+            }
+            
+            .category-btn {
+                padding: 10px 18px;
+                font-size: 13px;
+            }
+            
+            .header {
+                padding: 40px 20px 30px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .tool-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 0 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="title">在线工具集</h1>
+        <p class="subtitle">简单、高效的在线工具集合</p>
+        <div class="category-filter">
+            <button class="category-btn active" data-category="all">全部</button>
+            <button class="category-btn" data-category="wxformat">微信排版</button>
+            <button class="category-btn" data-category="markdown">Markdown</button>
+            <button class="category-btn" data-category="data-converter">数据转换</button>
+            <button class="category-btn" data-category="utils">实用工具</button>
+            <button class="category-btn" data-category="games">小游戏</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 微信排版工具组 -->
+        <div class="tool-group">
+            <h2 class="group-title">微信排版工具</h2>
+            <div class="tool-grid">
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-artic/md-custom-style-demo-img-url-p2.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">🖼️</div>
+                    <div class="tool-name">URL双排图</div>
+                    <div class="tool-desc">使用URL链接的双列图片排版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-artic/md-custom-style-demo-img-url-p3.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">🖼️</div>
+                    <div class="tool-name">URL三排图</div>
+                    <div class="tool-desc">使用URL链接的三列图片排版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-artic/md-custom-style-demo-img-base64-p2.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">🖼️</div>
+                    <div class="tool-name">Base64双排图</div>
+                    <div class="tool-desc">使用Base64编码的双列图片排版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-artic/md-custom-style-demo-img-base64-p3.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">🖼️</div>
+                    <div class="tool-name">Base64三排图</div>
+                    <div class="tool-desc">使用Base64编码的三列图片排版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-word/md-custom-style-demo-word-base64-word-1.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-name">图片+艺术字</div>
+                    <div class="tool-desc">图片与艺术字结合的排版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-word/md-custom-style-demo-word-base64-word-2.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-name">文字框+图片</div>
+                    <div class="tool-desc">文字框与图片组合的排版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-word/md-custom-style-demo-word-base64-word-3.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-name">朋友圈+图片</div>
+                    <div class="tool-desc">朋友圈风格与图片的排版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/wxformat/image-word/md-custom-style-demo-word-base64-word-4.html" class="tool-card pink" data-category="wxformat">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-name">图书+图片</div>
+                    <div class="tool-desc">图书风格与图片的排版</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Markdown工具组 -->
+        <div class="tool-group">
+            <h2 class="group-title">Markdown工具</h2>
+            <div class="tool-grid">
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/markdown/md-custom-style-youhua-page.html" class="tool-card green" data-category="markdown">
+                    <div class="tool-icon">📝</div>
+                    <div class="tool-name">Markdown排版预览</div>
+                    <div class="tool-desc">实时预览Markdown排版效果</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/markdown/format-content.html" class="tool-card green" data-category="markdown">
+                    <div class="tool-icon">🔄</div>
+                    <div class="tool-name">文本转Markdown</div>
+                    <div class="tool-desc">将普通文本转换为Markdown格式</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/markdown/md-preview-index-mark-page.html" class="tool-card green" data-category="markdown">
+                    <div class="tool-icon">👁️</div>
+                    <div class="tool-name">Markdown预览</div>
+                    <div class="tool-desc">基础的Markdown渲染预览</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/mdformat/md-custom-format-demo1.html" class="tool-card green" data-category="markdown">
+                    <div class="tool-icon">📱</div>
+                    <div class="tool-name">公众号格式化</div>
+                    <div class="tool-desc">专为公众号内容优化的格式化工具</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/markdown/md-custom-style-youhua-tag.html" class="tool-card green" data-category="markdown">
+                    <div class="tool-icon">🎨</div>
+                    <div class="tool-name">自定义样式</div>
+                    <div class="tool-desc">自定义Markdown渲染HTML样式</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 数据转换工具组 -->
+        <div class="tool-group">
+            <h2 class="group-title">数据转换工具</h2>
+            <div class="tool-grid">
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/data-converter/CSV_JSON.html" class="tool-card blue" data-category="data-converter">
+                    <div class="tool-icon">📊</div>
+                    <div class="tool-name">CSV转JSON</div>
+                    <div class="tool-desc">将CSV数据转换为JSON格式，支持自定义列名</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/data-converter/JSON_CSV.html" class="tool-card blue" data-category="data-converter">
+                    <div class="tool-icon">📈</div>
+                    <div class="tool-name">JSON转CSV</div>
+                    <div class="tool-desc">将JSON数组数据转换为CSV格式，自动识别所有字段</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/htmltag/html-custom-url-tools.html" class="tool-card blue" data-category="data-converter">
+                    <div class="tool-icon">🔗</div>
+                    <div class="tool-name">HTML-URL提取</div>
+                    <div class="tool-desc">从HTML标签中提取URL链接</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 实用工具组 -->
+        <div class="tool-group">
+            <h2 class="group-title">实用工具</h2>
+            <div class="tool-grid">
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/utils/image/image-previewer.html" class="tool-card purple" data-category="utils">
+                    <div class="tool-icon">🖼️</div>
+                    <div class="tool-name">图片预览器</div>
+                    <div class="tool-desc">拖拽图片预览工具</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/utils/txt/txt-previewer.html" class="tool-card purple" data-category="utils">
+                    <div class="tool-icon">📄</div>
+                    <div class="tool-name">文本预览器</div>
+                    <div class="tool-desc">拖拽文件预览工具</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/shangshangqian/shangshangqian.html" class="tool-card purple" data-category="utils">
+                    <div class="tool-icon">💰</div>
+                    <div class="tool-name">上上签</div>
+                    <div class="tool-desc">便民生活工具</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 小游戏组 -->
+        <div class="tool-group">
+            <h2 class="group-title">娱乐工具</h2>
+            <div class="tool-grid">
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/games/CS_GO.html" class="tool-card orange" data-category="games">
+                    <div class="tool-icon">🎯</div>
+                    <div class="tool-name">CS:GO练枪</div>
+                    <div class="tool-desc">CS:GO练枪小游戏</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/games/CS_GO2.html" class="tool-card orange" data-category="games">
+                    <div class="tool-icon">🎯</div>
+                    <div class="tool-name">CS:GO练枪2</div>
+                    <div class="tool-desc">CS:GO练枪小游戏第二版</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/english-games/index.html" class="tool-card orange" data-category="games">
+                    <div class="tool-icon">🎓</div>
+                    <div class="tool-name">英语学习游戏</div>
+                    <div class="tool-desc">英语学习相关游戏</div>
+                </a>
+                <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/gupiao-games/demo-v2.html" class="tool-card orange" data-category="games">
+                    <div class="tool-icon">📈</div>
+                    <div class="tool-name">股票分析</div>
+                    <div class="tool-desc">股票数据分析工具</div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>© 2025 在线工具集 | 让工作更轻松</p>
+    </footer>
+    <a href="file:///E:/tools-workspace-github/LeeCommonWxMDFormatHtml/mdformat/index%20copy.html#" class="back-to-top visible">↑</a>
+    
+    <script>
+        // 返回顶部按钮逻辑
+        const backToTopButton = document.querySelector('.back-to-top');
+        
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+        });
+        
+        backToTopButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        
+        // 分类过滤功能
+        const categoryButtons = document.querySelectorAll('.category-btn');
+        const toolCards = document.querySelectorAll('.tool-card');
+        
+        // 过滤函数
+        function filterByCategory(category) {
+            toolCards.forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+        
+        // 为每个分类按钮添加点击事件
+        categoryButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // 移除所有按钮的active类
+                categoryButtons.forEach(btn => btn.classList.remove('active'));
+                // 为当前点击的按钮添加active类
+                button.classList.add('active');
+                // 执行过滤
+                filterByCategory(button.dataset.category);
+            });
+        });
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 默认显示所有工具
+            filterByCategory('all');
+        });
+    </script>
+
+</body></html>

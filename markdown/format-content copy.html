@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="文本转Markdown格式化工具">
+    <title>文本格式化工具</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 
+                        "Helvetica Neue", "PingFang SC", 
+                        "Microsoft YaHei", sans-serif;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .editor-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        #preview {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow-y: auto;
+            background: #fff;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .header {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 16px;
+            color: #333;
+            margin: 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #06ad56;
+        }
+
+        .btn.secondary {
+            background: #3498db;
+        }
+
+        .btn.secondary:hover {
+            background: #2980b9;
+        }
+
+        /* 返回主页按钮样式 */
+        .back-home {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: #ffd93d;
+            color: #333;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease, opacity 0.3s ease;
+            z-index: 1000;
+            opacity: 0.7;
+        }
+
+        .back-home:hover {
+            background: #ffc107;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            opacity: 0.9;
+        }
+
+        .back-home::before {
+            content: "🏠";
+            font-size: 16px;
+        }
+
+        /* 复制按钮样式 */
+        .copy-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 135px;
+            padding: 8px 15px;
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease, opacity 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0.3;
+        }
+
+        .copy-btn:hover {
+            background: #06ad56;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            opacity: 1;
+        }
+
+        .copy-btn::before {
+            content: "📋";
+            font-size: 16px;
+        }
+
+        /* 浮动提示样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #FFD1DC, #FFB5E8); /* 渐变马卡龙色 */
+            color: #444;
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast::before {
+            content: "🎈"; /* 更换为气球图标 */
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-home"> 返回主页</a>
+    <div class="container">
+        <div class="editor-box">
+            <div class="header">
+                <h3 class="title">原始文本</h3>
+                <div class="button-group">
+                    <button class="btn" onclick="loadSampleData()">加载示例</button>
+                    <button class="btn secondary" onclick="clearInput()">清空</button>
+                </div>
+            </div>
+            <textarea id="textInput" placeholder="请输入需要格式化的文本内容..."></textarea>
+        </div>
+        <div class="editor-box">
+            <div class="header">
+                <h3 class="title">Markdown预览</h3>
+            </div>
+            <div id="preview"></div>
+            <button class="copy-btn" onclick="copyMarkdown()">复制Markdown</button>
+        </div>
+    </div>
+
+    <!-- 添加提示元素 -->
+    <div id="toast" class="toast">复制成功！</div>
+
+    <script>
+        function formatToMarkdown(text) {
+            if (!text.trim()) return '';
+            
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            let markdown = [];
+            let inParagraph = false;
+            
+            // 如果没有明显的标题，添加一个自动生成的标题
+            if (!lines[0].startsWith('#')) {
+                const firstLine = lines[0].length > 40 ? '自动生成的标题' : lines[0];
+                markdown.push(`# ${firstLine}\n`);
+            }
+
+            function isImportantSentence(sentence) {
+                // 扩展关键词分类
+                const keywords = {
+                    // 重要性标记
+                    importance: ['重要', '关键', '核心', '注意', '警告', '切记', '谨记', '必须', '务必'],
+                    // 总结性标记
+                    summary: ['总结', '结论', '小结', '概述', '综上', '总的来说', '简而言之'],
+                    // 特点描述
+                    features: ['特点', '特征', '优势', '优点', '特色', '显著', '独特'],
+                    // 建议性内容
+                    suggestions: ['建议', '推荐', '应该', '提议', '不妨', '最好'],
+                    // 强调标记
+                    emphasis: ['尤其', '特别', '格外', '极其', '非常', '最为', '主要'],
+                    // 转折关系
+                    transition: ['但是', '然而', '不过', '相反', '反之'],
+                    // 因果关系
+                    causality: ['因此', '所以', '导致', '引起', '造成'],
+                    // 数据指标
+                    metrics: ['增长', '提升', '下降', '超过', '达到', '突破']
+                };
+                
+                // 检查句子中是否包含数字和单位的组合
+                const hasMetrics = /\d+\.?\d*\s*[%亿万元美元个]/.test(sentence);
+                
+                // 检查句子是否是短句（可能是重点）
+                const isShortEmphasis = sentence.length <= 15 && sentence.length >= 5;
+                
+                // 检查是否包含关键词
+                const hasKeyword = Object.values(keywords).some(category => 
+                    category.some(keyword => sentence.includes(keyword))
+                );
+                
+                // 检查是否包含引号（可能是重要引述）
+                const hasQuote = /["'""].*["'""]/.test(sentence);
+                
+                // 检查是否包含书名号（可能是重要术语）
+                const hasBookTitle = /《.*》/.test(sentence);
+                
+                // 综合判断
+                return hasKeyword || 
+                       (hasMetrics && sentence.length < 50) || // 数据相关的短句
+                       (isShortEmphasis && (hasQuote || hasBookTitle)) || // 带引用的短句
+                       (sentence.length < 20 && /[：:].+/.test(sentence)); // 短的解释性句子
+            }
+
+            function detectHeadingLevel(line) {
+                // 检测行应该作为几级标题
+                if (line.length <= 25 && /^[一二三四五六七八九十][、.．]\s*/.test(line)) {
+                    return 2; // 数字编号开头的短句作为二级标题
+                }
+                if (line.length <= 30 && /^\d+[、.．]\s*/.test(line)) {
+                    return 3; // 数字编号开头的短句作为三级标题
+                }
+                // 识别可能的标题模式
+                if (line.length <= 20 && (
+                    /^[【\[［].*[】\]］]$/.test(line) || // 方括号包围
+                    /^【.*】/.test(line) || // 方括号开头
+                    /^［.*］/.test(line) || // 全角方括号
+                    /^(\d+\.){2,3}\d+/.test(line) || // 多级数字编号
+                    /^[（(]([一二三四五六七八九十]|[1-9])[)）]/.test(line) || // 带括号的编号
+                    /^[一二三四五六七八九十]、/.test(line) || // 中文数字编号
+                    line.startsWith('关于') || // 政策文件常见开头
+                    line.startsWith('如何') || // 问题型标题
+                    /^[A-Z]\./.test(line) // 字母编号
+                )) {
+                    return 2; // 较短的句子作为二级标题
+                }
+                return 0; // 不作为标题
+            }
+
+            function formatParagraph(text) {
+                // 分句处理
+                const sentences = text.split(/([。！？；])/g).filter(s => s.trim());
+                return sentences.map((sentence, index, array) => {
+                    sentence = sentence.trim();
+                    // 保留句子结尾的标点
+                    const punctuation = array[index + 1] || '';
+                    
+                    if (isImportantSentence(sentence)) {
+                        // 如果句子已经包含加粗标记，则不重复添加
+                        if (sentence.includes('**')) {
+                            return sentence + punctuation;
+                        }
+                        return `**${sentence}**${punctuation}`;
+                    }
+                    return sentence + punctuation;
+                }).join('');
+            }
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // 跳过空行
+                if (!line) {
+                    inParagraph = false;
+                    markdown.push('');
+                    continue;
+                }
+
+                // 检测标题级别
+                const headingLevel = detectHeadingLevel(line);
+                if (headingLevel > 0) {
+                    inParagraph = false;
+                    markdown.push(`${'#'.repeat(headingLevel)} ${line}\n`);
+                    continue;
+                }
+
+                // 处理列表项
+                if (/^[•·\-\*]\s/.test(line) || /^\d+[.、]\s/.test(line)) {
+                    inParagraph = false;
+                    markdown.push(line);
+                    continue;
+                }
+
+                // 处理普通段落
+                if (!inParagraph) {
+                    markdown.push(formatParagraph(line));
+                    inParagraph = true;
+                } else {
+                    markdown[markdown.length - 1] += '\n' + formatParagraph(line);
+                }
+            }
+
+            return markdown.join('\n\n').replace(/。+/g, '。');
+        }
+
+        function updatePreview() {
+            const input = document.getElementById('textInput');
+            const preview = document.getElementById('preview');
+            preview.textContent = formatToMarkdown(input.value);
+        }
+
+        // 显示提示的函数
+        function showToast(message, duration = 2000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        function copyMarkdown() {
+            const preview = document.getElementById('preview');
+            const textarea = document.createElement('textarea');
+            textarea.value = preview.textContent;
+            document.body.appendChild(textarea);
+
+            try {
+                textarea.select();
+                document.execCommand('copy');
+                showToast('✨ Markdown已复制到剪贴板！');
+            } catch (err) {
+                showToast('❌ 复制失败，请手动复制');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function loadSampleData() {
+            const sampleText = `文本格式化工具使用指南
+这是一个强大的文本格式化工具，可以帮助你快速将普通文本转换为规范的Markdown格式。
+
+使用方法和特点
+1. 自动识别标题
+工具会自动识别可能的标题文本，并添加适当的标题级别。特别注意：短句和带编号的文本更容易被识别为标题。
+
+2. 智能段落处理
+工具会自动处理段落格式，使文本结构更加清晰。重要的是：段落之间会自动添加适当的空行。
+
+3. 重点内容识别
+系统会自动识别重要的句子和关键信息，并将其标记为粗体。注意：包含"重要"、"关键"等词的句子会被自动加粗。
+
+使用建议
+• 保持原始文本的基本结构
+• 适当添加分隔符和换行
+• 重要内容可以通过关键词标记
+
+最后总结
+这个工具的核心优势在于智能识别和自动格式化，能够显著提升文本排版效率。推荐经常处理文档的用户使用此工具，可以节省大量排版时间。`;
+            
+            document.getElementById('textInput').value = sampleText;
+            updatePreview();
+        }
+
+        function clearInput() {
+            document.getElementById('textInput').value = '';
+            document.getElementById('preview').textContent = '';
+        }
+
+        // 监听输入变化
+        document.getElementById('textInput').addEventListener('input', updatePreview);
+
+        // 初始加载示例数据
+        loadSampleData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>20种流行文章段落样式集合</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Roboto:wght@300;400;500&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600&family=Poppins:wght@300;400;500&family=Merriweather:wght@300;400;700&family=Open+Sans:wght@300;400;600&family=Raleway:wght@300;400;500&display=swap" rel="stylesheet">
+  
+  <!-- 自定义配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#8B5CF6',
+            neutral: {
+              50: '#F9FAFB',
+              100: '#F3F4F6',
+              200: '#E5E7EB',
+              300: '#D1D5DB',
+              800: '#1F2937',
+              900: '#111827',
+            },
+            accent: {
+              soft: '#F0F9FF',
+              warm: '#FEF3C7',
+              cool: '#E0E7FF',
+              muted: '#F3F4F6',
+            }
+          },
+          fontFamily: {
+            inter: ['Inter', 'sans-serif'],
+            roboto: ['Roboto', 'sans-serif'],
+            lato: ['Lato', 'sans-serif'],
+            montserrat: ['Montserrat', 'sans-serif'],
+            poppins: ['Poppins', 'sans-serif'],
+            raleway: ['Raleway', 'sans-serif'],
+            opensans: ['Open Sans', 'sans-serif'],
+            merriweather: ['Merriweather', 'serif'],
+            playfair: ['Playfair Display', 'serif'],
+            notoserif: ['Noto Serif SC', 'serif'],
+          },
+          boxShadow: {
+            'soft': '0 4px 20px rgba(0, 0, 0, 0.05)',
+            'elegant': '0 8px 30px rgba(0, 0, 0, 0.08)',
+            'subtle': '0 2px 10px rgba(0, 0, 0, 0.03)',
+          }
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .text-shadow-sm {
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .bg-texture {
+        background-image: url('https://picsum.photos/id/1015/1000/1000');
+        background-size: cover;
+        background-blend-mode: overlay;
+      }
+      .bg-paper {
+        background-color: #faf9f7;
+        background-image: 
+          linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+          linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+        background-size: 20px 20px;
+      }
+      .first-letter-drop:first-letter {
+        initial-letter: 3;
+        color: #3B82F6;
+        font-weight: 600;
+        margin-right: 0.5rem;
+      }
+      .paragraph-indent {
+        text-indent: 2rem;
+      }
+      .gradient-text {
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+    }
+  </style>
+</head>
+<body class="bg-neutral-50 font-inter text-neutral-800 min-h-screen">
+  <!-- 页面标题 -->
+  <header class="py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary/10 to-secondary/10">
+    <div class="max-w-6xl mx-auto text-center">
+      <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-neutral-900 mb-4">
+        20种流行文章段落样式
+      </h1>
+      <p class="text-lg text-neutral-700 max-w-3xl mx-auto">
+        精选现代网页设计中最受欢迎的段落排版样式，涵盖不同风格、色调和布局，可直接复制使用
+      </p>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+      <!-- 样式1: 极简现代 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-type"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式1: 极简现代</h2>
+        </div>
+        <div class="font-inter text-neutral-700 leading-relaxed mb-6">
+          极简主义强调去繁就简，通过清晰的排版和充足的留白创造舒适的阅读体验。这种风格适合各类正式文章，让内容成为焦点，减少视觉干扰。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-1 {
+  font-family: 'Inter', sans-serif;
+  color: #374151;
+  line-height: 1.7;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式2: 优雅衬线 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-secondary/10 text-secondary rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-book"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式2: 优雅衬线</h2>
+        </div>
+        <div class="font-notoserif text-neutral-800 leading-relaxed text-lg paragraph-indent mb-6">
+          衬线字体带来经典优雅的气质，适合文学作品、散文和正式文稿。首行缩进的排版方式延续了传统印刷美学，增强了文章的可读性和韵律感。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-2 {
+  font-family: 'Noto Serif SC', serif;
+  color: #1F2937;
+  line-height: 1.8;
+  font-size: 1.125rem;
+  margin-bottom: 1.75rem;
+  text-indent: 2rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式3: 深色模式 -->
+      <section class="bg-neutral-900 text-white rounded-xl shadow-elegant p-6 md:p-8 transition-all hover:shadow-lg">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-moon-o"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式3: 深色模式</h2>
+        </div>
+        <div class="font-roboto text-neutral-200 leading-relaxed mb-6 bg-neutral-800/50 p-6 rounded-lg">
+          深色模式减轻眼部疲劳，尤其适合夜间阅读。低亮度高对比度的配色方案，让文字清晰可读，同时营造沉浸式阅读氛围。
+        </div>
+        <div class="bg-neutral-800 p-4 rounded-lg text-sm text-neutral-300 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-3 {
+  font-family: 'Roboto', sans-serif;
+  color: #E5E7EB;
+  background-color: #1F2937;
+  line-height: 1.7;
+  font-size: 1rem;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式4: 柔和暖色 -->
+      <section class="bg-accent-warm/30 rounded-xl shadow-subtle p-6 md:p-8 transition-all hover:shadow-soft">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-amber-500/20 text-amber-600 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-sun-o"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式4: 柔和暖色</h2>
+        </div>
+        <div class="font-lato text-amber-900 leading-relaxed mb-6 bg-white/60 p-5 rounded-lg">
+          温暖柔和的色调带来亲切舒适的感觉，适合生活类、情感类文章。柔和的背景色与深色文字形成舒适对比，提升阅读愉悦感。
+        </div>
+        <div class="bg-white/80 p-4 rounded-lg text-sm text-amber-900/80 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-4 {
+  font-family: 'Lato', sans-serif;
+  color: #78350F;
+  background-color: rgba(254, 243, 199, 0.3);
+  line-height: 1.6;
+  font-size: 1rem;
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式5: 清新冷色 -->
+      <section class="bg-accent-cool/30 rounded-xl shadow-subtle p-6 md:p-8 transition-all hover:shadow-soft">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-blue-500/20 text-blue-600 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-tint"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式5: 清新冷色</h2>
+        </div>
+        <div class="font-poppins text-blue-900/80 leading-relaxed mb-6 bg-white/70 p-5 rounded-lg">
+          冷色调带来清新、专业的视觉感受，适合科技、财经、教育类内容。蓝色系传达信任和可靠感，让文章更具说服力。
+        </div>
+        <div class="bg-white/80 p-4 rounded-lg text-sm text-blue-900/70 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-5 {
+  font-family: 'Poppins', sans-serif;
+  color: #1E3A8A;
+  background-color: rgba(224, 231, 255, 0.3);
+  line-height: 1.65;
+  font-size: 1rem;
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式6: 复古印刷 -->
+      <section class="bg-paper rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-stone-500/20 text-stone-600 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-print"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式6: 复古印刷</h2>
+        </div>
+        <div class="font-merriweather text-stone-700 leading-loose mb-6 paragraph-indent">
+          模仿老式印刷品的质感，带有轻微的纸张纹理背景，字体选择经典衬线体，营造怀旧复古的阅读氛围，适合历史、文化类文章。
+        </div>
+        <div class="bg-white/70 p-4 rounded-lg text-sm text-stone-700 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-6 {
+  font-family: 'Merriweather', serif;
+  color: #44403C;
+  background-color: #faf9f7;
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+    linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+  background-size: 20px 20px;
+  line-height: 1.9;
+  font-size: 1rem;
+  text-indent: 2rem;
+  margin-bottom: 1.75rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式7: 强调首字 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-font"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式7: 强调首字</h2>
+        </div>
+        <div class="font-playfair text-neutral-800 leading-relaxed mb-6 first-letter-drop">
+          首字下沉是经典的排版技巧，能够吸引读者注意力，增加文章的视觉层次感。这种样式常见于杂志、书籍等印刷媒体，现在也广泛应用于网页设计中。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-7 {
+  font-family: 'Playfair Display', serif;
+  color: #1F2937;
+  line-height: 1.8;
+  font-size: 1.125rem;
+  margin-bottom: 1.75rem;
+}
+.paragraph-style-7:first-letter {
+  initial-letter: 3;
+  color: #3B82F6;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式8: 卡片式 -->
+      <section class="bg-white rounded-xl shadow-elegant p-6 md:p-8 transition-all hover:shadow-lg border border-neutral-100">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-secondary/10 text-secondary rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-th-large"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式8: 卡片式</h2>
+        </div>
+        <div class="font-montserrat text-neutral-700 leading-relaxed mb-6 bg-accent-soft p-6 rounded-lg border border-primary/10">
+          卡片式设计将段落内容封装在独立的容器中，通过边框、阴影和内边距创造层次感。这种样式适合展示重要信息、引用或特殊段落，让内容更加突出。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-8 {
+  font-family: 'Montserrat', sans-serif;
+  color: #374151;
+  background-color: #F0F9FF;
+  border: 1px solid #93C5FD;
+  line-height: 1.6;
+  font-size: 1rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.05);
+  margin-bottom: 1.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式9: 渐变文字 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-purple-500/10 text-purple-600 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-magic"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式9: 渐变文字</h2>
+        </div>
+        <div class="font-poppins leading-relaxed mb-6 text-lg font-medium">
+          <p class="gradient-text bg-gradient-to-r from-primary to-secondary">
+            渐变文字效果为普通段落增添视觉吸引力，适合标题下方的引导文字或需要强调的内容。柔和的渐变过渡让文字既醒目又不失优雅。
+          </p>
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-9 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #3B82F6, #8B5CF6);
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式10: 宽间距排版 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-green-500/10 text-green-600 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-align-justify"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式10: 宽间距排版</h2>
+        </div>
+        <div class="font-opensans text-neutral-700 leading-relaxed mb-6 tracking-wide">
+          增加字间距和行高，创造宽松舒适的阅读体验。这种排版方式适合长篇文章，减少阅读疲劳，提升内容的可读性，尤其在大屏幕设备上效果更佳。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-10 {
+  font-family: 'Open Sans', sans-serif;
+  color: #374151;
+  line-height: 1.9;
+  letter-spacing: 0.03em;
+  font-size: 1rem;
+  margin-bottom: 1.75rem;
+  word-spacing: 0.1em;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式11: 引用样式 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-neutral-200 text-neutral-700 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-quote-left"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式11: 引用样式</h2>
+        </div>
+        <div class="mb-6 pl-6 border-l-4 border-primary/30 italic font-playfair text-neutral-700 leading-relaxed">
+          "引用样式通过特殊的排版区分正文和引用内容，增强文章的层次感和专业性。斜体字体、左侧边框和缩进处理，让引用内容一目了然。"
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-11 {
+  font-family: 'Playfair Display', serif;
+  color: #374151;
+  font-style: italic;
+  line-height: 1.7;
+  font-size: 1.05rem;
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem;
+  border-left: 4px solid rgba(59, 130, 246, 0.3);
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式12: 紧凑排版 -->
+      <section class="bg-neutral-800 text-white rounded-xl shadow-elegant p-6 md:p-8 transition-all hover:shadow-lg">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-compress"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式12: 紧凑排版</h2>
+        </div>
+        <div class="font-inter text-neutral-300 leading-tight mb-6 text-sm">
+          紧凑排版适合信息密度较高的内容，如摘要、列表说明等。较小的字体和行高让更多内容在有限空间内展示，同时保持良好的可读性。
+        </div>
+        <div class="bg-neutral-700 p-4 rounded-lg text-sm text-neutral-300 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-12 {
+  font-family: 'Inter', sans-serif;
+  color: #D1D5DB;
+  background-color: #1F2937;
+  line-height: 1.5;
+  font-size: 0.9375rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式13: 手写风格 -->
+      <section class="bg-accent-muted rounded-xl shadow-subtle p-6 md:p-8 transition-all hover:shadow-soft">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-pink-500/20 text-pink-600 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-pencil"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式13: 手写风格</h2>
+        </div>
+        <div class="font-['Caveat',_cursive] text-neutral-800 leading-relaxed mb-6 text-lg">
+          手写风格字体带来亲切、随意的感觉，适合个人博客、生活记录、随笔等非正式内容。模拟手写的笔触让文字更具个性和温度。
+        </div>
+        <div class="bg-white/70 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-13 {
+  font-family: 'Caveat', cursive;
+  color: #1F2937;
+  background-color: #F3F4F6;
+  line-height: 1.6;
+  font-size: 1.125rem;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  transform: rotate(-0.5deg);
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式14: 高对比度 -->
+      <section class="bg-black text-white rounded-xl shadow-elegant p-6 md:p-8 transition-all hover:shadow-lg">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-white/20 text-white rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-adjust"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式14: 高对比度</h2>
+        </div>
+        <div class="font-bold font-roboto leading-relaxed mb-6">
+          黑白高对比度设计确保文字在任何设备上都清晰可读，适合需要强调的重要信息。粗体字加重视觉冲击力，让内容更具表现力。
+        </div>
+        <div class="bg-neutral-900 p-4 rounded-lg text-sm text-neutral-300 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-14 {
+  font-family: 'Roboto', sans-serif;
+  color: #FFFFFF;
+  background-color: #000000;
+  font-weight: 500;
+  line-height: 1.7;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式15: 纹理背景 -->
+      <section class="bg-texture rounded-xl shadow-elegant p-6 md:p-8 transition-all hover:shadow-lg">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-white/20 text-white rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-image"></i>
+          </span>
+          <h2 class="text-xl font-semibold text-white">样式15: 纹理背景</h2>
+        </div>
+        <div class="bg-black/30 text-white p-6 rounded-lg font-raleway leading-relaxed mb-6 text-shadow">
+          纹理背景为段落增添深度和质感，半透明的叠加层确保文字可读性。这种样式适合作为特色内容区块，营造独特的视觉氛围。
+        </div>
+        <div class="bg-white/20 backdrop-blur-sm p-4 rounded-lg text-sm text-white overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-15 {
+  font-family: 'Raleway', sans-serif;
+  color: #FFFFFF;
+  background-color: rgba(0, 0, 0, 0.3);
+  background-image: url('texture.jpg');
+  background-size: cover;
+  background-blend-mode: overlay;
+  line-height: 1.7;
+  font-size: 1rem;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式16: 居中对齐 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-align-center"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式16: 居中对齐</h2>
+        </div>
+        <div class="font-lato text-neutral-700 leading-relaxed mb-6 text-center max-w-md mx-auto">
+          居中对齐适合短段落、标语或强调性内容，创造平衡和谐的视觉效果。适当限制宽度避免文字过长，提升阅读体验。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-16 {
+  font-family: 'Lato', sans-serif;
+  color: #374151;
+  line-height: 1.7;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式17: 右侧对齐 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-secondary/10 text-secondary rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-align-right"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式17: 右侧对齐</h2>
+        </div>
+        <div class="font-montserrat text-neutral-700 leading-relaxed mb-6 text-right max-w-md ml-auto">
+          右侧对齐带来独特的视觉节奏，适合排版特殊内容、注释或需要与左侧元素形成对比的段落，增加页面的动态平衡。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-17 {
+  font-family: 'Montserrat', sans-serif;
+  color: #374151;
+  line-height: 1.7;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: right;
+  max-width: 320px;
+  margin-left: auto;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式18: 多彩强调 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-red-500/10 text-red-600 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-highlighter"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式18: 多彩强调</h2>
+        </div>
+        <div class="font-inter text-neutral-700 leading-relaxed mb-6">
+          普通文本中穿插<span class="text-primary font-medium">彩色强调文字</span>，可以突出关键词和重要信息，让文章更具层次感和可读性。这种方式既不破坏整体排版，又能有效引导读者注意力。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-18 {
+  font-family: 'Inter', sans-serif;
+  color: #374151;
+  line-height: 1.7;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+.paragraph-style-18 .highlight {
+  color: #3B82F6;
+  font-weight: 500;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式19: 大号字体 -->
+      <section class="bg-accent-soft rounded-xl shadow-subtle p-6 md:p-8 transition-all hover:shadow-soft">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-primary/20 text-primary rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-text-height"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式19: 大号字体</h2>
+        </div>
+        <div class="font-notoserif text-neutral-800 leading-relaxed mb-6 text-xl">
+          大号字体提升内容的视觉权重，适合开篇段落、重要声明或需要强调的内容。较大的字体尺寸配合适当的行高，确保远距离阅读也能清晰可见。
+        </div>
+        <div class="bg-white/70 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-19 {
+  font-family: 'Noto Serif SC', serif;
+  color: #1F2937;
+  line-height: 1.8;
+  font-size: 1.25rem;
+  margin-bottom: 1.75rem;
+  font-weight: 400;
+  background-color: #F0F9FF;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 样式20: 微妙阴影 -->
+      <section class="bg-white rounded-xl shadow-soft p-6 md:p-8 transition-all hover:shadow-elegant">
+        <div class="mb-4 flex items-center">
+          <span class="inline-block w-8 h-8 bg-neutral-200 text-neutral-700 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-shadow"></i>
+          </span>
+          <h2 class="text-xl font-semibold">样式20: 微妙阴影</h2>
+        </div>
+        <div class="font-poppins text-neutral-800 leading-relaxed mb-6 text-shadow-sm bg-white p-5 rounded-lg shadow-soft">
+          文字添加微妙阴影增强立体感，配合轻微的背景阴影，创造精致的视觉效果。这种样式适合高端品牌网站或需要精致排版的内容。
+        </div>
+        <div class="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600 overflow-x-auto">
+          <pre class="whitespace-pre-wrap"><code>.paragraph-style-20 {
+  font-family: 'Poppins', sans-serif;
+  color: #1F2937;
+  line-height: 1.7;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background-color: #FFFFFF;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}</code></pre>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-neutral-900 text-white py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto text-center">
+      <p class="text-neutral-400 mb-4">20种流行文章段落样式集合 &copy; 2024</p>
+      <p class="text-sm text-neutral-500">
+        所有样式均可自由复制使用，根据您的项目需求进行调整
+      </p>
+    </div>
+  </footer>
+
+  <!-- 引入手写字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500&display=swap" rel="stylesheet">
+</body>
+</html>

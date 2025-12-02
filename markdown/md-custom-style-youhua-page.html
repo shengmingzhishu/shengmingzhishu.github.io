@@ -148,12 +148,88 @@
 
         .toast.show { opacity: 1; }
         .toast::before { content: "🎈"; }
+
+         /* 给单选框容器加样式，确保子元素同行 */
+        .align-group {
+            display: flex; /* 弹性布局，让子元素横向排列 */
+            gap: 20px; /* 可选：增加选项之间的间距，更美观 */
+            align-items: center; /* 可选：垂直居中对齐 */
+        }
+        /* 可选：调整单选框和文字的间距 */
+        .align-group label input {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
     <a href="../index.html" class="back-home"> 返回主页</a>
     <div class="container">
         <div class="editor-box">
+            <div class="align-group">
+                    
+                <!-- 选择样式下拉列表 宽度200px -->
+                <select id="style-select" style="width: 200px;" onchange="changeHtml(this.value)">
+                    <option value="style-1">01 简约高级风</option>
+                    <option value="style-2">02 复古衬线风</option>
+                    <option value="style-3">03 复古打字机风</option>
+                    <option value="style-4">04 清新治愈风</option>
+                    <option value="style-5">05 大胆撞色风</option>
+                    <option value="style-6">06 极简几何风</option>
+                    <option value="style-7">07 轻奢质感风</option>
+                    <option value="style-8">08 日系简约风</option>
+                    <option value="style-9">09 暗黑酷感风</option>
+                </select>
+
+                <!-- 增加标题1居中 ，使用radio 按钮 -->
+                <label>居左<input type="radio" name="title-align" value="left" onclick="changeHtml(this.value)"></label>
+                <label>居中<input type="radio" name="title-align" value="center" onclick="changeHtml(this.value)" checked></label>
+                <label>居右<input type="radio" name="title-align" value="right" onclick="changeHtml(this.value)"></label>
+ 
+                <select id="style-title-color" style="width: 200px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" onChange="changeHtml(this.value)">
+                    <!-- 原有浅色系（保留） -->
+                    <option value="white" style="background-color: white; color: #333;">纯净白（通用百搭）</option>
+                    <option value="#f8f9fa" style="background-color: #f8f9fa; color: #333;">象牙白（柔和不刺眼）</option>
+                    <option value="#f5f5f5" style="background-color: #f5f5f5; color: #333;">米白（温暖质感）</option>
+                    <option value="#faf6ed" style="background-color: #faf6ed; color: #333;">浅米黄（护眼柔和）</option>
+                    <option value="#e8f4f8" style="background-color: #e8f4f8; color: #333;">淡天蓝（清新透气）</option>
+                    <option value="#f0f8fb" style="background-color: #f0f8fb; color: #333;">浅青蓝（冷静舒适）</option>
+                    <option value="#fdf2f8" style="background-color: #fdf2f8; color: #333;">柔粉色（温馨文艺）</option>
+                    <option value="#f5fafe" style="background-color: #f5fafe; color: #333;">冰蓝色（简约高级）</option>
+                    <option value="#faf0f5" style="background-color: #faf0f5; color: #333;">浅紫灰（雅致小众）</option>
+                    <option value="#eaf6fa" style="background-color: #eaf6fa; color: #333;">薄荷绿（清爽护眼）</option>
+                    
+                    <!-- 新增稍深色系（适配阅读，不刺眼） -->
+                    <option value="#e6e2d3" style="background-color: #e6e2d3; color: #222;">暖米色（温润厚重）</option>
+                    <option value="#d4e6f1" style="background-color: #d4e6f1; color: #222;">湖水蓝（沉稳清新）</option>
+                    <option value="#f2e6e8" style="background-color: #f2e6e8; color: #222;">豆沙粉（温柔复古）</option>
+                    <option value="#d5e8d4" style="background-color: #d5e8d4; color: #222;">青柠绿（鲜活护眼）</option>
+                    <option value="#e1d5e7" style="background-color: #e1d5e7; color: #222;">薰衣草紫（雅致柔和）</option>
+                    <option value="#f9e6d8" style="background-color: #f9e6d8; color: #222;">浅橘色（温暖活力）</option>
+                </select>
+
+                <select id="style-theme-color" style="width: 200px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" onChange="changeHtml(this.value)">
+                    <!-- 原有浅色系（保留） -->
+                    <option value="white" style="background-color: white; color: #333;">纯净白（通用百搭）</option>
+                    <option value="#f8f9fa" style="background-color: #f8f9fa; color: #333;">象牙白（柔和不刺眼）</option>
+                    <option value="#f5f5f5" style="background-color: #f5f5f5; color: #333;">米白（温暖质感）</option>
+                    <option value="#faf6ed" style="background-color: #faf6ed; color: #333;">浅米黄（护眼柔和）</option>
+                    <option value="#e8f4f8" style="background-color: #e8f4f8; color: #333;">淡天蓝（清新透气）</option>
+                    <option value="#f0f8fb" style="background-color: #f0f8fb; color: #333;">浅青蓝（冷静舒适）</option>
+                    <option value="#fdf2f8" style="background-color: #fdf2f8; color: #333;">柔粉色（温馨文艺）</option>
+                    <option value="#f5fafe" style="background-color: #f5fafe; color: #333;">冰蓝色（简约高级）</option>
+                    <option value="#faf0f5" style="background-color: #faf0f5; color: #333;">浅紫灰（雅致小众）</option>
+                    <option value="#eaf6fa" style="background-color: #eaf6fa; color: #333;">薄荷绿（清爽护眼）</option>
+                    
+                    <!-- 新增稍深色系（适配阅读，不刺眼） -->
+                    <option value="#e6e2d3" style="background-color: #e6e2d3; color: #222;">暖米色（温润厚重）</option>
+                    <option value="#d4e6f1" style="background-color: #d4e6f1; color: #222;">湖水蓝（沉稳清新）</option>
+                    <option value="#f2e6e8" style="background-color: #f2e6e8; color: #222;">豆沙粉（温柔复古）</option>
+                    <option value="#d5e8d4" style="background-color: #d5e8d4; color: #222;">青柠绿（鲜活护眼）</option>
+                    <option value="#e1d5e7" style="background-color: #e1d5e7; color: #222;">薰衣草紫（雅致柔和）</option>
+                    <option value="#f9e6d8" style="background-color: #f9e6d8; color: #222;">浅橘色（温暖活力）</option>
+                </select>
+            </div>
+            <!-- 输入文本 -->
             <textarea id="editor" placeholder="输入Markdown内容..."></textarea>
         </div>
         <div class="editor-box">
@@ -166,8 +242,125 @@
     <div id="toast" class="toast">复制成功！</div>
 
     <script>
+    let numberIndex = 0;
+
+
+    function changeTitleTheme(color) {
+        autoFormatText(document.getElementById('editor').value)
+    }
+
+    function generateH1HTMLStyle(selectedStyle,titleAlign, selectedTitleColor, selectedThemeColor, titleName,) { 
+
+        let numberIndexStr = `${numberIndex++ < 10 ? '0' + numberIndex : numberIndex}`
+         
+        // 方式1：通过数组初始化（数组元素是 [key, value] 二维数组）
+        const h1Style = new Map([
+        ["style-1", `
+            <!-- 风格1：简约高级风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <h6 style="text-align: ${titleAlign};font-size: 16px; font-weight: 400; color: #4F46E5; margin: 0 0 6px 0; letter-spacing: 1px;">${numberIndexStr}</h6>
+                <h1 style="text-align: ${titleAlign};font-size: 28px; color: #2D3748; font-weight: 600; margin: 0 0 12px 0; line-height: 1.4; padding-bottom: 8px; border-bottom: 1px solid #E5E7EB;">${titleName}</h1>
+                <p style="font-size: 15px; color: #4A5568; line-height: 1.8; margin: 15px 0 0 0; text-align: justify;">研究发现定期在固定平台更新的插画师，收入比“随缘更新”的高出47%。核心原因在于持续输出能积累精准粉丝，提升账号权重，同时让潜在客户更容易找到并信任创作者。</p>
+            </div>
+        `],
+        ["style-2", `
+            <!-- 风格2：复古衬线风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <h6 style="text-align: ${titleAlign};font-size: 20px; font-weight: 600; color: #8B5A2B; font-family: 'SimSun', serif; margin: 0 0 10px 0; letter-spacing: 2px;">${numberIndexStr}</h6>
+                <h1 style="text-align: ${titleAlign};font-size: 26px; color: #3C2A21; font-weight: 500; font-family: 'SimSun', serif; margin: 0 0 12px 0; line-height: 1.4; padding-left: 16px; border-left: 4px solid #8B5A2B;">${titleName}</h1>
+                <p style="font-size: 15px; color: #4A5568; line-height: 1.8; margin: 15px 0 0 0; text-align: justify;">优质的作品集是接单的关键，设计师需要将作品按主题分类，每类作品搭配简洁的创作说明，包括设计思路、使用工具、项目成果等。避免堆砌作品，精选3-5个高质量案例，比10个普通案例更有说服力。</p>
+            </div>
+        `],
+        ["style-3", `
+           <!-- 风格3：复古打字机风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <h6 style="text-align: ${titleAlign};font-size: 20px; font-weight: 600; color: #654321; font-family: 'Courier New', monospace; margin: 0 0 10px 0; letter-spacing: 4px;">${numberIndexStr}</h6>
+                <h1 style="text-align: ${titleAlign};font-size: 26px; color: #3C2A21; font-weight: 500; font-family: 'Courier New', monospace; margin: 0 0 12px 0; line-height: 1.5; letter-spacing: 2px;">${titleName}</h1>
+                <p style="font-size: 15px; color: #5D4037; line-height: 1.7; margin: 0; text-align: justify; border-left: 2px solid #D7CCC8; padding-left: 16px;">复古打字机风格设计需突出“年代感”与“手工感”，字体选用等宽字体（如Courier New、Special Elite），模拟打字机敲击效果；色彩以米黄、深棕、墨黑为主，可添加轻微噪点、划痕等肌理效果；排版时故意保留轻微的文字错位、行距不均，增强复古质感，适合用于海报、书籍封面、文创产品设计。</p>
+            </div>
+        `],
+        ["style-4", `
+            <!-- 风格4：清新治愈风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <p style="text-align: center; margin: 10px 0;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background-color: #F0FDF4; color: #48BB78; font-size: 22px; font-weight: bold; line-height: 1; padding: 3px; margin: 0 auto;">
+                        ${numberIndexStr}
+                    </span>
+                </p>
+                <h1 style="text-align: ${titleAlign};font-size: 26px; color: #22C55E; font-weight: 500; margin: 0 0 12px 0; line-height: 1.4;">${titleName}</h1>
+                <div style="border-left: 4px solid #D1FAE5; padding-left: 16px;">
+                    <p style="font-size: 15px; color: #4A5568; line-height: 1.8; margin: 0; text-align: justify;">日常积累灵感可从生活观察、艺术展览、自然景观中获取，建议建立专属灵感库（如Pinboard、Notion收藏夹），分类存储参考图、文字片段、色彩搭配等素材，定期整理复盘，形成自己的灵感体系。</p>
+                </div>
+            </div>
+        `],
+        ["style-5", `
+            <!-- 风格5：大胆撞色风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <p style="text-align: center; margin: 10px 0;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background-color: #FF6B35; color: #FFFFFF; font-size: 22px; font-weight: bold; line-height: 1; padding: 3px; margin: 0 auto;">
+                        ${numberIndexStr}
+                    </span>
+                </p>
+                <h1 style="text-align: ${titleAlign};font-size: 26px; color: #2D3748; font-weight: 700; margin: 0 0 12px 0; line-height: 1.4; border-bottom: 1px solid #FFE4D6; padding-bottom: 1px;">${titleName}</h1>
+                
+                <p style="font-size: 15px; color: #4A5568; line-height: 1.8; margin: 15px 0 0 0; text-align: justify;">与客户沟通时，先明确需求核心（如使用场景、目标人群、风格偏好），再提供2-3个方案方向而非单一方案，减少反复修改成本。同时用可视化工具（如线框图、色卡）辅助表达，让客户更直观理解设计思路。</p>
+            </div>
+        `],
+        ["style-6", `
+            <!-- 风格6：极简几何风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <h6 style="text-align: ${titleAlign};font-size: 16px; font-weight: 400; color: #4F46E5; margin: 0 0 6px 0; letter-spacing: 1px;">${numberIndexStr}</h6>
+                <h1 style="text-align: ${titleAlign};font-size: 26px; color: #4F46E5; font-weight: 600; margin: 0 0 10px 0; line-height: 1.4;">${titleName}</h1>
+                <p style="font-size: 15px; color: #374151; line-height: 1.8; margin: 0; text-align: justify;">收费标准可参考“基础定价+难度系数+交付周期”公式：基础定价根据自身经验（如入行年限、案例质量）设定，难度系数按项目复杂度（如插画张数、细节要求）调整，加急项目可加收20%-50%服务费，同时明确交付内容和修改次数，避免后续纠纷。</p>
+            </div>
+        `],
+        ["style-7", `
+            <!-- 风格7：轻奢质感风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <h6 style="text-align: ${titleAlign};font-size: 16px; font-weight: 400; color: #718096; margin: 0 0 6px 0; letter-spacing: 1px;">${numberIndexStr}</h6>
+                <h1 style="text-align: ${titleAlign};font-size: 28px; color: #2D3748; font-weight: 500; margin: 0 0 12px 0; line-height: 1.4; padding-bottom: 8px; border-bottom: 1px solid #E0E7FF; letter-spacing: 0.5px;">${titleName}</h1>
+                <p style="font-size: 15px; color: #4A5568; line-height: 1.8; margin: 15px 0 0 0; text-align: justify;">高端品牌设计需注重“少即是多”，通过精简色彩体系（建议2-3种主辅色）、统一字体层级、强化细节质感（如烫金工艺、哑光材质表现），传递品牌的奢华感与专业性。同时，视觉元素需与品牌调性强绑定，避免过度花哨的设计分散用户注意力。</p>
+            </div>
+        `],
+        ["style-8", `
+            <!-- 风格8：日系简约风 -->
+            <div style="margin-bottom: 60px;text-align: ${titleAlign};">
+                <h6 style="text-align: ${titleAlign};font-size: 16px; font-weight: 400; color: #718096; margin: 0 0 6px 0; letter-spacing: 1px;">${numberIndexStr}</h6>
+                <h1 style="text-align: ${titleAlign};font-size: 24px; color: #2D3748; font-weight: 500; margin: 0 0 15px 0; line-height: 1.4; letter-spacing: -0.5px;">${titleName}</h1>
+                <p style="font-size: 15px; color: #4A5568; line-height: 1.8; margin: 0; text-align: justify; border-top: 1px solid #F0F0F0; padding-top: 16px;">日系杂志排版核心是“留白+秩序感”，页面留白率建议≥30%，文字间距、行高适当放大，提升阅读舒适度；字体选择无衬线字体（如思源黑体、Helvetica），标题与正文层级通过字号和字重区分，避免过多装饰；图片以竖版构图、低饱和色调为主，搭配简洁文字说明，营造清新治愈的视觉体验。</p>
+            </div>
+        `],
+        ["style-9", `
+            <!-- 风格9：暗黑酷感风 -->
+            <div style="padding: 24px; border-radius: 8px; margin-bottom: 60px;text-align: ${titleAlign};">
+                <h6 style="text-align: ${titleAlign};font-size: 18px; font-weight: 700; color: #FF2E63; font-family: 'Consolas', monospace; letter-spacing: 3px; margin: 0 0 8px 0;">${numberIndexStr}</h6>
+                <h1 style="text-align: ${titleAlign};font-size: 26px; color: #000000; font-weight: 600; margin: 0 0 15px 0; line-height: 1.4; padding-bottom: 6px; border-bottom: 3px solid #FF2E63;">${titleName}</h1>
+                <p style="font-size: 15px; color: #000000; line-height: 1.8; margin: 0; text-align: justify;">暗黑系UI设计需平衡“视觉冲击力”与“可读性”：背景选用深灰（而非纯黑）减少视觉疲劳，文字与背景对比度需≥4.5:1；强调色可选用高饱和色（如红、蓝、紫）提升重点元素辨识度；图标采用线性或极简面性设计，避免复杂纹理；同时注重光影层次，通过轻微渐变增强界面立体感。</p>
+            </div>
+        `]
+        ]);
         
+        return h1Style.get(selectedStyle);
+
+    }
+
+    function changeHtml() { 
+        const editor = document.getElementById('editor');
+        const html = autoFormatText(editor.value);
+        preview.innerHTML = html;
+    }
+
     function autoFormatText(rawText) {
+        
+        // 每次都初始化
+        numberIndex = 0
+
+        const selectedStyle = document.getElementById('style-select').value;
+        const titleAlign = document.querySelector('input[name="title-align"]:checked').value;
+        const selectedTitleColor = document.getElementById('style-title-color').value;
+        const selectedThemeColor = document.getElementById('style-theme-color').value;
+ 
+
         const lines = rawText.split('\n');
         let html = [];
         let inList = false;
@@ -175,11 +368,6 @@
         let partNumber = 0;
 
         const labels = [
-            "@北屿的蓝色",
-            "10年IT领域资深专家",
-            "douya800 免费领取资料~",
-            "互联网创业咨询顾问",
-            "AI+自媒体职业顾问"
         ];
 
         function getRandomLabel() {
@@ -240,10 +428,32 @@
                 const content = processInlineMarkdown(headingMatch[2]);
                 
                 if(level === 1) {
-                    html.push(`<div class="part-container">
-                        <div class="part-decorator"></div>
-                        <h2 class="part-title">${content} <span class="part-label">${getRandomLabel()}</span></h2>
-                    </div>`);
+                    // html.push(`<div class="part-container">
+                    //     <div class="part-decorator"></div>
+                    //     <h2 class="part-title">${content} <span class="part-label">${getRandomLabel()}</span></h2>
+                    // </div>`);
+                    
+                    html.push(`<div class="part-container">${generateH1HTMLStyle(selectedStyle,titleAlign, selectedTitleColor,  selectedThemeColor, content)}</div>`);
+                    // html.push(`
+                    // <div  style="text-align: ${titleAlign};"> 
+                    //     <div class="${selectedStyle}" style="text-align: ${titleAlign};">
+                    //         <div class="section-num">${numberIndex++ < 10 ? '0' + numberIndex : numberIndex}</div>
+                    //         <h1 class="section-title">${content}</h1>
+                    //     </div>
+                    //     <div style="font-weight: 800;text-align: ${titleAlign};">测试测试</div>
+                    // </div>`);
+                //     html.push(`
+                //     <div style="margin-bottom: 80px; padding-bottom: 20px; border-bottom: 1px solid #E5E7EB; text-align: ${titleAlign};">
+                //         <div style="font-size: 18px; font-weight: 700; color: #165DFF; letter-spacing: 1px; margin-bottom: 8px; display: inline-block; position: relative;">
+                //             01
+                //             <span style="content: ''; width: 30px; height: 2px; background-color: #165DFF; position: absolute; bottom: -4px; left: 0; border-radius: 1px;"></span>
+                //         </div>
+                //         <h1 style="font-size: 32px; color: #2D3748; font-weight: 600; margin: 0 0 15px 0; line-height: 1.3; padding-bottom: 12px; border-bottom: 1px solid #E5E7EB; font-family: 'Inter', 'PingFang SC', 'Microsoft Yahei', sans-serif;">社交媒体运营策略</h1>
+                //         <p style="font-size: 16px; color: #4A5568; line-height: 1.8; margin: 20px 0 0 0; text-align: justify; font-family: 'Inter', 'PingFang SC', 'Microsoft Yahei', sans-serif;">研究发现定期在固定平台更新的插画师，收入比“随缘更新”的高出47%。核心原因在于持续输出能积累精准粉丝，提升账号权重，同时让潜在客户更容易找到并信任创作者。</p>
+                //     </div>
+                // `);
+
+
                 } else {
                     html.push(`<h${level} class="heading-${level}">${content}</h${level}>`);
                 }
@@ -439,6 +649,179 @@
                         width: 100%;
                     }
                 }
+
+
+                        
+                /* ================================= 风格1：简约高级风（经典款）================================= */
+                .style-1 .section-num {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #165DFF;
+                    letter-spacing: 1px;
+                    margin-bottom: 8px;
+                    display: inline-block;
+                    position: relative;
+                }
+                .style-1 .section-num::after {
+                    content: "";
+                    width: 30px;
+                    height: 2px;
+                    background-color: #165DFF;
+                    position: absolute;
+                    bottom: -4px;
+                    left: 0;
+                    border-radius: 1px;
+                }
+                .style-1 .section-title {
+                    font-size: 32px;
+                    color: #2D3748;
+                    font-weight: 600;
+                    margin-bottom: 15px;
+                    line-height: 1.3;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid #E5E7EB;
+                }
+
+                /* ================================= 风格2：复古衬线风（文艺款）================================= */
+                .style-2 .section-num {
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: #8B5A2B;
+                    font-family: "Georgia", "SimSun", serif;
+                    margin-bottom: 10px;
+                    letter-spacing: 2px;
+                }
+                .style-2 .section-title {
+                    font-size: 30px;
+                    color: #3C2A21;
+                    font-weight: 500;
+                    font-family: "Georgia", "SimSun", serif;
+                    margin-bottom: 15px;
+                    line-height: 1.4;
+                    position: relative;
+                    padding-left: 20px;
+                }
+                .style-2 .section-title::before {
+                    content: "";
+                    width: 4px;
+                    height: 100%;
+                    background-color: #8B5A2B;
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    border-radius: 2px;
+                }
+
+                /* ================================= 风格3：科技未来风（酷感款）================================= */
+                .style-3 .section-num {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #00F5FF;
+                    text-shadow: 0 0 8px rgba(0, 245, 255, 0.5);
+                    margin-bottom: 6px;
+                    font-family: "Consolas", monospace;
+                    letter-spacing: 3px;
+                }
+                .style-3 .section-title {
+                    font-size: 34px;
+                    color: #FFFFFF;
+                    font-weight: 700;
+                    margin-bottom: 15px;
+                    line-height: 1.2;
+                    padding: 15px 20px;
+                    background: linear-gradient(90deg, #121E31, #1E3A5F);
+                    border-radius: 8px;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+                }
+                .style-3 .content-box {
+                    background-color: #FFFFFF;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                }
+
+                /* ================================= 风格4：清新治愈风（柔和款）================================= */
+                 .style-4 .section-num {
+                    font-size: 22px;
+                    font-weight: 800;
+                    color: #48BB78;
+                    background-color: #F0FDF4;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    padding: 5px;
+                    align-items: center;
+                    text-align: center;
+                    display: inline-block;
+                }
+                .style-4 .section-title {
+                    font-size: 28px;
+                    color: #22C55E;
+                    font-weight: 500;
+                    margin-bottom: 15px;
+                    line-height: 1.3;
+                }
+                .style-4 .content-box {
+                    border-left: 4px solid #D1FAE5;
+                    padding-left: 20px;
+                }
+
+                /* ================================= 风格5：大胆撞色风（吸睛款）================================= */
+                .style-5 .section-num {
+                    font-size: 22px;
+                    font-weight: 800;
+                    color: #FFFFFF;
+                    background-color: #FF6B35;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    padding: 5px;
+                    align-items: center;
+                    text-align: center;
+                    display: inline-block;
+                }
+                .style-5 .section-title {
+                    font-size: 28px;
+                    color: #2D3748;
+                    font-weight: 700;
+                    margin-bottom: 15px;
+                    line-height: 1.3;
+                }
+                .style-5 .content-box {
+                    border-left: 4px solid #FFE4D6;
+                    padding-left: 20px;
+                }
+ 
+
+                /* ================================= 风格6：极简几何风（现代款）================================= */
+                .style-6 .section-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    margin-bottom: 15px;
+                }
+                .style-6 .section-num {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #6366F1;
+                    font-family: "Consolas", monospace;
+                }
+                .style-6 .line {
+                    flex: 1;
+                    height: 2px;
+                    background-color: #E0E7FF;
+                }
+                .style-6 .section-title {
+                    font-size: 28px;
+                    color: #4F46E5;
+                    font-weight: 600;
+                    line-height: 1.3;
+                }
+                .style-6 .content {
+                    margin-top: 10px;
+                    color: #374151;
+                }
+
             </style>
         `;
     }
