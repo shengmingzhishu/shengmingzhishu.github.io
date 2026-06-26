@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>小红书MD成图排版工具 v0.01</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',sans-serif;background:#f0f2f5;color:#333;height:100vh;overflow:hidden}
+.app{display:flex;height:100vh}
+.lp{width:320px;min-width:320px;display:flex;flex-direction:column;background:#fff;border-right:1px solid #e8e8e8}
+.lt{flex:0 0 auto;padding:8px 10px;border-bottom:1px solid #eee;overflow-y:auto;max-height:40%}
+.lb{flex:1;padding:8px 10px;display:flex;flex-direction:column}
+.lb label.f{font-size:11px;color:#666;margin-bottom:3px;display:block}
+.lb textarea{flex:1;width:100%;padding:8px;border:1px solid #ddd;border-radius:5px;font-size:12px;font-family:'Courier New',monospace;resize:none;outline:none;line-height:1.5;background:#fafafa}
+.lb textarea:focus{border-color:#fe2c55;box-shadow:0 0 0 2px rgba(254,44,85,.1)}
+.cp{flex:1;display:flex;flex-direction:column;background:#f5f5f5;min-width:0}
+.ph{padding:8px 14px;background:#fff;border-bottom:1px solid #e8e8e8;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.ph h3{font-size:14px;color:#333;display:flex;align-items:center;gap:5px}
+.ph .pi{font-size:12px;color:#999}
+.ps{flex:1;overflow-y:auto;padding:16px}
+.rp{width:200px;min-width:200px;background:#fff;border-left:1px solid #e8e8e8;overflow-y:auto;padding:8px 10px}
+.tg{margin-bottom:12px}
+.tgt{font-size:10px;font-weight:600;color:#aaa;margin-bottom:4px;letter-spacing:.5px;padding-left:3px}
+.tc{padding:6px 8px;margin-bottom:3px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .15s;font-size:11px;display:flex;align-items:center;gap:6px}
+.tc:hover{border-color:#ddd;background:#fafafa}
+.tc.act{border-color:#fe2c55;background:#fff0f2}
+.tc .e{font-size:14px}
+.tc .n{font-weight:500;color:#333}
+.tc .d{font-size:9px;color:#bbb;margin-top:1px}
+.cg{margin-bottom:6px}
+.cgt{font-size:9px;font-weight:600;color:#aaa;margin-bottom:3px;letter-spacing:.5px}
+.cr{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:2px;align-items:center}
+.cb{padding:2px 6px;border:1px solid #ddd;border-radius:3px;background:#fafafa;cursor:pointer;font-size:10px;color:#555;transition:all .1s;line-height:1.3}
+.cb:hover{background:#eee;border-color:#ccc}
+.cb.act{background:#fe2c55;color:#fff;border-color:#fe2c55}
+.cb.xs{padding:1px 4px;font-size:9px}
+input.cc{width:20px;height:20px;padding:0;border:1px solid #ddd;border-radius:2px;cursor:pointer;vertical-align:middle}
+input.ci{padding:2px 5px;border:1px solid #ddd;border-radius:3px;font-size:10px;outline:none}
+input.ci:focus{border-color:#fe2c55}
+input.cchk{width:12px;height:12px;cursor:pointer;vertical-align:middle;margin:0}
+.bua{border:2px dashed #ddd;border-radius:5px;padding:4px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+.bua:hover{border-color:#fe2c55;background:#fff0f2}
+.bpr{width:100%;height:24px;object-fit:cover;border-radius:2px;display:none}
+/* 平铺容器 */
+#pc{display:flex;flex-flow:row wrap;justify-content:center;align-items:flex-start;gap:14px;width:100%;min-height:200px}
+/* 卡片外包装 — 由JS设置尺寸 */
+.swp{position:relative;overflow:hidden;border-radius:10px;box-shadow:0 3px 14px rgba(0,0,0,.1);flex-shrink:0;background:#fff}
+/* 内层场景 1080×1440 — 由JS设置transform缩放 */
+.scene{position:absolute;top:0;left:0;width:1080px;height:1440px;transform-origin:top left}
+/* 封面 */
+.sc-cv{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;height:1440px;padding:60px;position:relative}
+.sc-cv .cbg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+.sc-cv .cov{position:relative;z-index:1;width:100%}
+.sc-cv .ct{font-weight:800;line-height:1.25;margin-bottom:10px;word-break:break-word}
+.sc-cv .cs{font-weight:400;letter-spacing:1px;margin-bottom:8px}
+.sc-cv .ctg{display:inline-block;padding:4px 14px;border-radius:20px;backdrop-filter:blur(4px)}
+/* 内容 */
+.sc-ct{height:1440px;padding:30px 40px 25px;display:flex;flex-direction:column;position:relative}
+.sc-ct .cbg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:.1;pointer-events:none}
+.sc-ct .ci{flex:1;overflow:hidden;position:relative;z-index:1}
+.sc-ct .csr{height:100%;overflow-y:auto;padding-right:6px;-webkit-mask-image:linear-gradient(to bottom,black 96%,transparent 100%)}
+/* 尾页 */
+.sc-en{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;height:1440px;padding:60px;position:relative}
+.sc-en .ebg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+.sc-en .econ{position:relative;z-index:1;padding:24px 36px;border-radius:14px}
+.sc-en .eico{font-size:48px;margin-bottom:12px}
+.sc-en .etl{font-size:28px;font-weight:600;margin-bottom:6px}
+.sc-en .esb{font-size:16px;opacity:.7}
+.sc-en .esoc{font-size:13px;opacity:.5;margin-top:12px}
+/* 通用行 */
+.hdr-ln{font-size:12px;padding:5px 0 8px;position:relative;z-index:1;flex-shrink:0;letter-spacing:1px}
+.ftr-ln{font-size:11px;padding:6px 0 4px;position:relative;z-index:1;flex-shrink:0;opacity:.6;letter-spacing:.5px}
+.auth-ln{font-size:13px;padding:4px 0;position:relative;z-index:1;flex-shrink:0;letter-spacing:.5px}
+.hdr-abs{position:absolute;top:16px;left:0;width:100%;text-align:center;z-index:2;font-size:12px;letter-spacing:1px;padding:3px 0}
+.ftr-abs{position:absolute;bottom:14px;left:0;width:100%;text-align:center;z-index:2;font-size:11px;opacity:.5;letter-spacing:.5px;padding:3px 0}
+.bdg{position:absolute;top:10px;right:12px;background:rgba(0,0,0,.35);color:#fff;font-size:9px;padding:2px 8px;border-radius:6px;z-index:5;backdrop-filter:blur(4px)}
+.bdg-pg{position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,.45);color:#fff;font-size:9px;padding:2px 8px;border-radius:6px;z-index:5}
+.ct-hdr{padding-bottom:8px;border-bottom:1px solid #eee;margin-bottom:8px;position:relative;z-index:1;flex-shrink:0}
+.ct-ftr{padding-top:8px;border-top:1px solid #eee;margin-top:8px;position:relative;z-index:1;flex-shrink:0}
+/* Markdown */
+.mb{line-height:1.8}
+.mb h1{font-size:1.5em;margin:.35em 0;font-weight:700}
+.mb h2{font-size:1.3em;margin:.3em 0;font-weight:600}
+.mb h3{font-size:1.1em;margin:.25em 0;font-weight:600}
+.mb p{margin:.2em 0}
+.mb blockquote{border-left:4px solid var(--ac,#fe2c55);padding:5px 12px;margin:.5em 0;background:rgba(0,0,0,.03);border-radius:0 4px 4px 0;font-style:italic}
+.mb ul,.mb ol{padding-left:1.4em;margin:.2em 0}
+.mb li{margin:.08em 0}
+.mb img{max-width:100%;border-radius:5px;margin:5px 0}
+.mb hr{border:none;border-top:1px solid #eee;margin:10px 0}
+.mb code{background:rgba(0,0,0,.05);padding:1px 4px;border-radius:2px;font-size:.9em}
+.mb a{text-decoration:none;font-weight:500}
+.mb table{border-collapse:collapse;width:100%;font-size:.8em;margin:6px 0}
+.mb table td,.mb table th{border:1px solid #ddd;padding:3px 6px;text-align:left}
+.mb table th{background:rgba(0,0,0,.04);font-weight:600}
+.ps::-webkit-scrollbar,.csr::-webkit-scrollbar,.lt::-webkit-scrollbar,.rp::-webkit-scrollbar{width:3px}
+.ps::-webkit-scrollbar-thumb,.csr::-webkit-scrollbar-thumb,.lt::-webkit-scrollbar-thumb,.rp::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+.dlb{padding:6px 16px;background:#fe2c55;color:#fff;border:none;border-radius:18px;cursor:pointer;font-size:11px;font-weight:500;display:flex;align-items:center;gap:5px;transition:all .2s;box-shadow:0 2px 8px rgba(254,44,85,.3);white-space:nowrap}
+.dlb:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(254,44,85,.4)}
+.dlb:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.toast{position:fixed;top:28px;left:50%;transform:translateX(-50%) translateY(-70px);background:rgba(0,0,0,.8);color:#fff;padding:7px 20px;border-radius:9px;font-size:12px;z-index:9999;opacity:0;transition:all .3s;backdrop-filter:blur(8px);pointer-events:none}
+.toast.s{opacity:1;transform:translateX(-50%) translateY(0)}
+.sp{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.prb{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,#fe2c55,#ff6b81);transition:width .3s;z-index:99999;width:0}
+.emp{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;color:#bbb;text-align:center}
+.emp .ei{font-size:40px;margin-bottom:10px}
+.emp p{font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<div id="toast" class="toast">✅ OK</div>
+<div id="prb" class="prb"></div>
+
+<div class="app">
+
+<div class="lp">
+  <div class="lt">
+    <div class="cg"><div class="cgt">🎯 快速字体</div>
+    <div class="cr"><button class="cb xs" onclick="setF('PingFang SC')">苹方</button><button class="cb xs" onclick="setF('Microsoft YaHei')">雅黑</button><button class="cb xs" onclick="setF('SimSun')">宋体</button><button class="cb xs" onclick="setF('KaiTi')">楷体</button><button class="cb xs" onclick="setF('FangSong')">仿宋</button><button class="cb xs" onclick="setF('YouYuan')">幼圆</button><button class="cb xs" onclick="setF('LiSu')">隶书</button><button class="cb xs" onclick="setF('STHupo')">琥珀</button><button class="cb xs" onclick="setF('STXingkai')">行楷</button><button class="cb xs" onclick="setF('Arial')">Arial</button><button class="cb xs" onclick="setF('Impact')">Impact</button><button class="cb xs" onclick="setF('Georgia')">Georgia</button><button class="cb xs" onclick="setF('Times New Roman')">Times</button><button class="cb xs" onclick="setF('Courier New')">Courier</button><button class="cb xs" onclick="setF('Comic Sans MS')">Comic</button></div></div>
+    <div class="cg"><div class="cgt">📏 内容字号</div>
+    <div class="cr"><button class="cb xs" onclick="setS(16)">16</button><button class="cb xs" onclick="setS(18)">18</button><button class="cb xs" onclick="setS(20)">20</button><button class="cb xs" onclick="setS(22)">22</button><button class="cb xs" onclick="setS(24)">24</button><button class="cb xs" onclick="setS(28)">28</button><button class="cb xs" onclick="setS(32)">32</button><button class="cb xs" onclick="setS(36)">36</button><button class="cb xs" onclick="setS(42)">42</button><button class="cb xs" onclick="setS(48)">48</button><button class="cb xs" onclick="setS(56)">56</button><button class="cb xs" onclick="setS(68)">68</button></div></div>
+    <div class="cg"><div class="cgt">🖼 封面标题字号</div>
+    <div class="cr"><button class="cb xs" onclick="setCT(36)">36</button><button class="cb xs" onclick="setCT(42)">42</button><button class="cb xs" onclick="setCT(48)">48</button><button class="cb xs" onclick="setCT(56)">56</button><button class="cb xs" onclick="setCT(64)">64</button><button class="cb xs" onclick="setCT(72)">72</button><button class="cb xs" onclick="setCT(84)">84</button><button class="cb xs" onclick="setCT(96)">96</button><button class="cb xs" onclick="setCT(112)">112</button></div></div>
+    <div class="cg"><div class="cgt">🖼 自定义背景</div>
+    <div class="cr" style="gap:5px">
+      <div style="flex:1;text-align:center"><div style="font-size:8px;color:#999;margin-bottom:1px">📕封面</div><div class="bua" onclick="gi('bci').click()" style="padding:3px"><img id="bcp" class="bpr"><span id="bct" style="font-size:8px;color:#bbb">上传</span></div><input type="file" id="bci" accept="image/*" style="display:none" onchange="hBU(this,'cover')"><button class="cb xs" onclick="clrBg('cover')" style="margin-top:1px">✕</button></div>
+      <div style="flex:1;text-align:center"><div style="font-size:8px;color:#999;margin-bottom:1px">📄内容</div><div class="bua" onclick="gi('bci2').click()" style="padding:3px"><img id="bcp2" class="bpr"><span id="bct2" style="font-size:8px;color:#bbb">上传</span></div><input type="file" id="bci2" accept="image/*" style="display:none" onchange="hBU(this,'content')"><button class="cb xs" onclick="clrBg('content')" style="margin-top:1px">✕</button></div>
+      <div style="flex:1;text-align:center"><div style="font-size:8px;color:#999;margin-bottom:1px">📗尾页</div><div class="bua" onclick="gi('bci3').click()" style="padding:3px"><img id="bcp3" class="bpr"><span id="bct3" style="font-size:8px;color:#bbb">上传</span></div><input type="file" id="bci3" accept="image/*" style="display:none" onchange="hBU(this,'end')"><button class="cb xs" onclick="clrBg('end')" style="margin-top:1px">✕</button></div>
+    </div></div>
+    <div class="cg"><div class="cgt">🎨 颜色</div>
+    <div class="cr" style="gap:6px">
+      <label style="font-size:9px;display:flex;align-items:center;gap:2px">文字<input type="color" id="tc" class="cc" value="#333333"></label>
+      <label style="font-size:9px;display:flex;align-items:center;gap:2px">强调<input type="color" id="ac" class="cc" value="#fe2c55"></label>
+      <label style="font-size:9px;display:flex;align-items:center;gap:2px">背景<input type="color" id="bc" class="cc" value="#ffffff"></label>
+      <label style="font-size:9px;display:flex;align-items:center;gap:2px">封标题<input type="color" id="ctc" class="cc" value="#ffffff"></label>
+      <label style="font-size:9px;display:flex;align-items:center;gap:2px">副标题<input type="color" id="csc" class="cc" value="#cccccc"></label>
+    </div></div>
+    <div class="cg"><div class="cgt">👤 作者</div>
+    <div class="cr" style="gap:5px">
+      <input class="ci" id="auth" value="小红书博主" style="flex:1;min-width:50px" placeholder="作者名">
+      <button class="cb xs" id="aabL" onclick="setAA('left')">左</button>
+      <button class="cb xs act" id="aabC" onclick="setAA('center')">中</button>
+      <button class="cb xs" id="aabR" onclick="setAA('right')">右</button>
+    </div></div>
+    <div class="cg"><div class="cgt">🏷 页眉标签</div>
+    <div class="cr"><input class="ci" id="hdr" value="📕 小红书" style="flex:1" placeholder="页眉文字">
+      <label style="font-size:8px;display:flex;align-items:center;gap:2px"><input type="checkbox" class="cchk" id="hCv" checked>封面</label>
+      <label style="font-size:8px;display:flex;align-items:center;gap:2px"><input type="checkbox" class="cchk" id="hCn" checked>内容</label>
+      <label style="font-size:8px;display:flex;align-items:center;gap:2px"><input type="checkbox" class="cchk" id="hEd" checked>尾页</label>
+    </div></div>
+    <div class="cg"><div class="cgt">🏷 页脚标签</div>
+    <div class="cr"><input class="ci" id="ftr" value="出品 @作者" style="flex:1" placeholder="页脚文字">
+      <label style="font-size:8px;display:flex;align-items:center;gap:2px"><input type="checkbox" class="cchk" id="fCv" checked>封面</label>
+      <label style="font-size:8px;display:flex;align-items:center;gap:2px"><input type="checkbox" class="cchk" id="fCn" checked>内容</label>
+      <label style="font-size:8px;display:flex;align-items:center;gap:2px"><input type="checkbox" class="cchk" id="fEd" checked>尾页</label>
+    </div></div>
+  </div>
+  <div class="lb">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+      <label class="f">📝 Markdown <span style="color:#999;font-size:9px">(首行=封面, 次行=副标题, 末行=尾页)</span></label>
+      <button class="cb" onclick="ldS()" style="color:#fe2c55;border-color:#fe2c55">📋 示例</button>
+    </div>
+    <textarea id="mi" placeholder="首行 = 封面大标题&#10;第二行 = 封面副标题&#10;最后一行 = 尾页文案&#10;&#10;支持 #标题 **加粗** >引用 -列表 等语法&#10;&#10;输入右侧实时预览"></textarea>
+  </div>
+</div>
+
+<div class="cp">
+  <div class="ph">
+    <h3>📱 小红书预览</h3>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="pi" id="pgi">共 0 页</span>
+      <button class="dlb" id="dlBtn" onclick="dlA()">⬇ 一键下载全部</button>
+    </div>
+  </div>
+  <div class="ps" id="ps"><div id="pc"></div></div>
+</div>
+
+<div class="rp">
+  <div style="margin-bottom:8px;font-size:12px;font-weight:600;color:#333;display:flex;align-items:center;gap:3px">🎨 模板 <span style="font-size:9px;font-weight:400;color:#bbb">点击切换</span></div>
+  <div id="tl"></div>
+</div>
+</div>
+
+<script>
+// ===================== 模板 =====================
+const T=[
+{id:'big',n:'📢 大字报',d:'粗犷醒目',cts:72,css:28,fs:28,ff:'Impact,STZhongsong,Microsoft YaHei,sans-serif',tc:'#1a1a1a',ac:'#e60012',bgc:'#ffffff',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#e60012,#ff4d4f,#cf1322)',ebg:'linear-gradient(135deg,#1a1a1a,#2d2d2d)',ei:'🔥',et:'感谢阅读',es:'关注获取更多精彩内容',ctg:'🔥 热门推荐'},
+{id:'fresh',n:'🌿 小清新',d:'文艺淡雅',cts:48,css:20,fs:22,ff:'KaiTi,PingFang SC,serif',tc:'#4a5a4a',ac:'#7ec8a0',bgc:'#f8faf6',ctc:'#3a5a3a',csc:'#6a7c6a',cbg:'linear-gradient(135deg,#e8f5e9,#c8e6c9,#a5d6a7)',ebg:'linear-gradient(135deg,#e8f5e9,#c8e6c9)',ei:'🌸',et:'谢谢你的时间',es:'愿生活如春日般温柔',ctg:'🌱 清新生活'},
+{id:'lux',n:'💎 简约轻奢',d:'高级感极简',cts:56,css:20,fs:22,ff:'PingFang SC,Microsoft YaHei,sans-serif',tc:'#2d2d2d',ac:'#c9a96e',bgc:'#faf8f5',ctc:'#c9a96e',csc:'#c9a96e',cbg:'linear-gradient(135deg,#faf8f5,#f0ebe3,#e8e0d0)',ebg:'linear-gradient(135deg,#2d2d2d,#3a3a3a)',ei:'✨',et:'THANK YOU',es:'Less is more.',ctg:'✦ 轻奢'},
+{id:'comm',n:'📊 商业排版',d:'专业商务',cts:48,css:22,fs:24,ff:'Microsoft YaHei,Arial,sans-serif',tc:'#1a1a2e',ac:'#1a56db',bgc:'#ffffff',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',ebg:'linear-gradient(135deg,#1a1a2e,#16213e)',ei:'📈',et:'欢迎合作',es:'专业 · 高效 · 值得信赖',ctg:'📊 商业洞察'},
+{id:'trend',n:'🎭 夸张潮流',d:'大胆撞色',cts:84,css:28,fs:30,ff:'Impact,STHupo,Arial Black,sans-serif',tc:'#000000',ac:'#ff006e',bgc:'#f8f9fa',ctc:'#ff006e',csc:'#3a86ff',cbg:'linear-gradient(135deg,#ffbe0b,#fb5607,#ff006e,#8338ec)',ebg:'linear-gradient(135deg,#000000,#1a1a2e)',ei:'🚀',et:'NEXT LEVEL',es:'Stay wild · Stay free',ctg:'⚡ 潮流前沿'},
+{id:'jap',n:'🎋 日系文艺',d:'温暖治愈',cts:52,css:18,fs:20,ff:'YouYuan,KaiTi,PingFang SC,sans-serif',tc:'#5a4a3a',ac:'#d4956a',bgc:'#fdfaf6',ctc:'#5a3a2a',csc:'#7a6a5a',cbg:'linear-gradient(135deg,#fdf6ec,#f5e6d3,#ede0d4)',ebg:'linear-gradient(135deg,#5a4a3a,#7a6a5a)',ei:'🍵',et:'一期一会',es:'把每一天都当作独一无二的相遇',ctg:'📖 日記'},
+{id:'dark',n:'🌙 暗黑酷感',d:'深色高对比',cts:64,css:22,fs:24,ff:'Arial,Helvetica Neue,sans-serif',tc:'#e0e0e0',ac:'#00d4ff',bgc:'#1a1a2e',ctc:'#00d4ff',csc:'#00d4ff',cbg:'linear-gradient(135deg,#0a0a1a,#1a1a3e,#0d0d2b)',ebg:'linear-gradient(135deg,#0a0a1a,#1a1a3e)',ei:'🌌',et:'TO BE CONTINUED',es:'探索未知 · 永不止步',ctg:'💫 探索宇宙'},
+{id:'mag',n:'📰 杂志风格',d:'精致编辑排版',cts:72,css:16,fs:20,ff:'Georgia,SimSun,serif',tc:'#2d2d2d',ac:'#8b4513',bgc:'#fefcf5',ctc:'#2d2d2d',csc:'#8b4513',cbg:'linear-gradient(135deg,#fefcf5,#f8f0e0,#f0e6d0)',ebg:'linear-gradient(135deg,#2d2d2d,#3d3d3d)',ei:'📖',et:'FIN',es:'VOL.01 · 2026',ctg:'✦ 专题'},
+{id:'pink',n:'🎀 甜美少女',d:'粉嫩可爱',cts:56,css:20,fs:22,ff:'YouYuan,Comic Sans MS,PingFang SC,sans-serif',tc:'#8b5a6a',ac:'#ff6b9d',bgc:'#fff5f8',ctc:'#ff6b9d',csc:'#ff6b9d',cbg:'linear-gradient(135deg,#ffe4ec,#ffb6d9,#ff8abc)',ebg:'linear-gradient(135deg,#ff6b9d,#ff8abc)',ei:'🎀',et:'甜甜的一天',es:'每一天都值得被宠爱 ♡',ctg:'🎀 少女心'},
+{id:'chi',n:'🏮 国风古韵',d:'东方美学',cts:56,css:18,fs:22,ff:'LiSu,STKaiti,KaiTi,serif',tc:'#3d2b1f',ac:'#8b2500',bgc:'#faf3e8',ctc:'#8b2500',csc:'#8b2500',cbg:'linear-gradient(135deg,#faf3e8,#f0e4cc,#d4c5a9)',ebg:'linear-gradient(135deg,#3d2b1f,#5a3d2b)',ei:'🏮',et:'承蒙厚愛',es:'與君共賞 人間風月',ctg:'✦ 國風'},
+{id:'sport',n:'⚡ 运动活力',d:'动感能量',cts:72,css:24,fs:26,ff:'Arial Black,Impact,Microsoft YaHei,sans-serif',tc:'#1a1a2e',ac:'#f7931e',bgc:'#f5f5f5',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#f7931e,#ff4b2b,#1a1a2e)',ebg:'linear-gradient(135deg,#1a1a2e,#16213e)',ei:'🏆',et:'NEVER GIVE UP',es:'坚持 · 热爱 · 超越',ctg:'🔥 全力以赴'},
+{id:'tech',n:'💻 极客科技',d:'赛博风格',cts:56,css:20,fs:22,ff:'Courier New,Consolas,monospace',tc:'#00ff41',ac:'#00ff41',bgc:'#0d0208',ctc:'#00ff41',csc:'#00ff41',cbg:'linear-gradient(135deg,#0d0208,#003b00,#0d0208)',ebg:'linear-gradient(135deg,#0d0208,#003b00)',ei:'💻',et:'&lt;/END&gt;',es:'Hello, World! · Keep Coding',ctg:'&lt;code/&gt;'}
+];
+
+let curTpl='big',bgImg={cover:null,content:null,end:null},dlBusy=false,authAlign='center';
+function gT(id){return T.find(t=>t.id===id)||T[0]}
+function em(s){const c=[...s];return c[0]||'📄'}
+function nem(s){const c=[...s];return c.slice(1).join('').trim()}
+function gi(s){return document.getElementById(s)}
+function qsa(s){return document.querySelectorAll(s)}
+function shT(m,e){const t=gi('toast');t.textContent=(e?'❌ ':'✅ ')+m;t.style.background=e?'rgba(220,38,38,.9)':'rgba(0,0,0,.8)';t.classList.add('s');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('s'),2000)}
+function setP(p){gi('prb').style.width=p+'%'}
+
+function setAA(v){authAlign=v;['L','C','R'].forEach(x=>gi('aab'+x).classList.toggle('act',x===v.toUpperCase()[0]));flush()}
+
+function rTpl(){
+  const c=gi('tl');
+  const grps=[{t:'🔥 热门',ids:['big','fresh','lux','comm']},{t:'🎨 个性',ids:['trend','pink','dark','tech']},{t:'📖 文艺',ids:['jap','mag','chi','sport']}];
+  c.innerHTML=grps.map(g=>`<div class="tg"><div class="tgt">${g.t}</div>${g.ids.map(id=>{const t=gT(id);const a=id===curTpl?' act':'';return `<div class="tc${a}" onclick="swTpl('${id}')"><span class="e">${em(t.n)}</span><div><div class="n">${nem(t.n)}</div><div class="d">${t.d}</div></div></div>`}).join('')}</div>`).join('');
+}
+
+function swTpl(id){const t=gT(id);if(!t)return;curTpl=id;gi('tc').value=t.tc;gi('ac').value=t.ac;gi('bc').value=t.bgc;gi('ctc').value=t.ctc;gi('csc').value=t.csc;rTpl();flush();shT('已切换: '+nem(t.n))}
+function setF(n){gi('mi').dataset.font=n;flush()}
+function setS(n){gi('mi').dataset.fs=n;flush()}
+function setCT(n){gi('mi').dataset.cts=n;flush()}
+
+function hBU(inp,ty){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=function(e){bgImg[ty]=e.target.result;const pi=gi('bcp'+(ty==='cover'?'':ty==='content'?'2':'3'));const tx=gi('bct'+(ty==='cover'?'':ty==='content'?'2':'3'));pi.src=e.target.result;pi.style.display='block';tx.style.display='none';flush();shT('背景已上传')};r.readAsDataURL(f);inp.value=''}
+function clrBg(ty){bgImg[ty]=null;const pi=gi('bcp'+(ty==='cover'?'':ty==='content'?'2':'3'));const tx=gi('bct'+(ty==='cover'?'':ty==='content'?'2':'3'));pi.style.display='none';tx.style.display='block';flush()}
+
+// ===================== Markdown 渲染 =====================
+function rMD(txt){
+  if(!txt)return'';
+  let h=txt;
+  h=h.replace(/^###### (.*$)/gm,'<h6>$1</h6>');
+  h=h.replace(/^##### (.*$)/gm,'<h5>$1</h5>');
+  h=h.replace(/^#### (.*$)/gm,'<h4>$1</h4>');
+  h=h.replace(/^### (.*$)/gm,'<h3>$1</h3>');
+  h=h.replace(/^## (.*$)/gm,'<h2>$1</h2>');
+  h=h.replace(/^# (.*$)/gm,'<h1>$1</h1>');
+  h=h.replace(/\*\*\*(.*?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  h=h.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  h=h.replace(/\*(.*?)\*/g,'<em>$1</em>');
+  h=h.replace(/~~(.*?)~~/g,'<del>$1</del>');
+  h=h.replace(/`([^`]+)`/g,'<code>$1</code>');
+  h=h.replace(/^> (.*$)/gm,'<blockquote>$1</blockquote>');
+  h=h.replace(/^- (.*$)/gm,'<li>$1</li>');
+  h=h.replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>');
+  h=h.replace(/^\d+\. (.*$)/gm,'<li>$1</li>');
+  h=h.replace(/(?!<ul>)(<li>.*<\/li>\n?)+/g,'<ol>$&</ol>');
+  h=h.replace(/<ul><ul>/g,'<ul>').replace(/<\/ul><\/ul>/g,'</ul>');
+  h=h.replace(/<ol><ol>/g,'<ol>').replace(/<\/ol><\/ol>/g,'</ol>');
+  h=h.replace(/^---+$/gm,'<hr>');
+  h=h.replace(/!\[(.*?)\]\((.*?)\)/g,'<img src="$2" alt="$1" style="max-width:100%;border-radius:5px;margin:5px 0">');
+  h=h.replace(/\[(.*?)\]\((.*?)\)/g,'<a href="$2" style="color:var(--ac,#fe2c55)">$1</a>');
+  h=h.replace(/^\|(.+)\|$/gm,m=>{if(m.includes('---'))return'<hr class="tb-s">';const cells=m.split('|').filter(c=>c.trim()).map(c=>c.trim());return'<tr><td>'+cells.join('</td><td>')+'</td></tr>'});
+  h=h.replace(/(<tr>.*<\/tr>\n?)+/g,m=>{const rows=m.match(/<tr>.*?<\/tr>/g);if(!rows)return m;const hdr=rows[0],isHdr=rows.length>1&&rows[1].includes('tb-s');if(isHdr){const body=rows.slice(2).filter(Boolean).join('\n');return'<table><thead>'+hdr.replace(/<td>/g,'<th>').replace(/<\/td>/g,'</th>')+'</thead><tbody>'+body+'</tbody></table>'}return'<table><tbody>'+rows.join('\n')+'</tbody></table>'});
+  h=h.replace(/<hr class="tb-s">/g,'');
+  const la=h.split('\n'),rs=[];for(let i=0;i<la.length;i++){const l=la[i].trim();if(!l){rs.push('');continue}if(/^<(\/)?(h[1-6]|ul|ol|li|blockquote|hr|table|thead|tbody|tr|th|td|pre)/.test(l)){rs.push(l);continue}rs.push('<p>'+l+'</p>')}
+  return rs.join('\n');
+}
+
+// ===================== 核心渲染 =====================
+function flush(){
+  const md=gi('mi').value,pc=gi('pc'),pgi=gi('pgi');
+  if(!md.trim()){pc.innerHTML='<div class="emp"><div class="ei">📝</div><p>在左侧输入 Markdown 内容<br>即可实时预览小红书图片效果</p><p style="font-size:11px;margin-top:6px;color:#ccc">💡 点击「示例」快速体验</p></div>';pgi.textContent='共 0 页';return}
+  const t=gT(curTpl);
+  const font=gi('mi').dataset.font||t.ff,fs=parseInt(gi('mi').dataset.fs)||t.fs,cts=parseInt(gi('mi').dataset.cts)||t.cts;
+  const tc=gi('tc').value,ac=gi('ac').value,bgc=gi('bc').value,ctc=gi('ctc').value,csc=gi('csc').value;
+  const author=gi('auth').value||'小红书博主',hdrTxt=gi('hdr').value||'📕 小红书';
+  const fmtFtr=(gi('ftr').value||'出品 @作者').replace('@作者','@'+author);
+  const hCv=gi('hCv').checked,hCn=gi('hCn').checked,hEd=gi('hEd').checked;
+  const fCv=gi('fCv').checked,fCn=gi('fCn').checked,fEd=gi('fEd').checked;
+  const lines=md.split('\n'),ne=lines.filter(l=>l.trim());
+  const tl=ne[0]||'标题',sl=ne.length>1?ne[1]:'',el=ne.length>2?ne[ne.length-1]:'';
+  let cl=[];
+  if(ne.length>2){let f=0,cs=-1;for(let i=0;i<lines.length;i++){if(lines[i].trim()){f++;if(f===2){cs=i+1;break}}}if(cs>0){let li=-1,c=-1;for(let i=lines.length-1;i>=0;i--){if(lines[i].trim()){c++;if(c===0){li=i;break}}}for(let i=cs;i<li;i++){if(lines[i].trim())cl.push(lines[i])}}}
+  if(!cl.length)cl=['请输入更多内容...'];
+  const title=tl.replace(/^#+/,'').trim(),sub=sl.replace(/^#+/,'').trim(),endTxt=el.replace(/^#+/,'').trim();
+  const rendered=rMD(cl.join('\n'));
+  // 分页
+  const lpp=Math.max(3,Math.floor((1440-60-50-50)/(fs*1.8))-2);
+  const hl=rendered.split('\n').filter(l=>l.trim());
+  const pages=[];let cP=[],cL=0;
+  for(let i=0;i<hl.length;i++){const ln=hl[i];let lc=1;if(/^<(h[1-6]|blockquote)/.test(ln))lc=1.5;if(/^<(table|ul|ol)/.test(ln))lc=2.5;if(cL+lc>lpp&&cP.length>0){pages.push(cP.join('\n'));cP=[ln];cL=lc}else{cP.push(ln);cL+=lc}}
+  if(cP.length)pages.push(cP.join('\n'));if(!pages.length)pages.push(rendered);
+  const bc=bgImg.cover,bn=bgImg.content,be=bgImg.end,scb=bc?'':'background:'+t.cbg,seb=be?'':'background:'+t.ebg,total=1+pages.length+1;
+  // 计算平铺尺寸
+  const gap=14,cw=gi('ps').clientWidth-32,mw=250,cpr=Math.max(1,Math.floor((cw+gap)/(mw+gap))),cw2=Math.floor((cw-(cpr-1)*gap)/cpr),sc=cw2/1080,ch=Math.round(1440*sc);
+  let a='';
+  // 封面
+  a+=`<div class="swp" style="width:${cw2}px;height:${ch}px"><div class="scene" style="transform:scale(${sc})">
+    <div class="sc-cv" style="${scb};position:relative">
+    ${bc?'<img class="cbg" src="'+bc+'">':''}
+    ${hCv?'<div class="hdr-abs" style="color:'+csc+'">'+hdrTxt+'</div>':''}
+    ${bc?'<div class="cov" style="background:rgba(0,0,0,.25);border-radius:14px;padding:36px 44px">':'<div class="cov">'}
+    <div style="position:absolute;top:20px;right:25px;font-size:11px;color:${bc?'rgba(255,255,255,.4)':csc};letter-spacing:1px">小红书</div>
+    <div class="ct" style="font-size:${cts}px;color:${ctc};font-family:'${font}',sans-serif">${title}</div>
+    ${sub?'<div class="cs" style="font-size:22px;color:'+csc+'">'+sub+'</div>':''}
+    <div class="ctg" style="background:rgba(255,255,255,.2);color:${ctc}">${t.ctg||'✨ 推荐'}</div></div>
+    <div class="auth-ln" style="text-align:${authAlign};color:${csc};opacity:.8;position:absolute;bottom:56px;left:60px;right:60px">✎ ${author}</div>
+    ${fCv?'<div class="ftr-abs" style="color:'+csc+'">'+fmtFtr+'</div>':''}
+    <div class="bdg">📕 封面</div><div class="bdg-pg">1/${total}</div></div></div></div>`;
+  // 内容
+  pages.forEach((h,i)=>{
+    a+=`<div class="swp" style="width:${cw2}px;height:${ch}px"><div class="scene" style="transform:scale(${sc})">
+      <div class="sc-ct" style="background:${bgc};color:${tc};position:relative">
+      ${bn?'<img class="cbg" src="'+bn+'">':''}
+      ${hCn?'<div class="hdr-ln ct-hdr" style="color:'+ac+';text-align:center;font-family:\''+font+'\',sans-serif">'+hdrTxt+'</div>':''}
+      <div class="ci"><div class="csr mb" style="font-size:${fs}px;color:${tc};font-family:'${font}',sans-serif;--ac:${ac}">${h}</div></div>
+      ${fCn?'<div class="ftr-ln ct-ftr" style="color:#aaa;text-align:center">'+fmtFtr+'</div>':''}
+      <div class="auth-ln" style="text-align:${authAlign};color:#bbb;font-size:12px">✎ ${author}</div>
+      <div class="bdg">📄 ${i+1}/${pages.length}</div><div class="bdg-pg">${i+2}/${total}</div></div></div></div>`;
+  });
+  // 尾页
+  a+=`<div class="swp" style="width:${cw2}px;height:${ch}px"><div class="scene" style="transform:scale(${sc})">
+    <div class="sc-en" style="${seb};position:relative">
+    ${be?'<img class="ebg" src="'+be+'">':''}
+    ${hEd?'<div class="hdr-abs" style="color:'+csc+'">'+hdrTxt+'</div>':''}
+    <div class="econ" style="${be?'background:rgba(0,0,0,.25);':''}">
+    <div class="eico">${t.ei||'❤️'}</div>
+    <div class="etl" style="color:${ctc}">${endTxt||t.et||'感谢阅读'}</div>
+    <div class="esb" style="color:${csc}">${t.es||'关注获取更多'}</div>
+    <div class="esoc" style="color:${csc}">⬇ 长按保存 · 感谢关注</div></div>
+    <div class="auth-ln" style="text-align:${authAlign};color:${csc};opacity:.8;position:absolute;bottom:56px;left:60px;right:60px">✎ ${author}</div>
+    ${fEd?'<div class="ftr-abs" style="color:'+csc+'">'+fmtFtr+'</div>':''}
+    <div class="bdg">📗 尾页</div><div class="bdg-pg">${total}/${total}</div></div></div></div>`;
+  pc.innerHTML=a;
+  pgi.textContent='共 '+total+' 页 (封面 '+pages.length+'页内容 尾页)';
+}
+
+// ===================== 下载 =====================
+async function dlA(){
+  if(dlBusy){shT('正在下载中...',true);return}
+  const elts=qsa('.swp');
+  if(!elts.length){shT('没有可下载的内容',true);return}
+  dlBusy=true;const btn=gi('dlBtn');
+  const orig=btn.innerHTML;btn.innerHTML='<span class="sp"></span> 生成中...';btn.disabled=true;setP(5);
+  try{
+    // 临时展开到1080×1440用于截图，截完恢复
+    elts.forEach(w=>{w.style.width='1080px';w.style.height='1440px';w.style.overflow='visible';const s=w.querySelector('.scene');if(s){s.style.transform='none';s.style.position='static'}});
+    await new Promise(r=>setTimeout(r,400));
+    let useZip=false;try{if(typeof JSZip!=='undefined')useZip=true}catch(e){}
+    if(useZip){
+      setP(10);const zip=new JSZip();
+      for(let i=0;i<elts.length;i++){setP(10+((i/elts.length)*80));const card=elts[i];if(!card)continue;try{const cv=await html2canvas(card,{scale:2,useCORS:true,backgroundColor:null,logging:false});const bl=await new Promise(r=>cv.toBlob(r,'image/png'));const nm=['cover'];for(let j=1;j<=elts.length-2;j++)nm.push('content_'+j);nm.push('end');zip.file('xhs_'+(nm[i]||'p'+(i+1))+'.png',bl)}catch(e){console.warn(i+1,'failed:',e)}}
+      setP(95);const zb=await zip.generateAsync({type:'blob'});setP(98);
+      const ln=document.createElement('a');ln.href=URL.createObjectURL(zb);ln.download='小红书配图_'+new Date().toISOString().slice(0,10)+'.zip';
+      document.body.appendChild(ln);ln.click();document.body.removeChild(ln);URL.revokeObjectURL(ln.href);
+      setP(100);shT('✅ 下载完成！共 '+elts.length+' 页');setTimeout(()=>setP(0),2000);
+    }else{
+      for(let i=0;i<elts.length;i++){const card=elts[i];if(!card)continue;try{const cv=await html2canvas(card,{scale:2,useCORS:true,backgroundColor:null,logging:false});const ln=document.createElement('a');ln.download='xhs_'+(i===0?'cover':i===elts.length-1?'end':'content_'+(i))+'.png';ln.href=cv.toDataURL('image/png');ln.click();await new Promise(r=>setTimeout(r,80))}catch(e){console.warn(i+1,'failed:',e)}}
+      shT('✅ 下载完成');
+    }
+  }catch(err){console.error(err);shT('下载失败: '+err.message,true);setP(0)}
+  flush(); // 重新渲染恢复平铺
+  btn.innerHTML=orig;btn.disabled=false;dlBusy=false;
+}
+
+function ldS(){
+  const s=`从零开始做小红书\n\n三个月涨粉5万的运营心得\n\n---\n\n### 🎯 精准定位\n\n做小红书的第一步，**不是发笔记，而是找到你的定位**。\n\n> "你不可能服务所有人，你只能服务一部分人。"\n\n找准目标受众，才能做出爆款内容。\n\n### 📸 封面设计\n\n- **统一风格**：保持视觉一致性\n- **文字清晰**：标题要一眼看懂\n- **色彩搭配**：不超过3种主色\n\n### ✍️ 内容创作\n\n1. 开头3秒抓住注意力\n2. 中间用故事串联干货\n3. 结尾引导互动收藏\n\n优质内容 = 有用 + 有趣 + 有共鸣\n\n### 🔥 运营技巧\n\n早 7-9 | 干货知识类\n中 12-14 | 生活方式类\n晚 20-22 | 深度内容类\n\n### 💡 小结\n\n**坚持更新** + **优化封面** + **互动维护**\n\n三个关键词，做好小红书运营。\n\n---\n\n感谢阅读，希望对你有所帮助❤️`;
+  gi('mi').value=s;flush();shT('已加载示例');
+}
+
+(function(){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onerror=()=>console.warn('JSZip CDN failed');document.head.appendChild(s)})();
+
+document.addEventListener('DOMContentLoaded',function(){
+  rTpl();gi('mi').addEventListener('input',flush);
+  ['tc','ac','bc','ctc','csc','auth','hdr','ftr'].forEach(function(id){gi(id).addEventListener('input',flush)});
+  ['hCv','hCn','hEd','fCv','fCn','fEd'].forEach(function(id){gi(id).addEventListener('change',flush)});
+  setTimeout(ldS,60);
+  var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(flush,250)});
+});
+</script>
+</body>
+</html>
