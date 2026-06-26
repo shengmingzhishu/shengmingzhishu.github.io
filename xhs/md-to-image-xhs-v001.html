@@ -124,6 +124,10 @@ input.cchk{width:12px;height:12px;cursor:pointer;vertical-align:middle;margin:0}
     <div class="cr"><button class="cb xs" onclick="setS(16)">16</button><button class="cb xs" onclick="setS(18)">18</button><button class="cb xs" onclick="setS(20)">20</button><button class="cb xs" onclick="setS(22)">22</button><button class="cb xs" onclick="setS(24)">24</button><button class="cb xs" onclick="setS(28)">28</button><button class="cb xs" onclick="setS(32)">32</button><button class="cb xs" onclick="setS(36)">36</button><button class="cb xs" onclick="setS(42)">42</button><button class="cb xs" onclick="setS(48)">48</button><button class="cb xs" onclick="setS(56)">56</button><button class="cb xs" onclick="setS(68)">68</button></div></div>
     <div class="cg"><div class="cgt">🖼 封面标题字号</div>
     <div class="cr"><button class="cb xs" onclick="setCT(36)">36</button><button class="cb xs" onclick="setCT(42)">42</button><button class="cb xs" onclick="setCT(48)">48</button><button class="cb xs" onclick="setCT(56)">56</button><button class="cb xs" onclick="setCT(64)">64</button><button class="cb xs" onclick="setCT(72)">72</button><button class="cb xs" onclick="setCT(84)">84</button><button class="cb xs" onclick="setCT(96)">96</button><button class="cb xs" onclick="setCT(112)">112</button></div></div>
+    <div class="cg"><div class="cgt">📗 尾页标题字号</div>
+    <div class="cr"><button class="cb xs" onclick="setET(32)">32</button><button class="cb xs" onclick="setET(40)">40</button><button class="cb xs" onclick="setET(48)">48</button><button class="cb xs" onclick="setET(56)">56</button><button class="cb xs" onclick="setET(64)">64</button><button class="cb xs" onclick="setET(72)">72</button><button class="cb xs" onclick="setET(84)">84</button></div></div>
+    <div class="cg"><div class="cgt">📐 页眉页脚字号</div>
+    <div class="cr"><button class="cb xs" onclick="setHF(14)">14</button><button class="cb xs" onclick="setHF(16)">16</button><button class="cb xs" onclick="setHF(18)">18</button><button class="cb xs" onclick="setHF(20)">20</button><button class="cb xs" onclick="setHF(22)">22</button><button class="cb xs" onclick="setHF(24)">24</button><button class="cb xs" onclick="setHF(28)">28</button></div></div>
     <div class="cg"><div class="cgt">🖼 自定义背景</div>
     <div class="cr" style="gap:5px">
       <div style="flex:1;text-align:center"><div style="font-size:8px;color:#999;margin-bottom:1px">📕封面</div><div class="bua" onclick="gi('bci').click()" style="padding:3px"><img id="bcp" class="bpr"><span id="bct" style="font-size:8px;color:#bbb">上传</span></div><input type="file" id="bci" accept="image/*" style="display:none" onchange="hBU(this,'cover')"><button class="cb xs" onclick="clrBg('cover')" style="margin-top:1px">✕</button></div>
@@ -140,7 +144,7 @@ input.cchk{width:12px;height:12px;cursor:pointer;vertical-align:middle;margin:0}
     </div></div>
     <div class="cg"><div class="cgt">👤 作者</div>
     <div class="cr" style="gap:5px">
-      <input class="ci" id="auth" value="小红书博主" style="flex:1;min-width:50px" placeholder="作者名">
+      <input class="ci" id="auth" value="北屿的蓝色" style="flex:1;min-width:50px" placeholder="作者名">
       <button class="cb xs" id="aabL" onclick="setAA('left')">左</button>
       <button class="cb xs act" id="aabC" onclick="setAA('center')">中</button>
       <button class="cb xs" id="aabR" onclick="setAA('right')">右</button>
@@ -187,18 +191,18 @@ input.cchk{width:12px;height:12px;cursor:pointer;vertical-align:middle;margin:0}
 <script>
 // ===================== 模板 =====================
 const T=[
-{id:'big',n:'📢 大字报',d:'粗犷醒目',cts:72,css:28,fs:28,ff:'Impact,STZhongsong,Microsoft YaHei,sans-serif',tc:'#1a1a1a',ac:'#e60012',bgc:'#ffffff',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#e60012,#ff4d4f,#cf1322)',ebg:'linear-gradient(135deg,#1a1a1a,#2d2d2d)',ei:'🔥',et:'感谢阅读',es:'关注获取更多精彩内容',ctg:'🔥 热门推荐'},
-{id:'fresh',n:'🌿 小清新',d:'文艺淡雅',cts:48,css:20,fs:22,ff:'KaiTi,PingFang SC,serif',tc:'#4a5a4a',ac:'#7ec8a0',bgc:'#f8faf6',ctc:'#3a5a3a',csc:'#6a7c6a',cbg:'linear-gradient(135deg,#e8f5e9,#c8e6c9,#a5d6a7)',ebg:'linear-gradient(135deg,#e8f5e9,#c8e6c9)',ei:'🌸',et:'谢谢你的时间',es:'愿生活如春日般温柔',ctg:'🌱 清新生活'},
-{id:'lux',n:'💎 简约轻奢',d:'高级感极简',cts:56,css:20,fs:22,ff:'PingFang SC,Microsoft YaHei,sans-serif',tc:'#2d2d2d',ac:'#c9a96e',bgc:'#faf8f5',ctc:'#c9a96e',csc:'#c9a96e',cbg:'linear-gradient(135deg,#faf8f5,#f0ebe3,#e8e0d0)',ebg:'linear-gradient(135deg,#2d2d2d,#3a3a3a)',ei:'✨',et:'THANK YOU',es:'Less is more.',ctg:'✦ 轻奢'},
-{id:'comm',n:'📊 商业排版',d:'专业商务',cts:48,css:22,fs:24,ff:'Microsoft YaHei,Arial,sans-serif',tc:'#1a1a2e',ac:'#1a56db',bgc:'#ffffff',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',ebg:'linear-gradient(135deg,#1a1a2e,#16213e)',ei:'📈',et:'欢迎合作',es:'专业 · 高效 · 值得信赖',ctg:'📊 商业洞察'},
-{id:'trend',n:'🎭 夸张潮流',d:'大胆撞色',cts:84,css:28,fs:30,ff:'Impact,STHupo,Arial Black,sans-serif',tc:'#000000',ac:'#ff006e',bgc:'#f8f9fa',ctc:'#ff006e',csc:'#3a86ff',cbg:'linear-gradient(135deg,#ffbe0b,#fb5607,#ff006e,#8338ec)',ebg:'linear-gradient(135deg,#000000,#1a1a2e)',ei:'🚀',et:'NEXT LEVEL',es:'Stay wild · Stay free',ctg:'⚡ 潮流前沿'},
-{id:'jap',n:'🎋 日系文艺',d:'温暖治愈',cts:52,css:18,fs:20,ff:'YouYuan,KaiTi,PingFang SC,sans-serif',tc:'#5a4a3a',ac:'#d4956a',bgc:'#fdfaf6',ctc:'#5a3a2a',csc:'#7a6a5a',cbg:'linear-gradient(135deg,#fdf6ec,#f5e6d3,#ede0d4)',ebg:'linear-gradient(135deg,#5a4a3a,#7a6a5a)',ei:'🍵',et:'一期一会',es:'把每一天都当作独一无二的相遇',ctg:'📖 日記'},
-{id:'dark',n:'🌙 暗黑酷感',d:'深色高对比',cts:64,css:22,fs:24,ff:'Arial,Helvetica Neue,sans-serif',tc:'#e0e0e0',ac:'#00d4ff',bgc:'#1a1a2e',ctc:'#00d4ff',csc:'#00d4ff',cbg:'linear-gradient(135deg,#0a0a1a,#1a1a3e,#0d0d2b)',ebg:'linear-gradient(135deg,#0a0a1a,#1a1a3e)',ei:'🌌',et:'TO BE CONTINUED',es:'探索未知 · 永不止步',ctg:'💫 探索宇宙'},
-{id:'mag',n:'📰 杂志风格',d:'精致编辑排版',cts:72,css:16,fs:20,ff:'Georgia,SimSun,serif',tc:'#2d2d2d',ac:'#8b4513',bgc:'#fefcf5',ctc:'#2d2d2d',csc:'#8b4513',cbg:'linear-gradient(135deg,#fefcf5,#f8f0e0,#f0e6d0)',ebg:'linear-gradient(135deg,#2d2d2d,#3d3d3d)',ei:'📖',et:'FIN',es:'VOL.01 · 2026',ctg:'✦ 专题'},
-{id:'pink',n:'🎀 甜美少女',d:'粉嫩可爱',cts:56,css:20,fs:22,ff:'YouYuan,Comic Sans MS,PingFang SC,sans-serif',tc:'#8b5a6a',ac:'#ff6b9d',bgc:'#fff5f8',ctc:'#ff6b9d',csc:'#ff6b9d',cbg:'linear-gradient(135deg,#ffe4ec,#ffb6d9,#ff8abc)',ebg:'linear-gradient(135deg,#ff6b9d,#ff8abc)',ei:'🎀',et:'甜甜的一天',es:'每一天都值得被宠爱 ♡',ctg:'🎀 少女心'},
-{id:'chi',n:'🏮 国风古韵',d:'东方美学',cts:56,css:18,fs:22,ff:'LiSu,STKaiti,KaiTi,serif',tc:'#3d2b1f',ac:'#8b2500',bgc:'#faf3e8',ctc:'#8b2500',csc:'#8b2500',cbg:'linear-gradient(135deg,#faf3e8,#f0e4cc,#d4c5a9)',ebg:'linear-gradient(135deg,#3d2b1f,#5a3d2b)',ei:'🏮',et:'承蒙厚愛',es:'與君共賞 人間風月',ctg:'✦ 國風'},
-{id:'sport',n:'⚡ 运动活力',d:'动感能量',cts:72,css:24,fs:26,ff:'Arial Black,Impact,Microsoft YaHei,sans-serif',tc:'#1a1a2e',ac:'#f7931e',bgc:'#f5f5f5',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#f7931e,#ff4b2b,#1a1a2e)',ebg:'linear-gradient(135deg,#1a1a2e,#16213e)',ei:'🏆',et:'NEVER GIVE UP',es:'坚持 · 热爱 · 超越',ctg:'🔥 全力以赴'},
-{id:'tech',n:'💻 极客科技',d:'赛博风格',cts:56,css:20,fs:22,ff:'Courier New,Consolas,monospace',tc:'#00ff41',ac:'#00ff41',bgc:'#0d0208',ctc:'#00ff41',csc:'#00ff41',cbg:'linear-gradient(135deg,#0d0208,#003b00,#0d0208)',ebg:'linear-gradient(135deg,#0d0208,#003b00)',ei:'💻',et:'&lt;/END&gt;',es:'Hello, World! · Keep Coding',ctg:'&lt;code/&gt;'}
+{id:'big',n:'📢 大字报',d:'粗犷醒目',cts:84,css:28,fs:48,ets:64,ff:'Impact,STZhongsong,Microsoft YaHei,sans-serif',tc:'#1a1a1a',ac:'#e60012',bgc:'#ffffff',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#e60012,#ff4d4f,#cf1322)',ebg:'linear-gradient(135deg,#1a1a1a,#2d2d2d)',ei:'🔥',et:'感谢阅读',es:'关注获取更多精彩内容',ctg:'🔥 热门推荐'},
+{id:'fresh',n:'🌿 小清新',d:'文艺淡雅',cts:48,css:20,fs:22,ets:40,ff:'KaiTi,PingFang SC,serif',tc:'#4a5a4a',ac:'#7ec8a0',bgc:'#f8faf6',ctc:'#3a5a3a',csc:'#6a7c6a',cbg:'linear-gradient(135deg,#e8f5e9,#c8e6c9,#a5d6a7)',ebg:'linear-gradient(135deg,#e8f5e9,#c8e6c9)',ei:'🌸',et:'谢谢你的时间',es:'愿生活如春日般温柔',ctg:'🌱 清新生活'},
+{id:'lux',n:'💎 简约轻奢',d:'高级感极简',cts:56,css:20,fs:22,ets:44,ff:'PingFang SC,Microsoft YaHei,sans-serif',tc:'#2d2d2d',ac:'#c9a96e',bgc:'#faf8f5',ctc:'#c9a96e',csc:'#c9a96e',cbg:'linear-gradient(135deg,#faf8f5,#f0ebe3,#e8e0d0)',ebg:'linear-gradient(135deg,#2d2d2d,#3a3a3a)',ei:'✨',et:'THANK YOU',es:'Less is more.',ctg:'✦ 轻奢'},
+{id:'comm',n:'📊 商业排版',d:'专业商务',cts:48,css:22,fs:24,ets:42,ff:'Microsoft YaHei,Arial,sans-serif',tc:'#1a1a2e',ac:'#1a56db',bgc:'#ffffff',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',ebg:'linear-gradient(135deg,#1a1a2e,#16213e)',ei:'📈',et:'欢迎合作',es:'专业 · 高效 · 值得信赖',ctg:'📊 商业洞察'},
+{id:'trend',n:'🎭 夸张潮流',d:'大胆撞色',cts:84,css:28,fs:30,ets:56,ff:'Impact,STHupo,Arial Black,sans-serif',tc:'#000000',ac:'#ff006e',bgc:'#f8f9fa',ctc:'#ff006e',csc:'#3a86ff',cbg:'linear-gradient(135deg,#ffbe0b,#fb5607,#ff006e,#8338ec)',ebg:'linear-gradient(135deg,#000000,#1a1a2e)',ei:'🚀',et:'NEXT LEVEL',es:'Stay wild · Stay free',ctg:'⚡ 潮流前沿'},
+{id:'jap',n:'🎋 日系文艺',d:'温暖治愈',cts:52,css:18,fs:20,ets:36,ff:'YouYuan,KaiTi,PingFang SC,sans-serif',tc:'#5a4a3a',ac:'#d4956a',bgc:'#fdfaf6',ctc:'#5a3a2a',csc:'#7a6a5a',cbg:'linear-gradient(135deg,#fdf6ec,#f5e6d3,#ede0d4)',ebg:'linear-gradient(135deg,#5a4a3a,#7a6a5a)',ei:'🍵',et:'一期一会',es:'把每一天都当作独一无二的相遇',ctg:'📖 日記'},
+{id:'dark',n:'🌙 暗黑酷感',d:'深色高对比',cts:64,css:22,fs:24,ets:44,ff:'Arial,Helvetica Neue,sans-serif',tc:'#e0e0e0',ac:'#00d4ff',bgc:'#1a1a2e',ctc:'#00d4ff',csc:'#00d4ff',cbg:'linear-gradient(135deg,#0a0a1a,#1a1a3e,#0d0d2b)',ebg:'linear-gradient(135deg,#0a0a1a,#1a1a3e)',ei:'🌌',et:'TO BE CONTINUED',es:'探索未知 · 永不止步',ctg:'💫 探索宇宙'},
+{id:'mag',n:'📰 杂志风格',d:'精致编辑排版',cts:72,css:16,fs:20,ets:40,ff:'Georgia,SimSun,serif',tc:'#2d2d2d',ac:'#8b4513',bgc:'#fefcf5',ctc:'#2d2d2d',csc:'#8b4513',cbg:'linear-gradient(135deg,#fefcf5,#f8f0e0,#f0e6d0)',ebg:'linear-gradient(135deg,#2d2d2d,#3d3d3d)',ei:'📖',et:'FIN',es:'VOL.01 · 2026',ctg:'✦ 专题'},
+{id:'pink',n:'🎀 甜美少女',d:'粉嫩可爱',cts:56,css:20,fs:22,ets:42,ff:'YouYuan,Comic Sans MS,PingFang SC,sans-serif',tc:'#8b5a6a',ac:'#ff6b9d',bgc:'#fff5f8',ctc:'#ff6b9d',csc:'#ff6b9d',cbg:'linear-gradient(135deg,#ffe4ec,#ffb6d9,#ff8abc)',ebg:'linear-gradient(135deg,#ff6b9d,#ff8abc)',ei:'🎀',et:'甜甜的一天',es:'每一天都值得被宠爱 ♡',ctg:'🎀 少女心'},
+{id:'chi',n:'🏮 国风古韵',d:'东方美学',cts:56,css:18,fs:22,ets:40,ff:'LiSu,STKaiti,KaiTi,serif',tc:'#3d2b1f',ac:'#8b2500',bgc:'#faf3e8',ctc:'#8b2500',csc:'#8b2500',cbg:'linear-gradient(135deg,#faf3e8,#f0e4cc,#d4c5a9)',ebg:'linear-gradient(135deg,#3d2b1f,#5a3d2b)',ei:'🏮',et:'承蒙厚愛',es:'與君共賞 人間風月',ctg:'✦ 國風'},
+{id:'sport',n:'⚡ 运动活力',d:'动感能量',cts:72,css:24,fs:26,ets:48,ff:'Arial Black,Impact,Microsoft YaHei,sans-serif',tc:'#1a1a2e',ac:'#f7931e',bgc:'#f5f5f5',ctc:'#ffffff',csc:'#ffffff',cbg:'linear-gradient(135deg,#f7931e,#ff4b2b,#1a1a2e)',ebg:'linear-gradient(135deg,#1a1a2e,#16213e)',ei:'🏆',et:'NEVER GIVE UP',es:'坚持 · 热爱 · 超越',ctg:'🔥 全力以赴'},
+{id:'tech',n:'💻 极客科技',d:'赛博风格',cts:56,css:20,fs:22,ets:36,ff:'Courier New,Consolas,monospace',tc:'#00ff41',ac:'#00ff41',bgc:'#0d0208',ctc:'#00ff41',csc:'#00ff41',cbg:'linear-gradient(135deg,#0d0208,#003b00,#0d0208)',ebg:'linear-gradient(135deg,#0d0208,#003b00)',ei:'💻',et:'&lt;/END&gt;',es:'Hello, World! · Keep Coding',ctg:'&lt;code/&gt;'}
 ];
 
 let curTpl='big',bgImg={cover:null,content:null,end:null},dlBusy=false,authAlign='center';
@@ -222,6 +226,8 @@ function swTpl(id){const t=gT(id);if(!t)return;curTpl=id;gi('tc').value=t.tc;gi(
 function setF(n){gi('mi').dataset.font=n;flush()}
 function setS(n){gi('mi').dataset.fs=n;flush()}
 function setCT(n){gi('mi').dataset.cts=n;flush()}
+function setET(n){gi('mi').dataset.ets=n;flush()}
+function setHF(n){gi('mi').dataset.hfs=n;flush()}
 
 function hBU(inp,ty){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=function(e){bgImg[ty]=e.target.result;const pi=gi('bcp'+(ty==='cover'?'':ty==='content'?'2':'3'));const tx=gi('bct'+(ty==='cover'?'':ty==='content'?'2':'3'));pi.src=e.target.result;pi.style.display='block';tx.style.display='none';flush();shT('背景已上传')};r.readAsDataURL(f);inp.value=''}
 function clrBg(ty){bgImg[ty]=null;const pi=gi('bcp'+(ty==='cover'?'':ty==='content'?'2':'3'));const tx=gi('bct'+(ty==='cover'?'':ty==='content'?'2':'3'));pi.style.display='none';tx.style.display='block';flush()}
@@ -263,9 +269,9 @@ function flush(){
   const md=gi('mi').value,pc=gi('pc'),pgi=gi('pgi');
   if(!md.trim()){pc.innerHTML='<div class="emp"><div class="ei">📝</div><p>在左侧输入 Markdown 内容<br>即可实时预览小红书图片效果</p><p style="font-size:11px;margin-top:6px;color:#ccc">💡 点击「示例」快速体验</p></div>';pgi.textContent='共 0 页';return}
   const t=gT(curTpl);
-  const font=gi('mi').dataset.font||t.ff,fs=parseInt(gi('mi').dataset.fs)||t.fs,cts=parseInt(gi('mi').dataset.cts)||t.cts;
+  const font=gi('mi').dataset.font||t.ff,fs=parseInt(gi('mi').dataset.fs)||t.fs,cts=parseInt(gi('mi').dataset.cts)||t.cts,ets=parseInt(gi('mi').dataset.ets)||t.ets||64,hfs=parseInt(gi('mi').dataset.hfs)||20;
   const tc=gi('tc').value,ac=gi('ac').value,bgc=gi('bc').value,ctc=gi('ctc').value,csc=gi('csc').value;
-  const author=gi('auth').value||'小红书博主',hdrTxt=gi('hdr').value||'📕 小红书';
+  const author=gi('auth').value||'北屿的蓝色',hdrTxt=gi('hdr').value||'📕 小红书';
   const fmtFtr=(gi('ftr').value||'出品 @作者').replace('@作者','@'+author);
   const hCv=gi('hCv').checked,hCn=gi('hCn').checked,hEd=gi('hEd').checked;
   const fCv=gi('fCv').checked,fCn=gi('fCn').checked,fEd=gi('fEd').checked;
@@ -290,23 +296,23 @@ function flush(){
   a+=`<div class="swp" style="width:${cw2}px;height:${ch}px"><div class="scene" style="transform:scale(${sc})">
     <div class="sc-cv" style="${scb};position:relative">
     ${bc?'<img class="cbg" src="'+bc+'">':''}
-    ${hCv?'<div class="hdr-abs" style="color:'+csc+'">'+hdrTxt+'</div>':''}
+    ${hCv?'<div class="hdr-abs" style="font-size:'+hfs+'px;color:'+csc+'">'+hdrTxt+'</div>':''}
     ${bc?'<div class="cov" style="background:rgba(0,0,0,.25);border-radius:14px;padding:36px 44px">':'<div class="cov">'}
     <div style="position:absolute;top:20px;right:25px;font-size:11px;color:${bc?'rgba(255,255,255,.4)':csc};letter-spacing:1px">小红书</div>
     <div class="ct" style="font-size:${cts}px;color:${ctc};font-family:'${font}',sans-serif">${title}</div>
     ${sub?'<div class="cs" style="font-size:22px;color:'+csc+'">'+sub+'</div>':''}
     <div class="ctg" style="background:rgba(255,255,255,.2);color:${ctc}">${t.ctg||'✨ 推荐'}</div></div>
     <div class="auth-ln" style="text-align:${authAlign};color:${csc};opacity:.8;position:absolute;bottom:56px;left:60px;right:60px">✎ ${author}</div>
-    ${fCv?'<div class="ftr-abs" style="color:'+csc+'">'+fmtFtr+'</div>':''}
+    ${fCv?'<div class="ftr-abs" style="font-size:'+hfs+'px;color:'+csc+'">'+fmtFtr+'</div>':''}
     <div class="bdg">📕 封面</div><div class="bdg-pg">1/${total}</div></div></div></div>`;
   // 内容
   pages.forEach((h,i)=>{
     a+=`<div class="swp" style="width:${cw2}px;height:${ch}px"><div class="scene" style="transform:scale(${sc})">
       <div class="sc-ct" style="background:${bgc};color:${tc};position:relative">
       ${bn?'<img class="cbg" src="'+bn+'">':''}
-      ${hCn?'<div class="hdr-ln ct-hdr" style="color:'+ac+';text-align:center;font-family:\''+font+'\',sans-serif">'+hdrTxt+'</div>':''}
+      ${hCn?'<div class="hdr-ln ct-hdr" style="font-size:'+hfs+'px;color:'+ac+';text-align:center;font-family:\''+font+'\',sans-serif">'+hdrTxt+'</div>':''}
       <div class="ci"><div class="csr mb" style="font-size:${fs}px;color:${tc};font-family:'${font}',sans-serif;--ac:${ac}">${h}</div></div>
-      ${fCn?'<div class="ftr-ln ct-ftr" style="color:#aaa;text-align:center">'+fmtFtr+'</div>':''}
+      ${fCn?'<div class="ftr-ln ct-ftr" style="font-size:'+hfs+'px;color:#aaa;text-align:center">'+fmtFtr+'</div>':''}
       <div class="auth-ln" style="text-align:${authAlign};color:#bbb;font-size:12px">✎ ${author}</div>
       <div class="bdg">📄 ${i+1}/${pages.length}</div><div class="bdg-pg">${i+2}/${total}</div></div></div></div>`;
   });
@@ -314,14 +320,14 @@ function flush(){
   a+=`<div class="swp" style="width:${cw2}px;height:${ch}px"><div class="scene" style="transform:scale(${sc})">
     <div class="sc-en" style="${seb};position:relative">
     ${be?'<img class="ebg" src="'+be+'">':''}
-    ${hEd?'<div class="hdr-abs" style="color:'+csc+'">'+hdrTxt+'</div>':''}
+    ${hEd?'<div class="hdr-abs" style="font-size:'+hfs+'px;color:'+csc+'">'+hdrTxt+'</div>':''}
     <div class="econ" style="${be?'background:rgba(0,0,0,.25);':''}">
     <div class="eico">${t.ei||'❤️'}</div>
-    <div class="etl" style="color:${ctc}">${endTxt||t.et||'感谢阅读'}</div>
+    <div class="etl" style="font-size:${ets}px;color:${ctc}">${endTxt||t.et||'感谢阅读'}</div>
     <div class="esb" style="color:${csc}">${t.es||'关注获取更多'}</div>
     <div class="esoc" style="color:${csc}">⬇ 长按保存 · 感谢关注</div></div>
     <div class="auth-ln" style="text-align:${authAlign};color:${csc};opacity:.8;position:absolute;bottom:56px;left:60px;right:60px">✎ ${author}</div>
-    ${fEd?'<div class="ftr-abs" style="color:'+csc+'">'+fmtFtr+'</div>':''}
+    ${fEd?'<div class="ftr-abs" style="font-size:'+hfs+'px;color:'+csc+'">'+fmtFtr+'</div>':''}
     <div class="bdg">📗 尾页</div><div class="bdg-pg">${total}/${total}</div></div></div></div>`;
   pc.innerHTML=a;
   pgi.textContent='共 '+total+' 页 (封面 '+pages.length+'页内容 尾页)';
@@ -335,8 +341,8 @@ async function dlA(){
   dlBusy=true;const btn=gi('dlBtn');
   const orig=btn.innerHTML;btn.innerHTML='<span class="sp"></span> 生成中...';btn.disabled=true;setP(5);
   try{
-    // 临时展开到1080×1440用于截图，截完恢复
-    elts.forEach(w=>{w.style.width='1080px';w.style.height='1440px';w.style.overflow='visible';const s=w.querySelector('.scene');if(s){s.style.transform='none';s.style.position='static'}});
+    // 临时展开到1080×1440用于截图：仅去掉缩放，保持absolute定位不变
+    elts.forEach(w=>{w.style.width='1080px';w.style.height='1440px';w.style.overflow='visible';const s=w.querySelector('.scene');if(s){s.style.transform='none'}});
     await new Promise(r=>setTimeout(r,400));
     let useZip=false;try{if(typeof JSZip!=='undefined')useZip=true}catch(e){}
     if(useZip){
@@ -347,7 +353,7 @@ async function dlA(){
       document.body.appendChild(ln);ln.click();document.body.removeChild(ln);URL.revokeObjectURL(ln.href);
       setP(100);shT('✅ 下载完成！共 '+elts.length+' 页');setTimeout(()=>setP(0),2000);
     }else{
-      for(let i=0;i<elts.length;i++){const card=elts[i];if(!card)continue;try{const cv=await html2canvas(card,{scale:2,useCORS:true,backgroundColor:null,logging:false});const ln=document.createElement('a');ln.download='xhs_'+(i===0?'cover':i===elts.length-1?'end':'content_'+(i))+'.png';ln.href=cv.toDataURL('image/png');ln.click();await new Promise(r=>setTimeout(r,80))}catch(e){console.warn(i+1,'failed:',e)}}
+      for(let i=0;i<elts.length;i++){const card=elts[i];if(!card)continue;try{const cv=await html2canvas(card,{scale:2,useCORS:true,backgroundColor:null,logging:false});const ln=document.createElement('a');ln.download='xhs_'+(i===0?'cover':i===elts.length-1?'end':'content_'+(i))+'.png';ln.href=cv.toDataURL('image/png');document.body.appendChild(ln);ln.click();document.body.removeChild(ln);await new Promise(r=>setTimeout(r,80))}catch(e){console.warn(i+1,'failed:',e)}}
       shT('✅ 下载完成');
     }
   }catch(err){console.error(err);shT('下载失败: '+err.message,true);setP(0)}
@@ -363,7 +369,9 @@ function ldS(){
 (function(){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onerror=()=>console.warn('JSZip CDN failed');document.head.appendChild(s)})();
 
 document.addEventListener('DOMContentLoaded',function(){
-  rTpl();gi('mi').addEventListener('input',flush);
+  rTpl();
+  gi('mi').dataset.ets='64';gi('mi').dataset.hfs='20';
+  gi('mi').addEventListener('input',flush);
   ['tc','ac','bc','ctc','csc','auth','hdr','ftr'].forEach(function(id){gi(id).addEventListener('input',flush)});
   ['hCv','hCn','hEd','fCv','fCn','fEd'].forEach(function(id){gi(id).addEventListener('change',flush)});
   setTimeout(ldS,60);
