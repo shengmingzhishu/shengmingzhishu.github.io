@@ -894,22 +894,46 @@ $('#btnImgDel').onclick=()=>{
 /* ============================================================
    七、Markdown 解析（纯 JS）
    ============================================================ */
+function normalizeMarkdownInput(src){
+  const text=(src||'').replace(/\r\n/g,'\n').trim();
+  if(!text) return '';
+  const lines=text.split('\n');
+  const hasBlankLine=lines.some(line=>!line.trim());
+  const hasMdBlock=lines.some(line=>/^(#{1,6}\s|>\s|```|[-*+]\s+|\d+\.\s+|---\s*$|!\[|\[.+\]\(|<[^>]+>)/.test(line.trim()));
+  if(hasBlankLine || hasMdBlock || lines.length<=1) return text;
+  return lines.map(line=>line.trim()).filter(Boolean).join('\n\n');
+}
 function mdToHtml(src){
   if(!src || !src.trim()) return '';
   const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const BR_TOKEN='__BR__';
+  const normalizeBr=s=>s.replace(/<br\s*\/?>/gi, BR_TOKEN);
   const inline=s=>{
-    s=esc(s);
-    s=s.replace(/!\[([^\]]*)\]\(([^)\s]+)\s*"([^"]*)"\)/g, '<img alt="$1" src="$2" title="$3" style="max-width:100%;border-radius:6px;">');
+    let t=normalizeBr(s).replace(/\n/g, BR_TOKEN);
+    t=esc(t);
+    t=t.replace(new RegExp(BR_TOKEN,'g'), '<br>');
+    t=t.replace(/!\[([^\]]*)\]\(([^)\s]+)\s*"([^"]*)"\)/g, '<img alt="$1" src="$2" title="$3" style="max-width:100%;border-radius:6px;">');
     s=s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" style="max-width:100%;border-radius:6px;">');
-    s=s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-    s=s.replace(/`([^`]+)`/g, '<code>$1</code>');
-    s=s.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
-    s=s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-    s=s.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
-    s=s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-    return s;
+    t=t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    t=t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    t=t.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+    t=t.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    t=t.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+    t=t.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    return t;
   };
-  const lines=src.replace(/\r\n/g,'\n').split('\n');
+  const lines=normalizeMarkdownInput(src).replace(/\r\n/g,'\n').split('\n');
+  const isTableRow=line=>/^\s*\|/.test(line.trim()) || /\|/.test(line.trim());
+  const parseTableRow=line=>{
+    const t=line.trim();
+    const body=t.startsWith('|') ? t.slice(1) : t;
+    const end=body.endsWith('|') ? body.slice(0,-1) : body;
+    return end.split('|').map(c=>c.trim());
+  };
+  const isTableSeparator=line=>{
+    const cells=parseTableRow(line);
+    return cells.length>1 && cells.every(c=>/^:?-{3,}:?$/.test(c));
+  };
   let html='', i=0;
   while(i<lines.length){
     let line=lines[i];
@@ -929,6 +953,28 @@ function mdToHtml(src){
       const q=[]; while(i<lines.length && /^\s*>/.test(lines[i])){ q.push(lines[i].replace(/^\s*>\s?/,'')); i++; }
       html+='<blockquote>'+inline(q.join('<br>'))+'</blockquote>'; continue;
     }
+    const tableLines=[]; let j=i;
+    while(j<lines.length){
+      const ln=lines[j];
+      const trimmed=ln.trim();
+      if(!trimmed) break;
+      if(!isTableRow(trimmed)) break;
+      tableLines.push(ln);
+      j++;
+    }
+    if(tableLines.length>=2 && isTableSeparator(tableLines[1])){
+      const rows=tableLines.map(parseTableRow);
+      const head=rows[0];
+      const body=rows.slice(2);
+      html+='<table style="border-collapse:collapse;width:100%;margin:12px 0;">';
+      html+='<thead><tr>'+head.map(c=>'<th style="border:1px solid #e2e8f0;padding:8px 10px;background:#f8fafc;text-align:left;">'+inline(c)+'</th>').join('')+'</tr></thead>';
+      if(body.length){
+        html+='<tbody>'+body.map(r=>'<tr>'+r.map(c=>'<td style="border:1px solid #e2e8f0;padding:8px 10px;">'+inline(c)+'</td>').join('')+'</tr>').join('')+'</tbody>';
+      }
+      html+='</table>';
+      i=j;
+      continue;
+    }
     if(/^\s*[-*+]\s+/.test(line)){
       const it=[]; while(i<lines.length && /^\s*[-*+]\s+/.test(lines[i])){ it.push('<li>'+inline(lines[i].replace(/^\s*[-*+]\s+/,''))+'</li>'); i++; }
       html+='<ul>'+it.join('')+'</ul>'; continue;
@@ -939,7 +985,8 @@ function mdToHtml(src){
     }
     if(line.trim()===''){ i++; continue; }
     const p=[]; while(i<lines.length && lines[i].trim()!=='' && !/^(#{1,6}\s|>|```|\s*[-*+]\s|\s*\d+\.\s|\s*<)/.test(lines[i])){ p.push(lines[i]); i++; }
-    html+='<p>'+inline(p.join('<br>'))+'</p>';
+    const paragraphText=p.join('\n');
+    html+='<p>'+inline(paragraphText)+'</p>';
   }
   return html;
 }
