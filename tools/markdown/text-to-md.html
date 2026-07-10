@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="智能文本转Markdown格式化工具 - AI驱动的内容识别和自动排版">
+<title>文本 → Markdown · 转换工具</title>
+<script src="../../assets/js/marked.min.js"></script>
+<link rel="stylesheet" href="../../assets/css/github.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#eef2f7;--panel:#fff;--line:#e7ecf3;--text:#1e293b;--sub:#64748b;--muted:#94a3b8;--accent:#3b82f6;--accent-2:#2563eb;--accent-soft:#dbeafe;--radius:12px;--shadow:0 4px 16px rgba(15,23,42,.06)}
+html,body{height:100%}
+body{background:var(--bg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);line-height:1.6;overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.topbar{height:56px;background:#fff;color:#333;display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;border-bottom:1px solid #e8e8e8;box-shadow:0 1px 6px rgba(0,0,0,.04);z-index:30}
+.topbar .brand{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:#1e293b}
+.topbar .brand .logo{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+.topbar .spacer{flex:1}
+.tbtn{height:34px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;transition:.15s;white-space:nowrap}
+.tbtn.ghost{background:#f1f4f8;color:#475569}
+.tbtn.ghost:hover{background:#e2e8f0}
+.tbtn.success{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.3);height:32px;font-size:12px}
+.tbtn.success:hover{filter:brightness(1.08)}
+.workspace{display:flex;height:calc(100vh - 56px);gap:10px;padding:10px}
+.col{background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.col-left{flex:0 0 45%}
+.col-right{flex:1}
+.col-head{height:40px;padding:0 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid var(--line);background:#fbfcfe;font-size:13px;font-weight:700;color:#334155}
+.col-head .hint{margin-left:auto;font-weight:400;color:var(--muted);font-size:11px}
+.opt-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap;background:#fafbfc;flex-shrink:0;font-size:12px}
+.opt-bar .lbl{font-size:11px;color:var(--muted);font-weight:600;margin-right:2px}
+.opt-btn{height:26px;padding:0 10px;border-radius:6px;font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;display:inline-flex;align-items:center;gap:3px;transition:.12s;border:1px solid transparent;cursor:pointer;font-family:inherit}
+.opt-btn:hover{background:var(--accent-soft);color:var(--accent-2);border-color:#bfdbfe}
+.editor-wrap{flex:1;position:relative;display:flex;flex-direction:column;min-height:0}
+textarea{flex:1;padding:14px 16px;outline:none;border:none;resize:none;font-family:'Courier New',monospace;font-size:14px;line-height:1.7;color:#334155;width:100%;background:#fcfdff}
+#preview{flex:1;padding:14px 16px;overflow-y:auto;background:#fff;white-space:pre-wrap;font-family:'Courier New',monospace;font-size:14px;line-height:1.5}
+#toast{position:fixed;top:22px;left:50%;transform:translateX(-50%) translateY(-60px);background:linear-gradient(45deg,#FFD1DC,#FFB5E8);color:#444;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.1);display:flex;align-items:center;gap:6px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.wx-content{line-height:1.6;font-size:16px;color:#333}
+@media (max-width:768px){.workspace{flex-direction:column;height:auto}.col-left,.col-right{flex:1 1 auto;width:100%;min-height:300px}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">📝</span>文本 → Markdown</div>
+  <span style="font-size:11px;color:var(--muted)">智能文本转Markdown格式化工具</span>
+  <div class="spacer"></div>
+  <a href="../../index.html" class="tbtn ghost" style="text-decoration:none">🏠 返回主页</a>
+</header>
+
+<div class="workspace">
+  <section class="col col-left">
+    <div class="col-head"><span>📝 原始文本</span><span class="hint">🆕 AI 智能识别内容</span></div>
+    <div class="opt-bar">
+      <button class="opt-btn" onclick="loadSampleData()">📋 智能示例</button>
+      <button class="opt-btn" onclick="loadSimpleDemo()">🔍 简单演示</button>
+      <button class="opt-btn" onclick="clearInput()">🗑 清空</button>
+    </div>
+    <div class="editor-wrap">
+      <textarea id="textInput" placeholder="请输入需要格式化的文本内容..."></textarea>
+    </div>
+  </section>
+  <section class="col col-right">
+    <div class="col-head"><span>📄 Markdown 预览</span><span class="hint">📋 点击下方按钮复制</span></div>
+    <div id="preview" class="wx-content"></div>
+    <div style="padding:8px 12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-shrink:0;background:#fafbfc;align-items:center">
+      <span style="font-size:11px;color:var(--muted)">📋 复制 Markdown：</span>
+      <button class="tbtn success" onclick="copyMarkdown()">📋 一键复制</button>
+    </div>
+  </section>
+</div>
+
+<div id="toast">🎈 复制成功！</div>
+
+<script>
+function formatToMarkdown(text) {
+    if (!text.trim()) return '';
+
+    // 保留原始换行结构，但过滤空行
+    const originalLines = text.split('\n');
+    const lines = originalLines.map(line => line.trim()).filter(line => line);
+    let markdown = [];
+
+    // 智能内容分析和预处理
+    const analysis = analyzeContentStructure(lines);
+
+    // 智能生成主标题
+    if (lines.length > 0 && !lines[0].startsWith('#') && !detectHeadingLevel(lines[0], analysis).isHeading) {
+        const mainTitle = generateMainTitle(lines[0], analysis);
+        markdown.push(`# ${mainTitle}\n`);
+    }
+
+    // 智能段落处理 - 保留原始换行语义
+    let currentParagraph = [];
+    let lastWasEmpty = false; // 跟踪空行
+    let isInList = false;
+    let consecutiveShortLines = 0; // 连续短句计数
+
+    for (let i = 0; i < originalLines.length; i++) {
+        const originalLine = originalLines[i];
+        const line = originalLine.trim();
+
+        // 如果是空行，保留换行并结束当前段落
+        if (!line) {
+            if (currentParagraph.length > 0) {
+                // 空行表示段落结束
+                markdown.push(formatParagraph(currentParagraph, analysis));
+                currentParagraph = [];
+            }
+            // 保留换行：添加一个空行
+            markdown.push('');
+            lastWasEmpty = true;
+            consecutiveShortLines = 0;
+            isInList = false;
+            continue;
+        }
+
+        // 检测内容类型
+        const headingInfo = detectHeadingLevel(line, analysis);
+        const isListItem = isLikelyListItem(line, i, originalLines, analysis);
+
+        // 计算当前行在lines数组中的位置（确保索引正确）
+        const filteredIndex = lines.indexOf(line);
+        const isImportant = filteredIndex >= 0 ? isImportantSentence(line, analysis, filteredIndex, lines) : false;
+        const isQuote = isQuoteText(line);
+
+        // 检查是否是独立短句（适合独立段落）
+        const isIndependentShort = isIndependentSentence(line);
+
+        // 处理标题
+        if (headingInfo.isHeading) {
+            if (currentParagraph.length > 0) {
+                markdown.push(formatParagraph(currentParagraph, analysis));
+                currentParagraph = [];
+            }
+            markdown.push(`${'#'.repeat(headingInfo.level)} ${line}\n`);
+            isInList = false;
+            lastWasEmpty = false;
+            consecutiveShortLines = 0;
+            continue;
+        }
+
+        // 处理列表项
+        if (isListItem) {
+            if (currentParagraph.length > 0) {
+                markdown.push(formatParagraph(currentParagraph, analysis));
+                currentParagraph = [];
+            }
+
+            const formattedListItem = formatListItem(line, analysis);
+            markdown.push(formattedListItem);
+            isInList = true;
+            lastWasEmpty = false;
+            consecutiveShortLines = 0;
+            continue;
+        }
+
+        // 处理引用
+        if (isQuote) {
+            if (currentParagraph.length > 0) {
+                markdown.push(formatParagraph(currentParagraph, analysis));
+                currentParagraph = [];
+            }
+            markdown.push(formatQuote(line, analysis));
+            isInList = false;
+            lastWasEmpty = false;
+            consecutiveShortLines = 0;
+            continue;
+        }
+
+        // 智能段落合并策略
+        const shouldStartNewParagraph = shouldStartNewParagraphLogic(
+            line, currentParagraph, lastWasEmpty, consecutiveShortLines,
+            isInList, i, originalLines, analysis
+        );
+
+        if (shouldStartNewParagraph && currentParagraph.length > 0) {
+            markdown.push(formatParagraph(currentParagraph, analysis));
+            currentParagraph = [];
+        }
+
+        // 添加到当前段落
+        currentParagraph.push(line);
+
+        // 更新短句计数
+        if (line.length <= 20) {
+            consecutiveShortLines++;
+        } else {
+            consecutiveShortLines = 0;
+        }
+
+        lastWasEmpty = false;
+    }
+
+    // 处理最后一个段落
+    if (currentParagraph.length > 0) {
+        markdown.push(formatParagraph(currentParagraph, analysis));
+    }
+
+    return markdown.join('\n');
+}
+
+// ===== 智能内容分析 =====
+function analyzeContentStructure(lines) {
+    const analysis = {
+        totalLines: lines.length,
+        avgLength: 0,
+        shortLineCount: 0,
+        hasNumbers: false,
+        hasChinesePunct: false,
+        hasEnglishOnly: false,
+        // 文章类型检测
+        articleType: 'general', // 'general', 'list', 'mixed', 'dialogue'
+        // 关键词统计
+        keyPhrases: [],
+        // 主要主题
+        mainTopic: ''
+    };
+
+    let totalLength = 0;
+    let numberLines = 0;
+
+    lines.forEach((line, i) => {
+        totalLength += line.length;
+        if (line.length <= 15) analysis.shortLineCount++;
+        if (/\d/.test(line)) numberLines++;
+        if (/[。！？，、；：""''（）【】《》]/.test(line)) analysis.hasChinesePunct = true;
+        if (/^[a-zA-Z0-9\s.,!?;:]+$/.test(line)) analysis.hasEnglishOnly = true;
+
+        // 检测数字列表
+        if (/^\d+[\.、．\s]/.test(line)) {
+            analysis.hasNumbers = true;
+        }
+    });
+
+    analysis.avgLength = lines.length > 0 ? totalLength / lines.length : 0;
+
+    // 判断文章类型
+    if (analysis.shortLineCount / lines.length > 0.4 && numberLines / lines.length > 0.3) {
+        analysis.articleType = 'list';
+    } else if (analysis.hasChinesePunct && lines.length > 5) {
+        analysis.articleType = 'mixed';
+    }
+
+    return analysis;
+}
+
+// ===== 标题检测 =====
+function detectHeadingLevel(line, analysis) {
+    const result = { isHeading: false, level: 0 };
+
+    // 如果以特殊字符开头，不太可能是标题
+    if (/^[a-z0-9\s]/.test(line) && !/^[一二三四五六七八九十]/.test(line)) {
+        return result;
+    }
+
+    // 长度过滤：标题通常不会太长
+    if (line.length > 50) return result;
+
+    // 数字序号开头可能是标题（各种风格）
+    const numberHeadingMatch = line.match(/^(?:第[一二三四五六七八九十]+章?|[一二三四五六七八九十]+[、．\.]\s*|[\(\[]?\d+[\)\]\.、．]\s*)/);
+
+    // 内容特征分析
+    const hasTitleKeywords = /^(?:关于|论|浅谈|浅析|探讨|研究|分析|总结|报告|通知|公告|方案|计划|策略|方法|技术|如何|怎样|什么|为什么|什么是)/.test(line);
+    const hasTitlePattern = /^(?:[「【《]|.*[」】》])$/.test(line) || /^[「【《]/.test(line);
+    const isShortAndMeaningful = line.length >= 6 && line.length <= 30 && !line.includes('，') && !line.includes('。');
+
+    // 是否是重要句（短而有力）
+    const isPowerfulShort = line.length >= 4 && line.length <= 20 && /[的之]$/.test(line);
+
+    // 综合判断
+    if (numberHeadingMatch || hasTitleKeywords || isPowerfulShort) {
+        result.isHeading = true;
+        result.level = 2; // 默认为二级标题
+    } else if (hasTitlePattern && isShortAndMeaningful) {
+        result.isHeading = true;
+        result.level = 3;
+    }
+
+    // 长度太短或太长，降级
+    if (line.length < 4 || line.length > 45) {
+        result.isHeading = false;
+    }
+
+    return result;
+}
+
+// ===== 列表项检测 =====
+function isLikelyListItem(line, index, originalLines, analysis) {
+    // 数字列表
+    if (/^\d+[\.、．\s]/.test(line)) return true;
+    if (/^[\(\[（]\d+[\)\]）]/.test(line)) return true;
+    if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(line)) return true;
+    if (/^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]/.test(line)) return true;
+
+    // 符号列表
+    if (/^[•·●■◆\-*]\s/.test(line)) return true;
+
+    // 连续短句检测（可能是列表）
+    if (index > 0 && originalLines[index - 1] && originalLines[index - 1].trim()) {
+        const prevLine = originalLines[index - 1].trim();
+        const currentLine = line;
+        // 如果前后行都较短且没有句号结尾，可能是列表项
+        if (prevLine.length <= 30 && currentLine.length <= 30 &&
+            !prevLine.endsWith('。') && !currentLine.endsWith('。') &&
+            !/^[#]/.test(prevLine)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ===== 引用检测 =====
+function isQuoteText(text) {
+    const quotePrefixes = ['"', '"', '"', '"', '「', '『', '【', '《', '>', '》', '】', '』', '」'];
+    return quotePrefixes.some(prefix => text.startsWith(prefix));
+}
+
+// ===== 独立短句检测 =====
+function isIndependentSentence(line) {
+    // 独立的短句,适合作为单独段落
+    if (line.length <= 20 && !line.includes(',') && !line.includes('，')) {
+        return true;
+    }
+    return false;
+}
+
+// ===== 段落合并逻辑 =====
+function shouldStartNewParagraphLogic(line, currentParagraph, lastWasEmpty, consecutiveShortLines, isInList, index, originalLines, analysis) {
+    if (lastWasEmpty) return true;
+    if (isInList) return true;
+
+    // 连续短句达到3个，开始新段落
+    if (consecutiveShortLines >= 3) return true;
+
+    // 如果当前段落积累了足够长的内容，考虑分段
+    if (currentParagraph.length >= 8) return true;
+
+    // 检测到重要句子时开始新段落
+    if (isImportantSentence(line, analysis, index, originalLines)) {
+        if (currentParagraph.length >= 2) return true;
+    }
+
+    return false;
+}
+
+// ===== 重要句子检测 =====
+function isImportantSentence(line, analysis, index, lines) {
+    // 以数字开头且内容简洁
+    if (/^\d+[\.、．\s].{5,30}$/.test(line)) return true;
+
+    // 包含关键指示词
+    const keyIndicators = ['首先', '其次', '最后', '然后', '此外', '另外', '同时', '特别', '尤其', '总之', '综上所述', '因此', '所以', '但是', '然而', '不过', '值得注意的是', '需要强调的是'];
+    if (keyIndicators.some(indicator => line.startsWith(indicator))) return true;
+
+    // 较短的句子，可能是要点
+    if (line.length >= 6 && line.length <= 30 && !line.endsWith(',') && !line.endsWith('，')) {
+        // 检查上下文：如果前后也都是短句，可能是列表项
+        const prevLine = index > 0 ? lines[index - 1] : '';
+        const nextLine = index < lines.length - 1 ? lines[index + 1] : '';
+        if (prevLine && nextLine && prevLine.length <= 30 && nextLine.length <= 30) {
+            return true; // 短句群的一部分
+        }
+    }
+
+    return false;
+}
+
+// ===== 格式化段落 =====
+function formatParagraph(lines, analysis) {
+    if (lines.length === 0) return '';
+
+    // 如果只有一行且较短，作为单独段落
+    if (lines.length === 1 && lines[0].length <= 30) {
+        return `- ${lines[0]}`;
+    }
+
+    // 合并为段落
+    const paragraph = lines.join('，');
+    return paragraph;
+}
+
+// ===== 格式化列表项 =====
+function formatListItem(line, analysis) {
+    // 移除已有的序号标记，统一格式
+    let cleanLine = line.replace(/^\d+[\.、．\s]/, '').replace(/^[\(\[（]\d+[\)\]）]/, '').replace(/^[•·●■◆\-*]\s/, '');
+    return `- ${cleanLine}`;
+}
+
+// ===== 格式化引用 =====
+function formatQuote(line, analysis) {
+    return `> ${line}`;
+}
+
+// ===== 主标题生成 =====
+function generateMainTitle(firstLine, analysis) {
+    // 清理和优化
+    let title = firstLine.replace(/^[#\s]+/, '').trim();
+
+    // 如果标题过长，截断并添加省略号
+    if (title.length > 30) {
+        title = title.substring(0, 30) + '...';
+    }
+
+    return title;
+}
+
+// ===== 视图更新 =====
+function updatePreview() {
+    const textInput = document.getElementById('textInput');
+    const preview = document.getElementById('preview');
+    const markdown = formatToMarkdown(textInput.value);
+    preview.textContent = markdown;
+}
+
+// ===== 加载示例数据 =====
+function loadSampleData() {
+    const sampleText = `智能文本格式化工具使用指南
+
+本工具能够智能识别文本内容，自动分析段落结构和标题层级。
+以下是本工具的核心功能说明：
+
+一、智能识别功能
+
+工具能够自动识别文本中的标题、列表、引用等元素。
+例如，以数字序号开头的内容会被识别为列表项。
+引用的内容会被自动添加引用标记。
+
+二、段落处理策略
+
+工具采用智能段落合并策略，避免过度分段。
+同时能够识别独立的短句，将其作为单独段落处理。
+连续三个以上的短句会被合并为一个段落。
+
+三、使用建议
+
+建议在使用前先点击"智能示例"按钮。
+输入文本后，工具会自动进行格式化。
+格式化后的Markdown可以直接复制使用。
+
+
+常见问题
+
+1. 工具支持中文和英文混排
+2. 自动识别数字列表和符号列表
+3. 支持引用的自动格式化
+4. 保留原始换行结构
+5. 智能标题层级识别`;
+
+    document.getElementById('textInput').value = sampleText;
+    updatePreview();
+    showToast('✅ 已加载智能示例');
+}
+
+// ===== 加载简单演示 =====
+function loadSimpleDemo() {
+    const demoText = `这是一段简单的演示文本。
+这段文本包含了多个句子。
+工具会自动识别并格式化。
+你可以看到工具的智能处理效果。`;
+
+    document.getElementById('textInput').value = demoText;
+    updatePreview();
+    showToast('✅ 已加载简单演示');
+}
+
+// ===== 清空输入 =====
+function clearInput() {
+    document.getElementById('textInput').value = '';
+    document.getElementById('preview').textContent = '';
+    showToast('🗑 已清空');
+}
+
+// ===== 复制Markdown =====
+function copyMarkdown() {
+    const preview = document.getElementById('preview');
+    const text = preview.textContent;
+
+    if (!text.trim()) {
+        showToast('⚠️ 没有内容可复制');
+        return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showToast('✅ 复制成功！');
+}
+
+// ===== Toast提示 =====
+let toastTimer = null;
+function showToast(message, duration = 2000) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, duration);
+}
+
+// ===== 初始化 =====
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('textInput').addEventListener('input', updatePreview);
+    loadSampleData();
+});
+</script>
+</body>
+</html>

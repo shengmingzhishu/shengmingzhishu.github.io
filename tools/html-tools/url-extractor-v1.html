@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL 提取 · HTML 工具</title>
+<script src="../../assets/js/marked.min.js"></script>
+<link rel="stylesheet" href="../../assets/css/github.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#eef2f7;--panel:#fff;--line:#e7ecf3;--text:#1e293b;--sub:#64748b;--muted:#94a3b8;--accent:#3b82f6;--accent-2:#2563eb;--accent-soft:#dbeafe;--radius:12px;--shadow:0 4px 16px rgba(15,23,42,.06)}
+html,body{height:100%}
+body{background:var(--bg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);line-height:1.6;overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.topbar{height:56px;background:#fff;color:#333;display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;border-bottom:1px solid #e8e8e8;box-shadow:0 1px 6px rgba(0,0,0,.04);z-index:30}
+.topbar .brand{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:#1e293b}
+.topbar .brand .logo{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+.topbar .spacer{flex:1}
+.tbtn{height:34px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;transition:.15s;white-space:nowrap}
+.tbtn.ghost{background:#f1f4f8;color:#475569}
+.tbtn.ghost:hover{background:#e2e8f0}
+.tbtn.success{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.3);height:32px;font-size:12px}
+.tbtn.success:hover{filter:brightness(1.08)}
+.workspace{display:flex;height:calc(100vh - 56px);gap:10px;padding:10px}
+.col{background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.col-left{flex:0 0 45%}
+.col-right{flex:1}
+.col-head{height:40px;padding:0 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid var(--line);background:#fbfcfe;font-size:13px;font-weight:700;color:#334155}
+.col-head .hint{margin-left:auto;font-weight:400;color:var(--muted);font-size:11px}
+.opt-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap;background:#fafbfc;flex-shrink:0;font-size:12px}
+.opt-bar .lbl{font-size:11px;color:var(--muted);font-weight:600;margin-right:2px}
+.opt-bar label{font-size:11px;display:inline-flex;align-items:center;gap:2px;cursor:pointer;margin-right:6px}
+.opt-bar input[type="radio"]{margin:0;cursor:pointer}
+.opt-btn{height:26px;padding:0 10px;border-radius:6px;font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;display:inline-flex;align-items:center;gap:3px;transition:.12s;border:1px solid transparent;cursor:pointer;font-family:inherit}
+.opt-btn:hover{background:var(--accent-soft);color:var(--accent-2);border-color:#bfdbfe}
+.opt-btn.danger:hover{background:#fee2e2;color:#dc2626;border-color:#fecaca}
+.user-row{display:flex;align-items:center;gap:10px;padding:4px 10px;border-bottom:1px solid var(--line);background:#fafbfc;flex-shrink:0;font-size:12px}
+.user-row label{font-size:11px;color:var(--muted);font-weight:600}
+.user-row input{height:26px;padding:0 8px;border:1px solid #ddd;border-radius:6px;font-size:11px;outline:none;background:#fff}
+.user-row input:focus{border-color:var(--accent)}
+.editor-wrap{flex:1;position:relative;display:flex;flex-direction:column;min-height:0}
+textarea{flex:1;padding:14px 16px;outline:none;border:none;resize:none;font-family:'Courier New',monospace;font-size:13px;line-height:1.7;color:#334155;width:100%;background:#fcfdff}
+#preview{flex:1;padding:14px 16px;overflow-y:auto;background:#fff;line-height:1.6;font-size:16px;color:#333}
+#preview img{max-width:100%!important;height:auto!important}
+#toast{position:fixed;top:22px;left:50%;transform:translateX(-50%) translateY(-60px);background:linear-gradient(45deg,#FFD1DC,#FFB5E8);color:#444;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.1);display:flex;align-items:center;gap:6px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.wx-content{line-height:1.6;font-size:16px;color:#333}
+.wx-content img{max-width:100%!important;height:auto!important}
+@media (max-width:768px){.workspace{flex-direction:column;height:auto}.col-left,.col-right{flex:1 1 auto;width:100%;min-height:300px}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">&#x1F4DD;</span>排版工具</div>
+  <span style="font-size:11px;color:var(--muted)">URL 提取 · HTML 工具</span>
+  <div class="spacer"></div>
+  <a href="../../index.html" class="tbtn ghost" style="text-decoration:none">&#x1F3E0; 返回主页</a>
+</header>
+
+<div class="workspace">
+  <section class="col col-left">
+    <div class="col-head"><span>&#x1F4DD; 编辑区</span></div>
+    <div class="opt-bar">
+      <span class="lbl">段落：</span>
+      <label><input type="radio" name="paragraphMode" value="on" id="para-on" checked>&#x662F;</label>
+      <label><input type="radio" name="paragraphMode" value="off" id="para-off">&#x5426;</label>
+      <span style="width:1px;height:16px;background:#ddd;display:inline-block"></span>
+      <span class="lbl">对齐：</span>
+      <label><input type="radio" name="alignMode" value="left" id="align-left">&#x5C45;&#x5DE6;</label>
+      <label><input type="radio" name="alignMode" value="center" id="align-center" checked>&#x5C45;&#x4E2D;</label>
+    </div>
+    <div class="opt-bar">
+      <button class="opt-btn" id="clear-enter">&#x1F5D1; &#x5220;&#x9664;&#x7A7A;&#x884C;</button>
+      <button class="opt-btn" id="clear-sort">&#x1F500; &#x5185;&#x5BB9;&#x4E71;&#x5E8F;</button>
+      <button class="opt-btn" id="clear-short">&#x2702; &#x5220;&#x9664;&#x77ED;&#x8BCD;</button>
+    </div>
+    <div class="user-row">
+      <label>&#x7528;&#x6237;ID&#xFF1A;</label><input type="text" value="MzI2OTQ4MDcxOA==" id="user-id" placeholder="&#x7528;&#x6237;ID">
+      <label>&#x7528;&#x6237;&#x540D;&#xFF1A;</label><input type="text" value="&#x5317;&#x5C7B;&#x7684;&#x84DD;&#x8272;" id="user-name" placeholder="&#x7528;&#x6237;&#x540D;">
+    </div>
+    <div class="editor-wrap">
+      <textarea id="editor" placeholder="&#x8F93;&#x5165;Markdown&#x5185;&#x5BB9;..."></textarea>
+    </div>
+  </section>
+  <section class="col col-right">
+    <div class="col-head"><span>&#x1F4C4; &#x9884;&#x89C8;</span><span class="hint">&#x1F4CB; &#x9009;&#x4E2D;&#x540E;&#x590D;&#x5236;</span></div>
+    <div id="preview" class="wx-content"></div>
+    <div style="padding:8px 12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-shrink:0;background:#fafbfc;align-items:center">
+      <span style="font-size:11px;color:var(--muted)">&#x1F4CB; &#x590D;&#x5236;&#x5230;&#x516C;&#x4F17;&#x53F7;&#xFF1A;</span>
+      <button class="tbtn success" onclick="copyWechatHTML()">&#x1F4CB; &#x4E00;&#x952E;&#x590D;&#x5236;</button>
+    </div>
+  </section>
+</div>
+
+<div id="toast">&#x2705; &#x590D;&#x5236;&#x6210;&#x529F;&#xFF01;</div>
+
+<div id="period-line" style="display:none"></div>
+<div id="pick-images-btn" style="display:none"></div>
+<div id="align-random" style="display:none"></div>
+<div id="align-sort" style="display:none"></div>
+<div id="align-right" style="display:none"></div>
+<div id="clear-images-btn" style="display:none"></div>
+<div id="format-url" style="display:none"></div>
+<input id="file-input-btn" style="display:none">
+<input id="file-src-array" style="display:none">
+<div id="image-list" style="display:none"></div>
+<input id="valueDisplay" style="display:none">
+<script>
+    // 段落模式和对齐方式的全局变量
+    let paragraphMode = true; // true: 段落分割，false: 每行为一个块
+    let alignMode = 'center';   // 'left' or 'center'
+    let userId = ''
+    let userName = ''
+
+    // 监听段落模式切换
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('para-on').addEventListener('change', function() {
+            if (this.checked) {
+                paragraphMode = true;
+                updatePreview();
+            }
+        });
+        document.getElementById('para-off').addEventListener('change', function() {
+            if (this.checked) {
+                paragraphMode = false;
+                updatePreview();
+            }
+        });
+        document.getElementById('align-left').addEventListener('change', function() {
+            if (this.checked) {
+                alignMode = 'left';
+                updatePreview();
+            }
+        });
+        document.getElementById('align-center').addEventListener('change', function() {
+            if (this.checked) {
+                alignMode = 'center';
+                updatePreview();
+            }
+        });
+        // 这里可以正常取值。change事件会在输入框失去焦点或内容改变后触发，能获取到最新的值。
+        document.getElementById('user-id').addEventListener('change', function(e) {
+            userId =  e.target.value;
+            updatePreview();
+        });
+        document.getElementById('user-name').addEventListener('change', function(e) {
+            userName = e.target.value;
+            updatePreview();
+        });
+        document.getElementById('clear-enter').addEventListener('click', function() {
+            clearEnter()
+        });
+        document.getElementById('clear-sort').addEventListener('click', function() {
+            clearSort()
+        });
+        document.getElementById('clear-short').addEventListener('click', function() {
+            clearShort()
+        });
+        document.getElementById('format-url').addEventListener('click', function() {
+            setUniqueUrlsToEditor()
+        });
+    });
+
+    
+    function clearEnter(){
+            // 删除多余的空行（连续两个及以上的空行变成一个空行），并去除首尾空白
+            let textArea = document.getElementById('editor');
+            let text = textArea.value;
+            // 兼容Windows(\r\n)、Mac(\r)和Unix(\n)换行符
+            // 1. 替换所有\r\n和\r为\n
+            // text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            // 1. 替换所有\r\n和\r为\n
+            text = text.replace(/\r\n/g, '').replace(/\r/g, '').replace(/\n\n/g, '\n');
+            // 2. 连续两个及以上的空行变成一个空行
+            //text = text.replace(/\n{1,}/g, '\n\n');
+            // 3. 去除首尾空白
+            text = text.trim();
+            textArea.value = text;
+            updatePreview();
+    } 
+    
+    
+    function clearSort(){
+            let textArea = document.getElementById('editor');
+            let text = textArea.value;
+            // 随机乱序
+            let lines = text.split('\n');
+            let filteredLines = lines.sort(() => Math.random() - 0.5);
+            textArea.value =  filteredLines.join('\n');
+            updatePreview();
+    } 
+
+    
+    function clearShort(){
+            let textArea = document.getElementById('editor');
+            let text = textArea.value;
+            // 把text拆分成多行的数据， 仅保留每行字符串去除前后空格后长度大于3的  
+            let lines = text.split('\n');
+            let filteredLines = lines.filter(line => {
+                return line.trim() === '' || line.trim().length > 3;
+            });
+            textArea.value = filteredLines.join('\n');
+            updatePreview();
+    } 
+
+    function autoFormatText(rawText) {
+        // 段落分割
+        let paragraphs = [];
+        if (paragraphMode) {
+            // 段落模式：以两个及以上换行分割为段落
+            paragraphs = rawText.split(/\n{2,}/g);
+        } else {
+            // 非段落模式：每一行为一个段
+            paragraphs = rawText.split('\n').filter(line => line.trim() !== '');
+        }
+
+        let html = [];
+        let index = 0;
+        userId = document.getElementById("user-id").value
+        userName = document.getElementById("user-name").value
+
+        // 随机标签数据
+        const times = [
+            "3分钟前", "5分钟前", "10分钟前", "分享会暴富", "点赞会暴富"
+        ];
+        const names = [
+            "云舒", "星眠", "月汀", "风禾", "桑榆",
+            "清晏", "南乔", "知夏", "砚秋", "汀兰",
+            "桃夭", "小满", "柚柚", "棠梨", "青雀",
+            "Daisy", "Luna", "Willow", "Elena", "Clover",
+            "予安", "知遥", "念初", "简宁", "未晞",
+            "莓莓", "棠棠", "穗穗", "皎皎", "沅沅",
+            "小初", "雨柔", "安婉", "青柠", "西瓜", "夏夏", "Spring"
+        ];
+        const symbols = [
+            '𝒮𝓊𝓃 ☀️ 𝒮𝒽𝒾𝓃𝑒','🍸 𝒞𝒽𝒾𝓁𝓁 𝒯𝒾𝓂𝑒','🌼 𝒩𝒶𝓉𝓊𝓇𝑒 𝒟𝑒𝓁𝒾𝑔𝒽𝓉','𝐿𝑜𝓋𝑒💕 𝒥𝑜𝓊𝓇𝓃𝑒𝓎','🍟 𝒯𝒶𝓈𝓉𝓎 𝒯𝒾𝓅','𝐵𝓎𝑒 🍯 𝒮𝑜𝓊𝓁','🌊 𝒮𝑒𝒶 𝒞𝒶𝓁𝓂','🎈 𝒞𝑒𝓁𝑒𝒷𝓇𝒶𝓉𝑒','🍵 𝒯𝑒𝒶 𝒞𝒶𝓁𝓂','𝒮𝓉𝒶𝓇 🌟 𝒟𝓇𝑒𝒶𝓂',
+            '🌷 𝒫𝒶𝓈𝓈𝒾𝑜𝓃 𝒮𝓅𝒶𝓇𝓀','🍎 𝒩𝓊𝓉𝓇𝒾𝓉𝒾𝑜𝓃 𝒮𝑜𝓊𝓁','🌿 𝒩𝒶𝓉𝓊𝓇𝑒 𝒯𝑜𝓊𝒸𝒽','𝐵𝓁𝑜𝑜𝓂 🌸 𝒯𝒾𝓂𝑒','🍰 𝒟𝑒𝓈𝓈𝑒𝓇𝓉 𝒟𝓇𝑒𝒶𝓂','🌴 𝒯𝓇𝒶𝓋𝑒𝓁 𝒟𝑟𝑒𝒶𝓂','🍕 𝒫𝒾𝓏𝓏𝒶 𝒯𝒾𝓂𝑒','🌳 𝒲𝑜𝑜𝒹𝓈 𝒯𝒾𝓂𝑒','🍑 𝒮𝓌𝑒𝑒𝓉 𝒮𝑜𝓊𝓁','𝐹𝑙𝑦 🌬 𝒟𝑟𝑒𝒶𝓂',
+            // ... 省略部分，原有内容继续 ...
+            '𝓈𝓁𝑒𝑒𝓅 💤 𝒮𝑜𝓊𝓁'
+        ];
+
+        
+        const imgtx = [
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687305",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687508",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687629",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687710",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687826",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400743924",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744121",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744211",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744290",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744476",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400792184",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400792381",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002298",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002474",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059143",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059323",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059410",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059538",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059708",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059631",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059802",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059885",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401059997",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111082",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111208",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111291",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111388",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111471",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111558",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111635",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401111744",   
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401137939", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687024", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687121", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687217"   
+
+        ]
+
+        
+        const imgbj = [
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242579", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242375", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242155", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242488", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242881", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242781", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277068", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277220", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400410984", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400500142", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551667", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551875", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400552275", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400552092", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551984", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400586661", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400625211", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400625413", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400686838"  
+        ]
+
+        function getRandomItem(arr) {
+            const randomIndex = Math.floor(Math.random() * arr.length);
+            return arr[randomIndex];
+        }
+
+        function processInlineMarkdown(text) {
+            text = text.replace(/(\*\*|__)(.*?)\1/g, (match, p1, p2) => {
+                return ` <strong>${p2}</strong> `;
+            });
+            text = text.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
+            text = text.replace(/~~(.*?)~~/g, '<del>$1</del>');
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+            text = text.replace(/\s+/g, ' ').trim();
+            return text;
+        }
+
+        // 遍历每个段落或行
+        paragraphs.forEach((para) => {
+            // 段落内容按换行分句
+            // 将段落内容按行分割，提取所有以 https:// 开头的图片链接
+            let lines = para
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            // 提取所有以 https:// 开头的图片链接
+            let imageLinks = [];
+            lines.forEach(line => {
+                // 允许一行有多个链接，用正则提取
+                const matches = line.match(/https:\/\/[^\s",]+/g);
+                if (matches) {
+                    imageLinks.push(...matches);
+                }
+            });
+ 
+            debugger
+            if (imageLinks.length === 0) return;
+
+
+            // 遍历处理每个URL
+            imageLinks = imageLinks.map(url => {
+                // 先移除末尾可能存在的 );
+                let processedUrl = url.replace(/\);$/, '');
+                
+                // 再移除末尾的 /300 或 /640
+                processedUrl = processedUrl.replace(/\/(300|640)*$/, '/');
+                console.log('url:', processedUrl)
+                
+                return processedUrl;
+            });
+            
+            index++;
+            const symbol = getRandomItem(symbols);
+            // const name = getRandomItem(names);
+            // const time = getRandomItem(times);
+            const imgbjurl = getRandomItem(imgbj);
+
+            // 句子分割（可根据需要更细致分割）
+            
+            
+            let sentenceHtmlArr = [];
+            let sentenceUrlArr = imageLinks
+
+            debugger
+            if(sentenceUrlArr.length>0 && sentenceUrlArr.length %2 !== 0){
+                sentenceUrlArr.push(imgbjurl)
+            }
+
+ 
+            for(let i = 0; i < sentenceUrlArr.length; i++){
+                debugger
+                const imgurl= sentenceUrlArr[i]
+                sentenceHtmlArr.push(`<span style='font-size:10px'>${imgurl}</span><br>`)
+            }
+            html.push(sentenceHtmlArr.join(''))
+        });
+
+        
+ 
+        return `
+            <article class="wechat-article">
+
+                                
+                <section style="width:100%;text-align:center;">
+                    <section style="">
+                        <p>
+                        <span leaf=""><br></span>
+                        </p>
+                        <section class="" nodeleaf="">
+                            <mp-common-profile class="js_uneditable custom_select_card mp_profile_iframe" data-pluginname="mpprofile" data-nickname="${userName}" data-alias="hot-books" data-from="0" data-headimg="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" data-signature="欢迎～关注后菜单栏里取图🫰" data-id="${userId}" data-is_biz_ban="0" data-service_type="1" data-verify_status="0">
+                                            <section data-pm-slice="0 0 []" nodeleaf="">
+                                            <img class="wx_profile_avatar" data-ratio="1" data-w="272" style="max-width: 300px;height: 100px;margin: 1em auto;display: block;border-radius: 4px;text-align: center;max-height: 300px;width: 100px;" data-imgqrcoded="1" data-src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png" src="http://mmbiz.qpic.cn/sz_mmbiz_png/SafC09p6yPmkKicjV7Eib4QicxEsLtDy0akTFJOkpZu5pfCpw4MtoZLdTY2l0eGlEwmVbNOyK7EaEndpqCrvlXwBQ/0?wx_fmt=png">
+                                            </section>
+                                            <p style="text-align: center;">
+                                            <strong id="js_a11y_wx_profile_nickname" class="wx_profile_nickname" style="font-weight: 600;color: rgb(52, 152, 219);"><span leaf="">${userName}</span></strong>
+                                            <span class="wx_follow_verify"></span>
+                                            </p>
+                                            <p style="text-align: center;">
+                                            <span leaf="">欢迎～关注后菜单栏里取图🫰</span>
+                                            </p>
+                            </mp-common-profile>
+                        </section>
+                        <p>
+                        <span leaf=""><br></span>
+                        </p>
+                    </section>
+                </section>
+                <section style="width:95%;text-align:center;">
+                    ${html.join('')}
+                </section>
+
+                <p style="font-size: 16px;font-weight: 400;font-style: normal;white-space: normal;margin: 0px;padding: 0px;box-sizing: border-box;">
+                    <span leaf=""><br></span>
+                </p>
+                <section style="text-align: ${alignMode};box-sizing: border-box;">
+                    <p style="font-size: 16px;font-weight: 400;font-style: normal;margin: 0px;padding: 0px;box-sizing: border-box;">
+                    <strong style="box-sizing: border-box;"><em style="box-sizing: border-box;"><span leaf="">今日自喜文案</span></em></strong>
+                    </p>
+                    <p style="margin: 0px;padding: 0px;box-sizing: border-box;">
+                        <span style="box-sizing: border-box;"><span style="box-sizing: border-box;font-size: 14px;line-height: 1.7;">
+                            <span leaf="">时间是良药明天会比今天好</span><span leaf=""><br></span>
+                            <span leaf="">只要不做思想的囚笼我们有的是未来</span><span leaf=""><br></span>
+                            <span leaf="">断舍离是成年人的顶级自律</span>
+                        </span>
+                    </span>
+                    </p>
+                </section>
+                
+                <section style="color: rgb(51, 51, 51);font-family: -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, sans-serif;font-size: 16px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: normal;orphans: 2;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;text-align: center;margin-top: 10px;margin-bottom: 10px;line-height: 0;pointer-events: none;box-sizing: border-box;">
+                    <section style="max-width: 100%;vertical-align: middle;display: inline-block;pointer-events: none;box-sizing: border-box;">
+                        <p>
+                        <span leaf=""><br></span>
+                        </p>
+                        <p>
+                        <span leaf=""><img data-src="https://mmbiz.qpic.cn/mmbiz_png/ACniaqxEkPMbLHYbxKibaLEtCXayCeAQuiaiaZUiaJL8FvAmqMtsq0YkiavxgR0zEKBic6zNOAb0HLzOKsDPJJnH38TYQ/640?wx_fmt=png&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1" alt="图片" data-ratio="0.13848920863309352" data-s="300,640" data-type="png" data-w="556" style="pointer-events: none;-webkit-tap-highlight-color: transparent;margin: 0px;padding: 0px;outline: 0px;max-width: 100%;box-sizing: border-box;overflow-wrap: break-word !important;display: block;height: auto !important;color: rgb(62, 62, 62);font-family: &quot;PingFang SC&quot;, system-ui, -apple-system, BlinkMacSystemFont, &quot;Helvetica Neue&quot;, &quot;Hiragino Sans GB&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, Arial, sans-serif;font-size: 16px;font-style: normal;font-variant-ligatures: normal;font-variant-caps: normal;font-weight: 400;letter-spacing: 0.544px;orphans: 2;text-align: center;text-indent: 0px;text-transform: none;widows: 2;word-spacing: 0px;-webkit-text-stroke-width: 0px;white-space: normal;background-color: rgb(255, 255, 255);text-decoration-thickness: initial;text-decoration-style: initial;text-decoration-color: initial;vertical-align: middle;width: 556px !important;visibility: visible !important;" src="https://mmbiz.qpic.cn/mmbiz_png/ACniaqxEkPMbLHYbxKibaLEtCXayCeAQuiaiaZUiaJL8FvAmqMtsq0YkiavxgR0zEKBic6zNOAb0HLzOKsDPJJnH38TYQ/640?wx_fmt=png&amp;tp=webp&amp;wxfrom=5&amp;wx_lazy=1"></span>
+                        </p>
+                        <p>
+                        <span leaf=""><br></span>
+                        </p>
+                    </section>
+                </section>
+                <p style="display: none;">
+                    <mp-style-type data-value="10000"></mp-style-type>
+                </p>
+
+
+            </article>
+            <style>
+                .wechat-article {
+                    max-width: 640px;
+                    margin: 20px auto;
+                    padding: 20px;
+                    font-family: -apple-system, BlinkMacSystemFont, 
+                                "Helvetica Neue", "PingFang SC", 
+                                "Microsoft YaHei", sans-serif;
+                    color: #333;
+                    line-height: 1.8;
+                    text-align: justify;
+                }
+
+                .part-container {
+                    display: flex;
+                    align-items: center;
+                    margin: 2em 0;
+                    position: relative;
+                    justify-content: center;
+                }
+
+                .part-title {
+                    color: #3498db;
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin: 0;
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .part-decorator {
+                    width: 3px;
+                    height: 24px;
+                    background: #3498db;
+                    margin-right: 15px;
+                }
+
+                .part-label {
+                    font-size: 11px;
+                    color: #64748b;
+                }
+
+                [class^="heading-"] {
+                    margin: 1.5em 0 1em;
+                    font-weight: 500;
+                    border-left: 4px solid;
+                    padding-left: 12px;
+                }
+
+                .heading-1 { font-size: 20px; color: #2c3e50; border-color: #166a9f; }
+                .heading-2 { font-size: 18px; color: #34495e; border-color: #44b0ce; }
+                .heading-3 { font-size: 16px; color: #4a5568; border-color: #1abc9c; }
+                .heading-4 { font-size: 15px; color: #555; border-color: #f1c40f; }
+                .heading-5 { font-size: 14px; color: #666; border-color: #e67e22; }
+                .heading-6 { font-size: 13px; color: #777; border-color: #e74c3c; }
+
+                .article-paragraph {
+                    margin: 0.8em 0;
+                    text-indent: 2em;
+                }
+
+                .custom-list {
+                    margin: 1em 2em;
+                    padding-left: 1.2em;
+                    color: #475569;
+                    counter-reset: item;
+                }
+
+                .custom-list li {
+                    margin: 0.6em 0;
+                    padding-left: 0.8em;
+                }
+
+                ol.custom-list {
+                    list-style-type: decimal;
+                }
+
+                ul.custom-list {
+                    list-style-type: disc;
+                }
+
+                .custom-list li::marker {
+                    color: #3498db;
+                    font-weight: bold;
+                }
+
+                strong {
+                    font-weight: 600;
+                    color: #3498db;
+                }
+
+                em {
+                    font-style: italic;
+                    color: #334155;
+                }
+
+                del {
+                    text-decoration: line-through;
+                    color: #94a3b8;
+                }
+
+                code {
+                    background: #f1f5f9;
+                    padding: 2px 4px;
+                    border-radius: 3px;
+                    font-family: Consolas, Monaco, monospace;
+                    font-size: 0.9em;
+                    color: #dc2626;
+                }
+
+                a {
+                    color: #3b82f6;
+                    text-decoration: none;
+                    border-bottom: 1px solid #3b82f6;
+                    transition: all 0.2s;
+                }
+
+                a:hover {
+                    color: #1d4ed8;
+                    border-bottom-color: #1d4ed8;
+                }
+
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    margin: 1em auto;
+                    display: block;
+                    border-radius: 4px;
+                }
+
+                @media (max-width: 480px) {
+                    .wechat-article {
+                        padding: 15px;
+                        font-size: 16px;
+                    }
+                    .heading-1 { font-size: 19px; }
+                    .heading-2 { font-size: 17px; }
+                    img {
+                        width: 100%;
+                    }
+                }
+            </style>
+        `;
+    }
+
+    const rawText = `"https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242579", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242375", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242155", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242488", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242881", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242781", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277068", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277220", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400410984", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400500142", 
+            "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551667", 
+			
+			
+		    n2.AAA\n1.BBB\n1.CCC\n并均匀分散于固体材料中的一类 高分子材料。`;
+
+    // 初始化Markdown解析器
+    marked.setOptions({
+        breaks: true,
+        highlight: function(code) {
+            return hljs.highlightAuto(code).value;
+        }
+    });
+
+    // 实时取值
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+
+    function updatePreview() {
+        const markdown = editor.value;
+        const html = autoFormatText(markdown);
+        preview.innerHTML = html;
+    }
+
+    // 实时预览
+    editor.addEventListener('input', updatePreview);
+
+    // 页面加载时，自动预览
+    editor.value = rawText;
+    updatePreview();
+
+
+    // 重新设置id="editor"的文本框内容，只保留去重后的url，每行一个
+    function setUniqueUrlsToEditor() {
+        // 匹配所有以 http 或 https 开头的 url
+        const urlRegex = /https?:\/\/[^\s",]+/g;
+        const textarea = document.getElementById('editor');
+        const text = textarea.value;
+        let urls = text.match(urlRegex) || [];
+
+
+        debugger
+        // 遍历处理每个URL
+        urls = urls.map(url => {
+            // 先移除末尾可能存在的 );
+            let processedUrl = url.replace(/\);$/, '');
+            
+            // 再移除末尾的 /300 或 /640
+            processedUrl = processedUrl.replace(/\/(300|640)*$/, '/');
+            console.log('url:', processedUrl)
+            
+            return processedUrl;
+        });
+
+        // 获取当前选中的urlMode
+        const urlMode = document.querySelector('input[name="urlMode"]:checked').value;
+
+        // 根据urlMode过滤url
+        if (urlMode !== 'fullurl') {
+            // 只保留包含选中value的url
+            urls = urls.filter(url => url.includes(urlMode));
+        }
+
+
+        // 去重
+        const uniqueUrls = Array.from(new Set(urls));
+
+
+        // 进一步去重：如果多个url图片名相同，只保留最短的那个
+        // 提取图片名的函数
+        function getImgName(url) {
+            // 仅处理 mmbiz.qpic.cn 的图片链接，其他直接返回url
+            if (!url.includes('mmbiz.qpic.cn')) {
+                return url;
+            }
+            // 用 / 分割，取分割后最长的部分作为图片名
+            let parts = url.split('/');
+            let maxPart = parts.reduce((a, b) => a.length >= b.length ? a : b, '');
+            return maxPart;
+        }
+        // 用Map存储图片名到url
+        const imgNameToUrl = new Map();
+        debugger
+        uniqueUrls.forEach(url => {
+            const imgName = getImgName(url);
+            if (!imgNameToUrl.has(imgName)) {
+                imgNameToUrl.set(imgName, url);
+            } else {
+                // 如果已存在，保留更短的url
+                if (url.length < imgNameToUrl.get(imgName).length) {
+                    imgNameToUrl.set(imgName, url);
+                }
+            }
+        });
+        // 最终只保留Map中的url
+        const finalUrls = Array.from(imgNameToUrl.values());
+        // 换行拼接
+        const result = finalUrls.join('\n');
+        textarea.value = result;
+        updatePreview();
+    }
+    // 你可以在需要的时候调用 setUniqueUrlsToEditor()
+    setUniqueUrlsToEditor()
+
+    // 复制公众号兼容内容的html 用于代码push到公众号
+    function copyWechatHTML() {
+        const markdown = editor.value;
+        const htmlContent = autoFormatText(markdown);
+
+        // 创建临时textarea元素
+        const textarea = document.createElement('textarea');
+        textarea.value = htmlContent;
+        document.body.appendChild(textarea);
+
+        try {
+            // 选择文本
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+
+            // 执行复制命令
+            const successful = document.execCommand('copy');
+            
+            if (successful) {
+                showToast('✨ 复制成功！');
+            } else {
+                showToast('复制失败，请使用Ctrl+C手动复制');
+            }
+        } catch (err) {
+            console.error('复制失败:', err);
+            showToast('复制失败，请使用Ctrl+C手动复制');
+        } finally {
+            // 移除临时元素
+            document.body.removeChild(textarea);
+        }
+    }
+
+    // 显示toast 复制提示信息
+    function showToast(message, duration = 2000) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, duration);
+    }
+    </script>
+    
+    <!-- 代码高亮 -->
+    <script src="../../assets/js/highlight.min.js"></script>
+
+</body>
+</html>
