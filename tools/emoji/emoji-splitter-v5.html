@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>表情包智能拆解工具 V5 — 矩形分割 + 横幅制作</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#07c160;--primary-dark:#06ad56;--primary-light:#e8f8f0;
+  --bg:#f0f2f5;--card:#fff;--text:#1a1a1a;--text-sub:#666;--text-light:#999;
+  --border:#e5e7eb;--radius:10px;--shadow:0 1px 3px rgba(0,0,0,.08);
+  --shadow-lg:0 4px 16px rgba(0,0,0,.12);--accent:#5b6ef5;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.header h1{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
+.header h1 .icon{font-size:22px}
+.header .subtitle{font-size:12px;color:var(--text-light);margin-top:2px}
+.header-actions{display:flex;gap:10px}
+.main{display:flex;gap:16px;padding:16px;height:calc(100vh - 62px);overflow:hidden}
+.left-panel{width:360px;flex-shrink:0;overflow-y:auto;padding-right:4px}
+.right-panel{flex:1;overflow-y:auto;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#aaa}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card-title{font-size:14px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title .step-num{background:var(--primary);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:32px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--primary);background:var(--primary-light)}
+.upload-zone .upload-icon{font-size:36px;color:var(--text-light);margin-bottom:8px}
+.upload-zone p{color:var(--text-sub);font-size:13px}
+.upload-zone input{display:none}
+.upload-preview{margin-top:12px;position:relative;border-radius:var(--radius);overflow:hidden;background:#f9f9f9}
+.preview-viewport{position:relative;width:100%;overflow:hidden;background:#1a1a1a;cursor:grab;user-select:none}
+.preview-viewport:active{cursor:grabbing}
+.preview-viewport canvas{display:block;width:100%;height:auto}
+.zoom-controls{display:flex;align-items:center;gap:4px;padding:6px 0 2px}
+.zoom-controls .zoom-track-wrap{flex:1;display:flex;align-items:center}
+.zoom-controls .zoom-track-wrap input[type="range"]{width:100%;height:4px;padding:0;border:none;accent-color:var(--primary);cursor:pointer;background:transparent}
+.zoom-btn{width:24px;height:24px;border:1px solid var(--border);border-radius:50%;background:var(--card);color:var(--text);font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;line-height:1;flex-shrink:0}
+.zoom-btn:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary-dark)}
+.zoom-controls .zoom-level{font-size:12px;color:var(--text);min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+.zoom-hint{font-size:11px;color:var(--text-light);text-align:center;padding:0 0 4px}
+.form-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.form-row:last-child{margin-bottom:0}
+.form-row label{font-size:13px;color:var(--text-sub);min-width:70px;flex-shrink:0}
+.form-row input[type="number"],.form-row input[type="text"],.form-row select,.form-row input[type="range"]{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;transition:border-color .2s}
+.form-row input:focus,.form-row select:focus{border-color:var(--primary)}
+.form-row input[type="range"]{padding:0;border:none}
+.form-row input[type="color"]{width:36px;height:30px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px}
+.form-row .value-tag{font-size:12px;color:var(--text-light);min-width:36px;text-align:right}
+.form-row .hint{font-size:11px;color:var(--text-light);margin-left:4px}
+textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;resize:vertical;min-height:80px;font-family:inherit}
+textarea:focus{border-color:var(--primary)}
+.preset-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.preset-btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;transition:all .15s}
+.preset-btn:hover,.preset-btn.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-primary:disabled{background:#ccc;cursor:not-allowed}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-block{width:100%}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-xs{padding:3px 7px;font-size:11px}
+.toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle input{display:none}
+.toggle-slider{position:absolute;inset:0;background:#ccc;border-radius:10px;cursor:pointer;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--primary)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px)}
+.right-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.right-panel-header h2{font-size:16px;font-weight:600}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-light)}
+.empty-state .icon{font-size:48px;margin-bottom:12px;opacity:.5}
+.emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.emoji-card{background:#f9f9f9;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);transition:box-shadow .2s}
+.emoji-card:hover{box-shadow:var(--shadow-lg)}
+.emoji-card .preview{position:relative;width:100%;aspect-ratio:1;background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/16px 16px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.emoji-card .preview canvas{max-width:100%;max-height:100%;display:block;cursor:grab}
+.emoji-card .preview canvas:active{cursor:grabbing}
+.emoji-card .preview .drag-hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(0,0,0,.4);background:rgba(255,255,255,.7);padding:1px 6px;border-radius:3px;pointer-events:none;white-space:nowrap}
+.emoji-card .info{padding:8px 10px}
+.emoji-card .info .idx{font-size:11px;color:var(--text-light);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+.emoji-card .info .idx .badge{background:var(--primary-light);color:var(--primary-dark);padding:1px 6px;border-radius:4px;font-size:10px}
+.emoji-card .info input{width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;outline:none}
+.emoji-card .info input:focus{border-color:var(--primary)}
+.emoji-card .dl-row{display:flex;gap:4px;padding:0 10px 4px}
+.emoji-card .dl-row .btn{flex:1;padding:5px 6px;font-size:11px}
+.emoji-card .actions{display:flex;gap:4px;padding:0 10px 6px;flex-wrap:wrap}
+.emoji-card .actions .btn{flex:1;padding:3px 6px;font-size:11px;min-width:0;white-space:nowrap}
+.emoji-card .settings-toggle{padding:4px 10px 8px}
+.emoji-card .settings-toggle button{width:100%;background:none;border:1px solid var(--border);border-radius:6px;padding:5px;font-size:12px;color:var(--text-sub);cursor:pointer;transition:all .15s}
+.emoji-card .settings-toggle button:hover{border-color:var(--primary);color:var(--primary)}
+.emoji-card .settings-toggle button .arrow{transition:transform .2s;display:inline-block}
+.emoji-card .settings-toggle button.open .arrow{transform:rotate(180deg)}
+.emoji-settings{max-height:0;overflow:hidden;transition:max-height .3s ease;padding:0 10px}
+.emoji-settings.open{max-height:800px;overflow-y:auto;padding-bottom:10px}
+.emoji-settings .setting-group{background:#fff;border-radius:6px;padding:8px;margin-bottom:6px}
+.emoji-settings .setting-group .group-title{font-size:11px;font-weight:600;color:var(--text-sub);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.emoji-settings .mini-row{display:flex;align-items:center;gap:4px;margin-bottom:4px}
+.emoji-settings .mini-row:last-child{margin-bottom:0}
+.emoji-settings .mini-row label{font-size:11px;color:var(--text-light);min-width:32px}
+.emoji-settings .mini-row input[type="range"]{flex:1;height:4px}
+.emoji-settings .mini-row .mini-val{font-size:10px;color:var(--text-light);min-width:28px;text-align:right}
+.emoji-settings .mini-row select{flex:1;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px}
+.btn-group{display:flex;gap:3px}
+.btn-group .seg-btn{flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;background:#fff;text-align:center;user-select:none}
+.btn-group .seg-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;width:90%;max-width:1000px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:16px;font-weight:600}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-light);padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.modal-close:hover{background:#f0f0f0}
+.modal-body{flex:1;overflow-y:auto;padding:20px}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.report-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.report-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;background:#fff}
+.report-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.report-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+.report-item{text-align:center}
+.report-item .label{font-size:11px;color:var(--text-light);margin-bottom:4px}
+.report-item .img-wrap{background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/12px 12px;border-radius:8px;padding:8px;border:1px solid var(--border);position:relative}
+.report-item .img-wrap canvas{max-width:100%;max-height:100px;display:block;margin:0 auto}
+.report-item .name{font-size:12px;margin-top:4px;color:var(--text-sub);word-break:break-all}
+.cover-section{margin-top:20px;padding:16px;background:#f9f9f9;border-radius:8px}
+.cover-section h3{font-size:14px;margin-bottom:12px}
+.cover-preview{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.cover-item{text-align:center}
+.cover-item .img-wrap{background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/12px 12px;border-radius:8px;padding:8px;border:1px solid var(--border)}
+.cover-item canvas{display:block;max-width:200px;max-height:200px}
+.cover-item .label{font-size:12px;color:var(--text-sub);margin-top:6px}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:300;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.loading-overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text-sub)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(0,0,0,.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:400;transition:transform .3s;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer}
+.checkbox-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.crop-modal{max-width:700px}
+.crop-canvas-wrap{position:relative;display:flex;justify-content:center;background:#1a1a1a;border-radius:8px;overflow:auto;max-height:400px}
+#cropCanvas{display:block;cursor:crosshair}
+.crop-info{display:flex;gap:16px;align-items:center;margin-top:12px;font-size:12px;color:var(--text-sub)}
+.crop-info .coord{background:#f0f0f0;padding:4px 8px;border-radius:4px;font-family:monospace}
+.crop-hint{font-size:11px;color:var(--text-light);margin-top:8px;text-align:center}
+.square-badge{display:inline-block;background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px}
+.bg-selector{display:inline-flex;gap:2px;background:#f0f0f0;border-radius:6px;padding:2px;font-size:12px}
+.bg-option{padding:2px 10px;border-radius:4px;cursor:pointer;user-select:none;transition:all .15s;color:var(--text-sub)}
+.bg-option.active{background:var(--card);color:var(--text);box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--primary);font-weight:500;position:relative;z-index:1}
+.bg-option:not(.active):hover{color:var(--text)}
+/* V4: 横幅 */
+.banner-modal{max-width:800px}
+.banner-upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:40px 16px;text-align:center;cursor:pointer;transition:all .2s}
+.banner-upload-zone:hover,.banner-upload-zone.dragover{border-color:var(--primary);background:var(--primary-light)}
+.banner-upload-zone .icon{font-size:40px;color:var(--text-light);margin-bottom:8px}
+.banner-presets{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.banner-preset{padding:5px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;transition:all .15s}
+.banner-preset:hover,.banner-preset.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.banner-preview-wrap{position:relative;background:#1a1a1a;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;width:100%;cursor:grab;user-select:none}
+.banner-preview-wrap:active{cursor:grabbing}
+.banner-preview-wrap canvas{display:block;width:100%;height:auto}
+.banner-crop-hint{font-size:11px;color:var(--text-light);text-align:center;margin-top:4px}
+.banner-result-wrap{text-align:center;margin-top:12px}
+.banner-result-wrap canvas{border-radius:6px;border:1px solid var(--border);max-width:100%}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1><span class="icon">😀</span> 表情包智能拆解工具 V5<span class="square-badge">矩形分割</span></h1>
+    <div class="subtitle">上传网格图 → 拖拽/缩放底图对齐网格 → 矩形/正方形拆分 → 智能抠图 → 导出微信表情包</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-accent btn-sm" onclick="openBannerModal()">🖼 横幅</button>
+    <button class="btn btn-outline btn-sm" onclick="resetAll()">重置</button>
+    <button class="btn btn-primary btn-sm" onclick="showReport()" id="btnReport" disabled>📊 生成预览报告</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="card">
+      <div class="card-title"><span class="step-num">1</span> 上传表情包图片</div>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📁</div>
+        <p>点击或拖拽图片到此处</p>
+        <p style="font-size:11px;color:var(--text-light);margin-top:4px">支持 PNG / JPG / WEBP</p>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+      <div class="upload-preview" id="uploadPreview" style="display:none">
+        <div class="preview-viewport" id="previewViewport">
+          <canvas id="previewCanvas"></canvas>
+        </div>
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoomStep(-1)" title="缩小">−</button>
+          <div class="zoom-track-wrap">
+            <input type="range" id="zoomSlider" min="5" max="500" value="100" oninput="zoomSliderChange(this)">
+          </div>
+          <button class="zoom-btn" onclick="zoomStep(1)" title="放大">+</button>
+          <span class="zoom-level" id="zoomLevel">100%</span>
+          <button class="btn btn-xs btn-outline" onclick="resetView()" title="重置视图">⟲</button>
+        </div>
+        <div class="zoom-hint">拖拽底图移动 · 滚轮缩放 · 对齐网格后点击"开始拆分"</div>
+      </div>
+    </div>
+
+    <div class="card" id="gridCard" style="display:none">
+      <div class="card-title"><span class="step-num">2</span> 配置网格 <span class="square-badge">矩形分割</span></div>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">拖拽/滚动缩放底图对齐网格线，可独立调整行/列分割宽度</p>
+      <div class="preset-grid" id="presetGrid">
+        <span class="preset-btn" data-rows="2" data-cols="2">2×2</span>
+        <span class="preset-btn active" data-rows="2" data-cols="3">2×3</span>
+        <span class="preset-btn" data-rows="2" data-cols="5">2×5</span>
+        <span class="preset-btn" data-rows="2" data-cols="6">2×6</span>
+        <span class="preset-btn" data-rows="3" data-cols="3">3×3</span>
+        <span class="preset-btn" data-rows="3" data-cols="4">3×4</span>
+        <span class="preset-btn" data-rows="4" data-cols="4">4×4</span>
+        <span class="preset-btn" data-rows="5" data-cols="5">5×5</span>
+        <span class="preset-btn" data-rows="6" data-cols="4">6×4</span>
+        <span class="preset-btn" data-rows="1" data-cols="1">单张</span>
+      </div>
+      <div class="form-row">
+        <label>行数</label>
+        <input type="number" id="gridRows" value="2" min="1" max="20">
+        <label>列数</label>
+        <input type="number" id="gridCols" value="3" min="1" max="20">
+      </div>
+      <div class="form-row" style="margin-bottom:6px">
+        <label>行分割</label>
+        <button class="zoom-btn" onclick="rowSplitStep(-1)" title="缩小">−</button>
+        <div class="zoom-track-wrap">
+          <input type="range" id="rowSplitW" min="1" max="99" step="0.5" value="50" oninput="syncRowSplit()">
+        </div>
+        <button class="zoom-btn" onclick="rowSplitStep(1)" title="放大">+</button>
+        <span class="zoom-level" id="rowSplitVal" style="min-width:40px">50%</span>
+      </div>
+      <div class="form-row" style="margin-bottom:6px">
+        <label>列分割</label>
+        <button class="zoom-btn" onclick="colSplitStep(-1)" title="缩小">−</button>
+        <div class="zoom-track-wrap">
+          <input type="range" id="colSplitW" min="1" max="99" step="0.5" value="50" oninput="syncColSplit()">
+        </div>
+        <button class="zoom-btn" onclick="colSplitStep(1)" title="放大">+</button>
+        <span class="zoom-level" id="colSplitVal" style="min-width:40px">50%</span>
+      </div>
+      <div class="form-row">
+        <label>间距/边距</label>
+        <input type="range" id="gridPadding" value="0" min="0" max="50">
+        <span class="value-tag" id="paddingVal">0px</span>
+      </div>
+    </div>
+
+    <div class="card" id="cutoutCard" style="display:none">
+      <div class="card-title"><span class="step-num">3</span> 抠图设置</div>
+      <div class="form-row">
+        <label>背景色</label>
+        <input type="color" id="bgColor" value="#ffffff">
+        <span class="hint">取色</span>
+      </div>
+      <div class="form-row">
+        <label>容差</label>
+        <input type="range" id="tolerance" value="32" min="0" max="120">
+        <span class="value-tag" id="toleranceVal">32</span>
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="autoTrim" checked>
+        <span>自动裁剪到内容边界（保持正方形）</span>
+      </label>
+      <label class="checkbox-row">
+        <input type="checkbox" id="edgeFeather" checked>
+        <span>边缘羽化（抗锯齿）</span>
+      </label>
+      <button class="btn btn-primary btn-block" onclick="processImage()" id="btnProcess" style="margin-top:8px">⚡ 开始拆分抠图</button>
+    </div>
+
+    <div class="card" id="textCard" style="display:none">
+      <div class="card-title"><span class="step-num">4</span> 批量文字</div>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">每行一个表情，格式：名字 描述 或 名字-描述</p>
+      <textarea id="bulkText" placeholder="开心 很开心&#10;难过-伤心的&#10;生气 愤怒的&#10;..." oninput="parseBulkText()"></textarea>
+    </div>
+
+    <div class="card" id="styleCard" style="display:none">
+      <div class="card-title"><span class="step-num">5</span> 全局文字样式</div>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">全局默认样式，每个表情可单独覆盖（点击右侧"设置"）</p>
+      <div class="form-row"><label>字号</label><input type="range" id="fontSize" value="28" min="10" max="80"><span class="value-tag" id="fontSizeVal">28</span></div>
+      <div class="form-row"><label>字重</label><select id="fontWeight"><option value="normal">常规</option><option value="bold" selected>粗体</option><option value="900">特粗</option></select></div>
+      <div class="form-row"><label>文字颜色</label><input type="color" id="textColor" value="#ffffff"></div>
+      <div class="form-row"><label>描边颜色</label><input type="color" id="strokeColor" value="#000000"></div>
+      <div class="form-row"><label>描边宽度</label><input type="range" id="strokeWidth" value="3" min="0" max="10"><span class="value-tag" id="strokeWidthVal">3</span></div>
+      <div class="form-row"><label>位置</label><select id="textPosition"><option value="top">顶部</option><option value="center">居中</option><option value="bottom" selected>底部</option></select></div>
+      <div class="form-row"><label>对齐</label><select id="textAlign"><option value="center" selected>居中</option><option value="left">左对齐</option><option value="right">右对齐</option></select></div>
+      <div class="form-row"><label>垂直偏移</label><input type="range" id="textOffset" value="8" min="0" max="40"><span class="value-tag" id="textOffsetVal">8</span></div>
+      <label class="checkbox-row"><input type="checkbox" id="shadowEnabled" checked><span>文字阴影</span></label>
+      <div class="form-row"><label>阴影颜色</label><input type="color" id="shadowColor" value="#000000"></div>
+      <div class="form-row"><label>阴影模糊</label><input type="range" id="shadowBlur" value="4" min="0" max="20"><span class="value-tag" id="shadowBlurVal">4</span></div>
+      <label class="checkbox-row"><input type="checkbox" id="roundedBg"><span>圆角背景条</span></label>
+      <div class="form-row"><label>背景颜色</label><input type="color" id="bgBarColor" value="#000000"></div>
+      <div class="form-row"><label>背景透明度</label><input type="range" id="bgOpacity" value="50" min="10" max="100"><span class="value-tag" id="bgOpacityVal">50%</span></div>
+      <div class="form-row"><label>圆角半径</label><input type="range" id="bgRadius" value="6" min="0" max="20"><span class="value-tag" id="bgRadiusVal">6</span></div>
+    </div>
+
+    <div class="card" id="exportCard" style="display:none">
+      <div class="card-title"><span class="step-num">6</span> 导出设置</div>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">导出图片默认100%填满画布，可在右侧拖拽调整位置</p>
+      <div class="form-row"><label>大尺寸</label><input type="number" id="largeSize" value="240" min="64" max="512"><span class="hint">px</span></div>
+      <div class="form-row"><label>小尺寸</label><input type="number" id="smallSize" value="120" min="32" max="256"><span class="hint">px</span></div>
+      <div class="form-row"><label>图标</label><input type="number" id="iconSize" value="50" min="32" max="128"><span class="hint">px（平台缩略图）</span></div>
+      <label class="checkbox-row"><input type="checkbox" id="genCover" checked><span>生成封面图（240×240）</span></label>
+      <label class="checkbox-row"><input type="checkbox" id="coverUseFirst" checked><span>封面使用第一个表情</span></label>
+      <div class="form-row" style="margin-top:8px">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="redrawAll()">🔄 刷新预览</button>
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="showReport()">📦 生成报告</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="right-panel-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <h2>表情预览 <span style="font-size:12px;font-weight:400;color:var(--text-light);margin-left:8px">拖拽裁剪框 · 可单独调整位置</span></h2>
+        <div class="bg-selector" id="bgSelector">
+          <span class="bg-option active" data-bg="none" onclick="setPreviewBg(null)" title="无背景">无</span>
+          <span class="bg-option" data-bg="#ffffff" onclick="setPreviewBg('#ffffff')" title="白色背景" style="background:#fff;color:#333">白</span>
+          <span class="bg-option" data-bg="#000000" onclick="setPreviewBg('#000000')" title="黑色背景" style="background:#000;color:#fff">黑</span>
+        </div>
+      </div>
+      <span id="emojiCount" style="font-size:13px;color:var(--text-light)">等待上传图片...</span>
+    </div>
+    <div id="emojiContainer">
+      <div class="empty-state">
+        <div class="icon">📂</div>
+        <p>请先在左侧上传表情包图片</p>
+        <p style="font-size:12px;margin-top:4px">支持网格布局的表情包大图</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal">
+    <div class="modal-header"><h2>📊 导出预览报告</h2><button class="modal-close" onclick="closeReport()">×</button></div>
+    <div class="modal-body" id="reportBody"></div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:var(--text-light)" id="reportSummary"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="downloadAllZip()">📦 打包下载全部</button>
+        <button class="btn btn-primary btn-sm" onclick="downloadAllIndividual()">逐个下载</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Crop Editor Modal -->
+<div class="modal-overlay" id="cropModal">
+  <div class="modal crop-modal">
+    <div class="modal-header"><h2>✂️ 裁剪调整 — <span id="cropTitle">表情 #1</span></h2><button class="modal-close" onclick="closeCropEditor()">×</button></div>
+    <div class="modal-body">
+      <div class="crop-canvas-wrap"><canvas id="cropCanvas"></canvas></div>
+      <div class="crop-info">
+        <span>裁剪区域：</span>
+        <span class="coord" id="cropCoords">x:0, y:0, w:0, h:0</span>
+        <span style="margin-left:auto">拖动框内移动 · 拖动角点调整大小</span>
+      </div>
+      <div class="crop-hint">提示：如果表情被截断，拖动边框扩大裁剪范围</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="resetCropRect()">恢复默认</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="closeCropEditor()">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="applyCrop()">确认裁剪</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Banner Modal -->
+<div class="modal-overlay" id="bannerModal">
+  <div class="modal banner-modal">
+    <div class="modal-header">
+      <h2>🖼 横幅制作</h2>
+      <button class="modal-close" onclick="closeBannerModal()">×</button>
+    </div>
+    <div class="modal-body" id="bannerModalBody">
+      <div class="banner-upload-zone" id="bannerUploadZone" onclick="document.getElementById('bannerFileInput').click()">
+        <div class="icon">🖼</div>
+        <p>点击或拖拽图片作为横幅背景</p>
+        <p style="font-size:11px;color:var(--text-light);margin-top:4px">支持 PNG / JPG / WEBP</p>
+        <input type="file" id="bannerFileInput" accept="image/*">
+      </div>
+      <div id="bannerEditor" style="display:none">
+        <div class="form-row"><label>比例</label>
+          <div class="banner-presets">
+            <span class="banner-preset active" data-w="750" data-h="400" onclick="setBannerRatio(750,400,this)">750×400</span>
+            <span class="banner-preset" data-w="960" data-h="400" onclick="setBannerRatio(960,400,this)">960×400</span>
+            <span class="banner-preset" data-w="1200" data-h="400" onclick="setBannerRatio(1200,400,this)">1200×400</span>
+            <span class="banner-preset" data-w="750" data-h="500" onclick="setBannerRatio(750,500,this)">750×500</span>
+            <span class="banner-preset" data-w="16" data-h="9" onclick="setBannerRatio(16,9,this)">16:9</span>
+            <span class="banner-preset" data-w="4" data-h="3" onclick="setBannerRatio(4,3,this)">4:3</span>
+          </div>
+        </div>
+        <div class="banner-preview-wrap" id="bannerPreviewWrap">
+          <canvas id="bannerCanvas"></canvas>
+        </div>
+        <div class="banner-crop-hint">拖拽图片移动 · 滚轮缩放 · 绿色框内为裁切区域</div>
+        <div class="zoom-controls" style="margin-top:4px">
+          <button class="zoom-btn" onclick="bannerZoomStep(-1)" title="缩小">−</button>
+          <div class="zoom-track-wrap">
+            <input type="range" id="bannerZoomSlider" min="10" max="500" value="100" oninput="bannerZoomSliderChange(this)">
+          </div>
+          <button class="zoom-btn" onclick="bannerZoomStep(1)" title="放大">+</button>
+          <span class="zoom-level" id="bannerZoomLevel">100%</span>
+          <button class="btn btn-xs btn-outline" onclick="resetBannerView()" title="重置视图">⟲</button>
+        </div>
+        <div class="banner-result-wrap" id="bannerResultWrap" style="display:none">
+          <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:6px">预览效果</div>
+          <canvas id="bannerResultCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:var(--text-light)" id="bannerStatus"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="closeBannerModal()">关闭</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadBanner()">⬇ 下载单张</button>
+        <button class="btn btn-primary btn-sm" onclick="confirmBanner()">✓ 确认横幅</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div><div class="loading-text" id="loadingText">处理中...</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ State ============
+const state = {
+  originalImage: null,
+  originalBlob: null, // V5: 原图数据用于下载
+  rows: 2, cols: 3, padding: 0,
+  // V5: 行/列分割宽度百分比（50=正方形基准）
+  rowSplitPct: 50, colSplitPct: 50,
+  bgColor: {r:255,g:255,b:255},
+  tolerance: 32, autoTrim: true, edgeFeather: true,
+  emojis: [],
+  largeSize: 240, smallSize: 120, iconSize: 50,
+  styles: {
+    fontSize:28, fontWeight:'bold', textColor:'#ffffff',
+    strokeColor:'#000000', strokeWidth:3,
+    position:'bottom', align:'center', offset:8,
+    shadow:true, shadowColor:'#000000', shadowBlur:4,
+    roundedBg:false, bgBarColor:'#000000', bgOpacity:0.5, bgRadius:6
+  },
+  // V3: 底图视口状态（缩放/平移）
+  viewState: {
+    zoom: 1, focusX: 0, focusY: 0,
+  },
+  // V3: 预览背景色
+  previewBg: null, // null=无, '#ffffff'=白, '#000000'=黑
+  // V4: 横幅
+  banner: null, // banner canvas (confirmed)
+  bannerState: {
+    image: null,
+    srcW: 0, srcH: 0,
+    cropW: 750, cropH: 400,
+    zoom: 1, focusX: 0, focusY: 0,
+    confirmed: false,
+  },
+};
+
+function createDefaultCustom(){
+  return {
+    textEnabled:false, textPosition:'bottom', textAlign:'center', fontSize:null,
+    textColor:null, strokeColor:null, strokeWidth:null,
+    imgEnabled:false, offsetX:0, offsetY:0, imgScale:1,
+    flipH:false, flipV:false, rotation:0,
+    // V5: 单独抠图设置 + 橡皮擦
+    cutoutOverride:false,
+    cutoutBgColor:null, cutoutTolerance:null, cutoutFeather:null,
+    eraserMode:false, eraserSize:12,
+    undoStack:[],
+  };
+}
+
+// ============ Utils ============
+function $(id){return document.getElementById(id)}
+function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+function showLoading(msg){$('loadingText').textContent=msg||'处理中...';$('loadingOverlay').classList.add('show')}
+function hideLoading(){$('loadingOverlay').classList.remove('show')}
+function hexToRgb(hex){const m=hex.replace('#','').match(/.{2}/g);return{r:parseInt(m[0],16),g:parseInt(m[1],16),b:parseInt(m[2],16)}}
+function roundRect(ctx,x,y,w,h,r){r=Math.min(r,Math.max(0,w/2),Math.max(0,h/2));ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// V3: 预览背景色切换
+function setPreviewBg(color){
+  state.previewBg=color;
+  document.querySelectorAll('.bg-option').forEach(el=>{
+    el.classList.toggle('active',el.dataset.bg===(color||'none'));
+  });
+  // 如果已有表情，刷新预览
+  state.emojis.forEach((_,i)=>renderEmojiPreview(i));
+}
+
+// ============ Square Grid Calculation ============
+// V3: 视口坐标系网格单元
+// V5: 支持矩形分割的行/列独立宽度
+function getViewportGridCells(vw, vh, rows, cols, pad) {
+  const base = Math.min(vw / cols, vh / rows);
+  const cellW = base * (state.colSplitPct / 50);
+  const cellH = base * (state.rowSplitPct / 50);
+  const totalW = cellW * cols;
+  const totalH = cellH * rows;
+  const offX = Math.max(0, (vw - totalW) / 2);
+  const offY = Math.max(0, (vh - totalH) / 2);
+  const cells = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = offX + c * cellW + pad;
+      const cy = offY + r * cellH + pad;
+      const cw = cellW - pad * 2;
+      const ch = cellH - pad * 2;
+      cells.push({ cx, cy, cw: Math.max(1, cw), ch: Math.max(1, ch), row: r, col: c });
+    }
+  }
+  return cells;
+}
+// V3: 视口坐标 → 图像坐标
+function viewportToImage(vx, vy, vw, vh) {
+  const vs = state.viewState;
+  return {
+    x: (vx - vw / 2) / vs.zoom + vs.focusX,
+    y: (vy - vh / 2) / vs.zoom + vs.focusY,
+  };
+}
+
+// ============ Upload ============
+const uploadZone=$('uploadZone');
+const fileInput=$('fileInput');
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('dragover')});
+uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+fileInput.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0])});
+
+function handleFile(file){
+  if(!file.type.startsWith('image/')){showToast('请上传图片文件');return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      state.originalImage=img;
+      state.originalBlob=e.target.result;
+      state.emojis=[];
+      $('uploadPreview').style.display='block';
+      $('gridCard').style.display='block';
+      $('cutoutCard').style.display='block';
+      initViewport();
+      drawPreview();
+      showToast('图片上传成功');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// V3: 初始化视口画布
+function initViewport() {
+  const img=state.originalImage;
+  if(!img)return;
+  const vp=$('previewViewport');
+  const canvas=$('previewCanvas');
+  const maxW=vp.clientWidth||328;
+  const maxH=450;
+  const iw=img.naturalWidth,ih=img.naturalHeight;
+  const ratio=ih/iw;
+  let cw=maxW,ch=cw*ratio;
+  if(ch>maxH){ch=maxH;cw=ch/ratio}
+  canvas.width=Math.round(cw);
+  canvas.height=Math.round(ch);
+  const vs=state.viewState;
+  vs.zoom=Math.min(cw/iw,ch/ih);
+  vs.focusX=iw/2;
+  vs.focusY=ih/2;
+}
+
+// ============ Grid Config ============
+document.querySelectorAll('.preset-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.rows=parseInt(btn.dataset.rows);
+    state.cols=parseInt(btn.dataset.cols);
+    $('gridRows').value=state.rows;
+    $('gridCols').value=state.cols;
+    drawPreview();
+  });
+});
+$('gridRows').addEventListener('input',e=>{state.rows=Math.max(1,parseInt(e.target.value)||1);updatePresetActive();drawPreview()});
+$('gridCols').addEventListener('input',e=>{state.cols=Math.max(1,parseInt(e.target.value)||1);updatePresetActive();drawPreview()});
+$('gridPadding').addEventListener('input',e=>{state.padding=parseInt(e.target.value);$('paddingVal').textContent=state.padding+'px';drawPreview()});
+// V5: 行/列分割控制
+$('rowSplitW').addEventListener('input',()=>syncRowSplit());
+$('colSplitW').addEventListener('input',()=>syncColSplit());
+
+function syncRowSplit(){
+  state.rowSplitPct=parseFloat($('rowSplitW').value);
+  const v=state.rowSplitPct;
+  $('rowSplitVal').textContent=(v%1===0?v:v.toFixed(1))+'%';
+  drawPreview();
+}
+function syncColSplit(){
+  state.colSplitPct=parseFloat($('colSplitW').value);
+  const v=state.colSplitPct;
+  $('colSplitVal').textContent=(v%1===0?v:v.toFixed(1))+'%';
+  drawPreview();
+}
+function rowSplitStep(dir){
+  let v=Math.max(1,Math.min(99,state.rowSplitPct+dir*0.5));
+  v=Math.round(v*2)/2;
+  state.rowSplitPct=v;
+  $('rowSplitW').value=v;
+  $('rowSplitVal').textContent=(v%1===0?v:v.toFixed(1))+'%';
+  drawPreview();
+}
+function colSplitStep(dir){
+  let v=Math.max(1,Math.min(99,state.colSplitPct+dir*0.5));
+  v=Math.round(v*2)/2;
+  state.colSplitPct=v;
+  $('colSplitW').value=v;
+  $('colSplitVal').textContent=(v%1===0?v:v.toFixed(1))+'%';
+  drawPreview();
+}
+
+function updatePresetActive(){
+  document.querySelectorAll('.preset-btn').forEach(b=>{
+    b.classList.toggle('active',parseInt(b.dataset.rows)===state.rows&&parseInt(b.dataset.cols)===state.cols);
+  });
+}
+
+// V3: 绘制底图 + 网格叠加
+function drawPreview() {
+  if (!state.originalImage) return;
+  const canvas = $('previewCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const vw = canvas.width, vh = canvas.height;
+  const img = state.originalImage;
+  const vs = state.viewState;
+  ctx.clearRect(0, 0, vw, vh);
+  // 绘制底图
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, vw, vh); ctx.clip();
+  ctx.translate(vw / 2, vh / 2);
+  ctx.scale(vs.zoom, vs.zoom);
+  ctx.translate(-vs.focusX, -vs.focusY);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+  // 计算网格（V5: 矩形分割）
+  const cells = getViewportGridCells(vw, vh, state.rows, state.cols, state.padding);
+  if (!cells.length) return;
+  const base = Math.min(vw / state.cols, vh / state.rows);
+  const _cellW = base * (state.colSplitPct / 50);
+  const _cellH = base * (state.rowSplitPct / 50);
+  const totalW = _cellW * state.cols;
+  const totalH = _cellH * state.rows;
+  const offX = Math.max(0, (vw - totalW) / 2);
+  const offY = Math.max(0, (vh - totalH) / 2);
+  // 网格外部遮罩
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  if (offY > 0) ctx.fillRect(0, 0, vw, offY);
+  if (offY + totalH < vh) ctx.fillRect(0, offY + totalH, vw, vh - offY - totalH);
+  if (offX > 0) ctx.fillRect(0, offY, offX, totalH);
+  if (offX + totalW < vw) ctx.fillRect(offX + totalW, offY, vw - offX - totalW, totalH);
+  // 分割线
+  ctx.strokeStyle = 'rgba(7,193,96,0.85)';
+  ctx.lineWidth = Math.max(1, vw / 400);
+  ctx.setLineDash([6, 4]);
+  cells.forEach(cell => ctx.strokeRect(cell.cx, cell.cy, cell.cw, cell.ch));
+  ctx.setLineDash([]);
+  // 单元格序号
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = Math.max(10, vw / 40) + 'px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  cells.forEach((cell, i) => ctx.fillText(i + 1, cell.cx + cell.cw / 2, cell.cy + cell.ch / 2));
+  updateZoomLabel();
+}
+
+// V3: 缩放控制（step=±0.5%）
+function zoomStep(dir) {
+  const vs = state.viewState;
+  const base = getBaseZoom();
+  const pct = vs.zoom / base * 100;
+  const next = Math.max(5, Math.min(500, Math.round((pct + dir * 0.5)*2)/2));
+  vs.zoom = base * (next / 100);
+  drawPreview();
+}
+function getBaseZoom() {
+  if (!state.originalImage) return 1;
+  const canvas = $('previewCanvas');
+  if (!canvas) return 1;
+  return Math.min(canvas.width / state.originalImage.naturalWidth, canvas.height / state.originalImage.naturalHeight);
+}
+function zoomSliderChange(slider) {
+  const vs = state.viewState;
+  const base = getBaseZoom();
+  vs.zoom = base * (parseInt(slider.value) / 100);
+  drawPreview();
+}
+function syncZoomSlider() {
+  const vs = state.viewState;
+  const base = getBaseZoom();
+  const pct = Math.round(vs.zoom / base * 100);
+  const slider = $('zoomSlider');
+  if (slider) slider.value = Math.max(5, Math.min(500, pct));
+  $('zoomLevel').textContent = Math.max(5, Math.min(500, pct)) + '%';
+}
+function resetView() {
+  initViewport();
+  drawPreview();
+  showToast('视图已复位');
+}
+function updateZoomLabel() {
+  if (!state.originalImage) { $('zoomLevel').textContent = '100%'; return; }
+  syncZoomSlider();
+}
+
+// V3: 拖拽平移底图
+const panState = { active: false, startX: 0, startY: 0, startFX: 0, startFY: 0 };
+function doWheelZoom(e, el) {
+  e.preventDefault();
+  const vs = state.viewState;
+  const rect = el.getBoundingClientRect();
+  const sx = el.width / el.offsetWidth;
+  const mx = (e.clientX - rect.left) * sx;
+  const my = (e.clientY - rect.top) * sx;
+  const imgX = (mx - el.width / 2) / vs.zoom + vs.focusX;
+  const imgY = (my - el.height / 2) / vs.zoom + vs.focusY;
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  vs.zoom = Math.max(0.05, Math.min(20, vs.zoom * delta));
+  vs.focusX = imgX;
+  vs.focusY = imgY;
+  drawPreview();
+}
+function setupViewportDrag() {
+  const canvas = $('previewCanvas');
+  if (!canvas) return;
+  canvas.addEventListener('mousedown', e => {
+    panState.active = true;
+    panState.startX = e.clientX;
+    panState.startY = e.clientY;
+    panState.startFX = state.viewState.focusX;
+    panState.startFY = state.viewState.focusY;
+    e.preventDefault();
+  });
+  const vp = $('previewViewport');
+  const wheelTargets = vp ? [canvas, vp] : [canvas];
+  wheelTargets.forEach(el => {
+    el.addEventListener('wheel', e => doWheelZoom(e, canvas), { passive: false });
+  });
+}
+window.addEventListener('mousemove', e => {
+  if (!panState.active) return;
+  const canvas = $('previewCanvas');
+  if (!canvas) return;
+  const vs = state.viewState;
+  const sx = canvas.width / canvas.offsetWidth;
+  vs.focusX = panState.startFX - (e.clientX - panState.startX) * sx / vs.zoom;
+  vs.focusY = panState.startFY - (e.clientY - panState.startY) * sx / vs.zoom;
+  drawPreview();
+});
+window.addEventListener('mouseup', () => { panState.active = false; });
+
+// ============ V4: Banner Functions ============
+const bannerPan={active:false,startX:0,startY:0,startFX:0,startFY:0};
+
+function openBannerModal(){
+  const bs=state.bannerState;
+  const modal=$('bannerModal');
+  modal.classList.add('show');
+  // 如果已确认过横幅，直接显示编辑器
+  if(bs.image&&bs.confirmed){
+    $('bannerUploadZone').style.display='none';
+    $('bannerEditor').style.display='block';
+    showBannerResultPreview();
+    setTimeout(drawBannerPreview,50);
+    return;
+  }
+  if(bs.image){
+    $('bannerUploadZone').style.display='none';
+    $('bannerEditor').style.display='block';
+    setTimeout(drawBannerPreview,50);
+  }else{
+    $('bannerUploadZone').style.display='block';
+    $('bannerEditor').style.display='none';
+  }
+}
+function closeBannerModal(){$('bannerModal').classList.remove('show')}
+
+// Banner file upload
+const bz=$('bannerUploadZone');
+const bf=$('bannerFileInput');
+bz.addEventListener('dragover',e=>{e.preventDefault();bz.classList.add('dragover')});
+bz.addEventListener('dragleave',()=>bz.classList.remove('dragover'));
+bz.addEventListener('drop',e=>{e.preventDefault();bz.classList.remove('dragover');if(e.dataTransfer.files[0])loadBannerFile(e.dataTransfer.files[0])});
+bf.addEventListener('change',e=>{if(e.target.files[0])loadBannerFile(e.target.files[0])});
+
+function loadBannerFile(file){
+  if(!file.type.startsWith('image/')){showToast('请上传图片文件');return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const bs=state.bannerState;
+      bs.image=img;
+      bs.srcW=img.naturalWidth;
+      bs.srcH=img.naturalHeight;
+      bs.confirmed=false;
+      state.banner=null;
+      $('bannerUploadZone').style.display='none';
+      $('bannerEditor').style.display='block';
+      initBannerViewport();
+      drawBannerPreview();
+      showToast('横幅图片上传成功');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function initBannerViewport(){
+  const bs=state.bannerState;
+  if(!bs.image)return;
+  const wrap=$('bannerPreviewWrap');
+  const canvas=$('bannerCanvas');
+  const maxW=Math.min(wrap.clientWidth||580,580);
+  const ratio=bs.cropH/bs.cropW;
+  let cw=maxW,ch=cw*ratio;
+  const maxH=320;
+  if(ch>maxH){ch=maxH;cw=ch/ratio}
+  canvas.width=Math.round(cw);
+  canvas.height=Math.round(ch);
+  // cover模式初始化
+  const sx=cw/bs.srcW, sy=ch/bs.srcH;
+  bs.zoom=Math.max(sx,sy);
+  bs.focusX=bs.srcW/2;
+  bs.focusY=bs.srcH/2;
+}
+
+function drawBannerPreview(){
+  const bs=state.bannerState;
+  const canvas=$('bannerCanvas');
+  if(!canvas||!bs.image)return;
+  const ctx=canvas.getContext('2d');
+  const vw=canvas.width,vh=canvas.height;
+  ctx.clearRect(0,0,vw,vh);
+  // 绘制底图
+  ctx.save();
+  ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();
+  ctx.fillStyle='#1a1a1a';
+  ctx.fillRect(0,0,vw,vh);
+  ctx.translate(vw/2,vh/2);
+  ctx.scale(bs.zoom,bs.zoom);
+  ctx.translate(-bs.focusX,-bs.focusY);
+  ctx.drawImage(bs.image,0,0);
+  ctx.restore();
+  // 遮罩 - 左右两侧（如果 crop 比例与画布不同）
+  const cropRatio=bs.cropW/bs.cropH;
+  const canvasRatio=vw/vh;
+  let cropX=0,cropY=0,cropW=vw,cropH=vh;
+  if(cropRatio>canvasRatio){
+    cropH=vh;
+    cropW=vh*cropRatio;
+    cropX=(vw-cropW)/2;
+  }else{
+    cropW=vw;
+    cropH=vw/cropRatio;
+    cropY=(vh-cropH)/2;
+  }
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  if(cropX>0){ctx.fillRect(0,0,cropX,vh);ctx.fillRect(cropX+cropW,0,vh-cropX-cropW,vh)}
+  if(cropY>0){ctx.fillRect(cropX,0,cropW,cropY);ctx.fillRect(cropX,cropY+cropH,cropW,vh-cropY-cropH)}
+  // 绿色裁切框
+  ctx.strokeStyle='rgba(7,193,96,0.9)';
+  ctx.lineWidth=2;
+  ctx.strokeRect(cropX,cropY,cropW,cropH);
+  // 三分线
+  ctx.strokeStyle='rgba(255,255,255,0.25)';
+  ctx.lineWidth=1;
+  for(let i=1;i<3;i++){
+    ctx.beginPath();ctx.moveTo(cropX+cropW*i/3,cropY);ctx.lineTo(cropX+cropW*i/3,cropY+cropH);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cropX,cropY+cropH*i/3);ctx.lineTo(cropX+cropW,cropY+cropH*i/3);ctx.stroke();
+  }
+  updateBannerZoomLabel();
+}
+
+function updateBannerZoomLabel(){
+  const bs=state.bannerState;
+  if(!bs.image){$('bannerZoomLevel').textContent='100%';return}
+  const canvas=$('bannerCanvas');
+  const baseZoom=Math.min(canvas.width/bs.srcW,canvas.height/bs.srcH);
+  const pct=Math.round(bs.zoom/baseZoom*100);
+  const slider=$('bannerZoomSlider');
+  if(slider)slider.value=Math.max(10,Math.min(500,pct));
+  $('bannerZoomLevel').textContent=Math.max(10,Math.min(500,pct))+'%';
+}
+
+function setBannerRatio(w,h,el){
+  const bs=state.bannerState;
+  bs.cropW=w;bs.cropH=h;
+  document.querySelectorAll('.banner-preset').forEach(e=>e.classList.remove('active'));
+  if(el)el.classList.add('active');
+  if(bs.image){initBannerViewport();drawBannerPreview()}
+}
+function bannerZoomStep(dir){
+  const bs=state.bannerState;
+  const base=Math.min($('bannerCanvas').width/bs.srcW,$('bannerCanvas').height/bs.srcH);
+  const pct=Math.round(bs.zoom/base*100);
+  const next=Math.max(10,Math.min(500,pct+dir*1));
+  bs.zoom=base*(next/100);
+  drawBannerPreview();
+}
+function bannerZoomSliderChange(slider){
+  const bs=state.bannerState;
+  const base=Math.min($('bannerCanvas').width/bs.srcW,$('bannerCanvas').height/bs.srcH);
+  bs.zoom=base*(parseInt(slider.value)/100);
+  drawBannerPreview();
+}
+function resetBannerView(){
+  initBannerViewport();
+  drawBannerPreview();
+}
+
+// Banner canvas drag
+function setupBannerCanvasDrag(){
+  const canvas=$('bannerCanvas');
+  if(!canvas)return;
+  canvas.addEventListener('mousedown',e=>{
+    bannerPan.active=true;
+    bannerPan.startX=e.clientX;
+    bannerPan.startY=e.clientY;
+    bannerPan.startFX=state.bannerState.focusX;
+    bannerPan.startFY=state.bannerState.focusY;
+    e.preventDefault();
+  });
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const bs=state.bannerState;
+    const rect=canvas.getBoundingClientRect();
+    const sx=canvas.width/canvas.offsetWidth;
+    const mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sx;
+    const imgX=(mx-canvas.width/2)/bs.zoom+bs.focusX;
+    const imgY=(my-canvas.height/2)/bs.zoom+bs.focusY;
+    const delta=e.deltaY>0?0.9:1.1;
+    bs.zoom=Math.max(0.05,Math.min(20,bs.zoom*delta));
+    bs.focusX=imgX;bs.focusY=imgY;
+    drawBannerPreview();
+  },{passive:false});
+  const wrap=$('bannerPreviewWrap');
+  if(wrap)wrap.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const bs=state.bannerState;
+    const rect=canvas.getBoundingClientRect();
+    const sx=canvas.width/canvas.offsetWidth;
+    const mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sx;
+    const imgX=(mx-canvas.width/2)/bs.zoom+bs.focusX;
+    const imgY=(my-canvas.height/2)/bs.zoom+bs.focusY;
+    const delta=e.deltaY>0?0.9:1.1;
+    bs.zoom=Math.max(0.05,Math.min(20,bs.zoom*delta));
+    bs.focusX=imgX;bs.focusY=imgY;
+    drawBannerPreview();
+  },{passive:false});
+}
+// 全局 banner 拖拽移动
+window.addEventListener('mousemove',e=>{
+  if(!bannerPan.active)return;
+  const canvas=$('bannerCanvas');
+  if(!canvas)return;
+  const bs=state.bannerState;
+  const sx=canvas.width/canvas.offsetWidth;
+  bs.focusX=bannerPan.startFX-(e.clientX-bannerPan.startX)*sx/bs.zoom;
+  bs.focusY=bannerPan.startFY-(e.clientY-bannerPan.startY)*sx/bs.zoom;
+  drawBannerPreview();
+});
+window.addEventListener('mouseup',()=>{bannerPan.active=false});
+
+// 导出横幅
+function exportBannerCanvas(){
+  const bs=state.bannerState;
+  if(!bs.image)return null;
+  const canvas=$('bannerCanvas');
+  const vw=canvas.width,vh=canvas.height;
+  const cropRatio=bs.cropW/bs.cropH;
+  const canvasRatio=vw/vh;
+  let cropX=0,cropY=0,cropW=vw,cropH=vh;
+  if(cropRatio>canvasRatio){
+    cropH=vh;cropW=vh*cropRatio;cropX=(vw-cropW)/2;
+  }else{
+    cropW=vw;cropH=vw/cropRatio;cropY=(vh-cropH)/2;
+  }
+  // 视口4角映射到图像坐标
+  const tl=viewportToImageBanner(cropX,cropY,vw,vh);
+  const br=viewportToImageBanner(cropX+cropW,cropY+cropH,vw,vh);
+  const ix=tl.x,iy=tl.y,iw=br.x-tl.x,ih=br.y-tl.y;
+  const out=document.createElement('canvas');
+  out.width=bs.cropW;out.height=bs.cropH;
+  const octx=out.getContext('2d');
+  octx.drawImage(bs.image,ix,iy,iw,ih,0,0,bs.cropW,bs.cropH);
+  return out;
+}
+function viewportToImageBanner(vx,vy,vw,vh){
+  const bs=state.bannerState;
+  return{
+    x:(vx-vw/2)/bs.zoom+bs.focusX,
+    y:(vy-vh/2)/bs.zoom+bs.focusY,
+  };
+}
+
+function showBannerResultPreview(){
+  const canvas=exportBannerCanvas();
+  if(!canvas)return;
+  const wrap=$('bannerResultWrap');
+  wrap.style.display='block';
+  const rc=$('bannerResultCanvas');
+  const maxW=Math.min(wrap.clientWidth-20||400,400);
+  const ratio=canvas.height/canvas.width;
+  rc.width=Math.round(maxW);rc.height=Math.round(maxW*ratio);
+  const rctx=rc.getContext('2d');
+  rctx.drawImage(canvas,0,0,rc.width,rc.height);
+  $('bannerStatus').textContent=`${state.bannerState.cropW}×${state.bannerState.cropH} · 已就绪`;
+}
+
+function downloadBanner(){
+  const canvas=exportBannerCanvas();
+  if(!canvas){showToast('请先上传横幅图片');return}
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`banner_${state.bannerState.cropW}x${state.bannerState.cropH}.png`;a.click();
+    URL.revokeObjectURL(url);
+    showToast('横幅已下载');
+  },'image/png');
+}
+
+function confirmBanner(){
+  const canvas=exportBannerCanvas();
+  if(!canvas){showToast('请先上传横幅图片');return}
+  state.banner=canvas;
+  state.bannerState.confirmed=true;
+  $('bannerStatus').textContent='✓ 已确认';
+  showToast('横幅已确认');
+  // 刷新报告
+  if($('btnReport').disabled===false)renderBannerInReport();
+}
+
+// ============ Cutout Settings ============
+$('bgColor').addEventListener('input',e=>{state.bgColor=hexToRgb(e.target.value)});
+$('tolerance').addEventListener('input',e=>{state.tolerance=parseInt(e.target.value);$('toleranceVal').textContent=e.target.value});
+$('autoTrim').addEventListener('change',e=>{state.autoTrim=e.target.checked});
+$('edgeFeather').addEventListener('change',e=>{state.edgeFeather=e.target.checked});
+
+// ============ Image Processing (V3: 视口映射) ============
+async function processImage(){
+  if(!state.originalImage){showToast('请先上传图片');return}
+  showLoading('正在按网格拆分...');
+  await new Promise(r=>setTimeout(r,50));
+  const img=state.originalImage;
+  const canvas=$('previewCanvas');
+  const vw=canvas.width,vh=canvas.height;
+  // 基于视口计算网格，再映射回图像坐标
+  const viewportCells=getViewportGridCells(vw,vh,state.rows,state.cols,state.padding);
+  state.emojis=[];
+  for(let i=0;i<viewportCells.length;i++){
+    const vc=viewportCells[i];
+    const tl=viewportToImage(vc.cx,vc.cy,vw,vh);
+    const br=viewportToImage(vc.cx+vc.cw,vc.cy+vc.ch,vw,vh);
+    const sx=tl.x,sy=tl.y,sw=br.x-tl.x,sh=br.y-tl.y;
+    const result=processCell(img,sx,sy,sw,sh);
+    state.emojis.push({
+      canvas:result.canvas,
+      text:'',
+      index:state.emojis.length,
+      cropInfo:{gridX:sx,gridY:sy,gridW:sw,gridH:sh},
+      custom:createDefaultCustom()
+    });
+  }
+  hideLoading();
+  if(state.emojis.length===0){showToast('未检测到有效表情，请检查网格设置');return}
+  $('textCard').style.display='block';
+  $('styleCard').style.display='block';
+  $('exportCard').style.display='block';
+  $('btnReport').disabled=false;
+  renderEmojis();
+  showToast(`成功拆分 ${state.emojis.length} 个1:1正方形表情`);
+}
+
+// V5: 处理单元 - 支持矩形，接受可选抠图参数
+function processCell(img,sx,sy,sw,sh,cutoutOpts){
+  const cellCanvas=document.createElement('canvas');
+  cellCanvas.width=Math.max(1,Math.round(sw));
+  cellCanvas.height=Math.max(1,Math.round(sh));
+  const cellCtx=cellCanvas.getContext('2d');
+  cellCtx.drawImage(img,sx,sy,sw,sh,0,0,cellCanvas.width,cellCanvas.height);
+  const cellData=cellCtx.getImageData(0,0,cellCanvas.width,cellCanvas.height);
+  removeBackground(cellData,cutoutOpts);
+  cellCtx.putImageData(cellData,0,0);
+  let finalCanvas=cellCanvas;
+  if(state.autoTrim){
+    const bounds=getContentBounds(cellData);
+    if(bounds&&bounds.w>2&&bounds.h>2){
+      // V5: 保持矩形不强制正方形
+      finalCanvas=document.createElement('canvas');
+      finalCanvas.width=Math.round(bounds.w);
+      finalCanvas.height=Math.round(bounds.h);
+      const fCtx=finalCanvas.getContext('2d');
+      fCtx.drawImage(cellCanvas,bounds.x,bounds.y,bounds.w,bounds.h,0,0,bounds.w,bounds.h);
+    }
+  }
+  return{canvas:finalCanvas};
+}
+
+function removeBackground(imageData,opts){
+  const data=imageData.data;
+  const w=imageData.width,h=imageData.height;
+  const bg=opts&&opts.bgColor?opts.bgColor:state.bgColor;
+  const tol=opts&&opts.tolerance!=null?opts.tolerance:state.tolerance;
+  const feather=opts&&opts.feather!=null?opts.feather:state.edgeFeather;
+  // V5: 边缘感知 — 预计算梯度
+  const grad=new Float32Array(w*h);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const idx=(y*w+x)*4;
+      let mg=0;
+      if(x>0){const g=Math.abs(data[idx]-data[idx-4])+Math.abs(data[idx+1]-data[idx-3])+Math.abs(data[idx+2]-data[idx-2]);if(g>mg)mg=g}
+      if(y>0){const g=Math.abs(data[idx]-data[idx-w*4])+Math.abs(data[idx+1]-data[idx-w*4+1])+Math.abs(data[idx+2]-data[idx-w*4+2]);if(g>mg)mg=g}
+      grad[idx/4]=mg;
+    }
+  }
+  let s1=0,s2=0;
+  for(let i=0;i<w*h;i++){s1+=grad[i];s2+=grad[i]*grad[i]}
+  const mn=s1/(w*h);
+  const edgeTh=Math.max(60,mn+Math.sqrt(Math.max(0,s2/(w*h)-mn*mn))*0.8);
+  const visited=new Uint8Array(w*h);
+  const queue=[];
+  const isBg=(idx)=>{
+    const r=data[idx],g=data[idx+1],b=data[idx+2];
+    return Math.abs(r-bg.r)<tol&&Math.abs(g-bg.g)<tol&&Math.abs(b-bg.b)<tol;
+  };
+  for(let x=0;x<w;x++){
+    if(isBg(x*4)&&!visited[x]){queue.push(x);visited[x]=1}
+    if(isBg(((h-1)*w+x)*4)&&!visited[(h-1)*w+x]){queue.push((h-1)*w+x);visited[(h-1)*w+x]=1}
+  }
+  for(let y=0;y<h;y++){
+    if(isBg(y*w*4)&&!visited[y*w]){queue.push(y*w);visited[y*w]=1}
+    if(isBg((y*w+w-1)*4)&&!visited[y*w+w-1]){queue.push(y*w+w-1);visited[y*w+w-1]=1}
+  }
+  let head=0;
+  while(head<queue.length){
+    const pos=queue[head++];
+    const x=pos%w,y=(pos-x)/w;
+    data[pos*4+3]=0;
+    const go=(ni)=>{
+      if(visited[ni]||!isBg(ni*4))return;
+      if(Math.max(grad[pos],grad[ni])>edgeTh)return;
+      visited[ni]=1;queue.push(ni);
+    };
+    if(x>0)go(pos-1);
+    if(x<w-1)go(pos+1);
+    if(y>0)go(pos-w);
+    if(y<h-1)go(pos+w);
+  }
+  if(feather){
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const idx=(y*w+x)*4;
+        if(data[idx+3]===0||data[idx+3]<255)continue;
+        let nr=false;
+        if(x>0&&data[(y*w+x-1)*4+3]===0)nr=true;
+        if(x<w-1&&data[(y*w+x+1)*4+3]===0)nr=true;
+        if(y>0&&data[((y-1)*w+x)*4+3]===0)nr=true;
+        if(y<h-1&&data[((y+1)*w+x)*4+3]===0)nr=true;
+        if(nr){
+          const R=data[idx],G=data[idx+1],B=data[idx+2];
+          const br=(R+G+B)/3,bgBr=(bg.r+bg.g+bg.b)/3;
+          data[idx+3]=Math.round(255*(1-Math.min(1,Math.abs(br-bgBr)/255*1.5)));
+        }
+      }
+    }
+  }
+}
+
+function getContentBounds(imageData){
+  const data=imageData.data;
+  const w=imageData.width,h=imageData.height;
+  let minX=w,minY=h,maxX=0,maxY=0,found=false;
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      if(data[(y*w+x)*4+3]>10){
+        if(x<minX)minX=x;if(x>maxX)maxX=x;
+        if(y<minY)minY=y;if(y>maxY)maxY=y;
+        found=true;
+      }
+    }
+  }
+  if(!found)return null;
+  return{x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1};
+}
+
+// ============ Render Emojis ============
+function renderEmojis(){
+  const container=$('emojiContainer');
+  $('emojiCount').textContent=`共 ${state.emojis.length} 个表情`;
+  if(state.emojis.length===0){
+    container.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>暂无表情数据</p></div>';
+    return;
+  }
+  container.innerHTML='<div class="emoji-grid">'+state.emojis.map((emoji,i)=>`
+    <div class="emoji-card" data-idx="${i}">
+      <div class="preview" id="preview-${i}">
+        <span class="drag-hint">拖拽调整位置</span>
+      </div>
+      <div class="info">
+        <div class="idx"><span>表情 #${i+1}</span><span class="badge" id="badge-${i}">${getBadgeText(emoji)}</span></div>
+        <input type="text" value="${escapeHtml(emoji.text)}" placeholder="输入文字..." oninput="updateEmojiText(${i},this.value)">
+      </div>
+      <div class="dl-row">
+        <button class="btn btn-primary btn-sm" onclick="downloadSingle(${i},'large')">⬇ 大图 ${state.largeSize}</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadSingle(${i},'small')">⬇ 小图 ${state.smallSize}</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="openCropEditor(${i})" title="调整裁剪范围">✂️裁剪</button>
+        <button class="btn btn-outline" onclick="toggleFlip(${i},'H')" title="水平翻转">⇄翻转</button>
+        <button class="btn btn-outline" onclick="resetPosition(${i})" title="重置位置">📍复位</button>
+      </div>
+      <div class="settings-toggle">
+        <button onclick="toggleSettings(${i})" id="settings-btn-${i}">⚙️ 单独设置 <span class="arrow">▼</span></button>
+      </div>
+      <div class="emoji-settings" id="settings-${i}">${renderSettings(i)}</div>
+    </div>
+  `).join('')+'</div>';
+  state.emojis.forEach((_,i)=>{
+    renderEmojiPreview(i);
+    setupPreviewDrag(i);
+  });
+}
+
+function getBadgeText(emoji){
+  const c=emoji.custom;
+  let badges=[];
+  if(c.textEnabled)badges.push('文字');
+  if(c.imgEnabled)badges.push('位置');
+  if(c.flipH)badges.push('翻转');
+  if(c.rotation)badges.push('旋转');
+  return badges.length?badges.join('+'):'默认';
+}
+
+function renderSettings(i){
+  const c=state.emojis[i].custom;
+  return `
+    <div class="setting-group">
+      <div class="group-title"><span>单独抠图</span>
+        <label class="toggle"><input type="checkbox" id="cutoutOverride-${i}" ${c.cutoutOverride?'checked':''} onchange="updateCutoutOverride(${i})"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="mini-row"><label>背景色</label>
+        <input type="color" id="cutoutColor-${i}" value="${c.cutoutBgColor||'#ffffff'}" ${c.cutoutOverride?'':'disabled'} onchange="setCutoutVal(${i},'cutoutBgColor',this.value)">
+        <button class="btn btn-primary btn-xs" style="padding:2px 8px;font-size:11px" onclick="doPerCutout(${i})">✂️ 抠图</button>
+      </div>
+      <div class="mini-row"><label>容差</label>
+        <input type="range" min="0" max="120" value="${c.cutoutTolerance!=null?c.cutoutTolerance:state.tolerance}" ${c.cutoutOverride?'':'disabled'} oninput="setCutoutVal(${i},'cutoutTolerance',parseInt(this.value));document.getElementById('cutoutTolTag-${i}').textContent=this.value">
+        <span class="mini-val" id="cutoutTolTag-${i}">${c.cutoutTolerance!=null?c.cutoutTolerance:state.tolerance}</span>
+      </div>
+      <div class="mini-row">
+        <label class="checkbox-row" style="margin:0;font-size:11px">
+          <input type="checkbox" id="cutoutFeather-${i}" ${c.cutoutFeather!=null?c.cutoutFeather:state.edgeFeather?'checked':''} ${c.cutoutOverride?'':'disabled'} onchange="setCutoutVal(${i},'cutoutFeather',this.checked)">
+          <span>羽化</span>
+        </label>
+      </div>
+      <div class="mini-row" style="margin-top:2px">
+        <button class="btn btn-outline btn-xs" style="flex:1;${c.eraserMode?'background:var(--primary);color:#fff;border-color:var(--primary)':''}" onclick="toggleEraser(${i})">🧹 橡皮${c.eraserMode?'✓':''}</button>
+        <button class="btn btn-outline btn-xs" style="flex:1" onclick="undoEraser(${i})" ${c.undoStack.length?'':'disabled'}>↩️ 撤销</button>
+      </div>
+      <div class="mini-row" style="margin-top:2px">
+        <button class="zoom-btn" style="width:20px;height:20px;font-size:12px" onclick="eraserSizeStep(${i},-1)">−</button>
+        <div class="zoom-track-wrap">
+          <input type="range" min="2" max="80" value="${c.eraserSize}" oninput="eraserSizeSet(${i},this.value);document.getElementById('eraserSizeTag-${i}').textContent=this.value">
+        </div>
+        <button class="zoom-btn" style="width:20px;height:20px;font-size:12px" onclick="eraserSizeStep(${i},1)">+</button>
+        <span class="mini-val" id="eraserSizeTag-${i}" style="min-width:24px">${c.eraserSize}</span>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="group-title"><span>文字设置</span>
+        <label class="toggle"><input type="checkbox" id="textEnabled-${i}" ${c.textEnabled?'checked':''} onchange="updateCustom(${i})"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="mini-row"><label>位置</label>
+        <div class="btn-group">
+          <span class="seg-btn ${c.textPosition==='top'?'active':''}" onclick="setCustom(${i},'textPosition','top')">上</span>
+          <span class="seg-btn ${c.textPosition==='center'?'active':''}" onclick="setCustom(${i},'textPosition','center')">中</span>
+          <span class="seg-btn ${c.textPosition==='bottom'?'active':''}" onclick="setCustom(${i},'textPosition','bottom')">下</span>
+        </div>
+      </div>
+      <div class="mini-row"><label>对齐</label>
+        <div class="btn-group">
+          <span class="seg-btn ${c.textAlign==='left'?'active':''}" onclick="setCustom(${i},'textAlign','left')">左</span>
+          <span class="seg-btn ${c.textAlign==='center'?'active':''}" onclick="setCustom(${i},'textAlign','center')">中</span>
+          <span class="seg-btn ${c.textAlign==='right'?'active':''}" onclick="setCustom(${i},'textAlign','right')">右</span>
+        </div>
+      </div>
+      <div class="mini-row"><label>字号</label>
+        <input type="range" min="0" max="80" value="${c.fontSize||0}" oninput="setCustomVal(${i},'fontSize',this.value);document.getElementById('fontSizeTag-${i}').textContent=this.value>0?this.value:'默认'">
+        <span class="mini-val" id="fontSizeTag-${i}">${c.fontSize?c.fontSize:'默认'}</span>
+      </div>
+      <div class="mini-row"><label>颜色</label>
+        <input type="color" value="${c.textColor||state.styles.textColor}" onchange="setCustomVal(${i},'textColor',this.value);renderEmojiPreview(${i})">
+      </div>
+      <div class="mini-row"><label>描边</label>
+        <input type="color" value="${c.strokeColor||state.styles.strokeColor}" onchange="setCustomVal(${i},'strokeColor',this.value);renderEmojiPreview(${i})">
+        <span style="font-size:10px;color:var(--text-light);min-width:20px;text-align:right">宽</span>
+        <input type="range" min="0" max="10" value="${c.strokeWidth!=null?c.strokeWidth:state.styles.strokeWidth}" oninput="setCustomVal(${i},'strokeWidth',parseInt(this.value));document.getElementById('strokeWTag-${i}').textContent=this.value;renderEmojiPreview(${i})" style="flex:0.6">
+        <span class="mini-val" id="strokeWTag-${i}" style="min-width:18px">${c.strokeWidth!=null?c.strokeWidth:state.styles.strokeWidth}</span>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="group-title"><span>图片定位</span>
+        <label class="toggle"><input type="checkbox" id="imgEnabled-${i}" ${c.imgEnabled?'checked':''} onchange="updateCustom(${i})"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="mini-row"><label>X偏移</label>
+        <input type="range" min="-30" max="30" value="${c.offsetX}" oninput="setCustomVal(${i},'offsetX',parseInt(this.value));document.getElementById('offsetXTag-${i}').textContent=this.value">
+        <span class="mini-val" id="offsetXTag-${i}">${c.offsetX}</span>
+      </div>
+      <div class="mini-row"><label>Y偏移</label>
+        <input type="range" min="-30" max="30" value="${c.offsetY}" oninput="setCustomVal(${i},'offsetY',parseInt(this.value));document.getElementById('offsetYTag-${i}').textContent=this.value">
+        <span class="mini-val" id="offsetYTag-${i}">${c.offsetY}</span>
+      </div>
+      <div class="mini-row"><label>缩放</label>
+        <input type="range" min="50" max="200" value="${Math.round(c.imgScale*100)}" oninput="setCustomVal(${i},'imgScale',this.value/100);document.getElementById('imgScaleTag-${i}').textContent=this.value+'%'">
+        <span class="mini-val" id="imgScaleTag-${i}">${Math.round(c.imgScale*100)}%</span>
+      </div>
+      <div class="mini-row" style="margin-top:4px">
+        <div class="btn-group">
+          <span class="seg-btn ${c.flipH?'active':''}" onclick="toggleFlip(${i},'H')">水平翻转</span>
+          <span class="seg-btn ${c.flipV?'active':''}" onclick="toggleFlip(${i},'V')">垂直翻转</span>
+        </div>
+      </div>
+      <div class="mini-row"><label>旋转</label>
+        <input type="range" min="0" max="360" value="${c.rotation}" oninput="setCustomVal(${i},'rotation',parseInt(this.value));document.getElementById('rotationTag-${i}').textContent=this.value+'°'">
+        <span class="mini-val" id="rotationTag-${i}">${c.rotation}°</span>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="group-title"><span>操作</span></div>
+      <div class="mini-row">
+        <button class="btn btn-outline btn-xs" style="flex:1" onclick="recutoutEmoji(${i})">🔄 全局参数重抠</button>
+        <button class="btn btn-outline btn-xs" style="flex:1" onclick="resetCustom(${i})">↩️重置设置</button>
+      </div>
+    </div>
+  `;
+}
+
+function toggleSettings(i){
+  const el=$('settings-'+i);
+  const btn=$('settings-btn-'+i);
+  el.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+
+function setCustom(i,key,val){
+  state.emojis[i].custom[key]=val;
+  const settingsEl=$('settings-'+i);
+  if(settingsEl&&settingsEl.classList.contains('open')){
+    settingsEl.innerHTML=renderSettings(i);
+    settingsEl.classList.add('open');
+  }
+  renderEmojiPreview(i);
+  updateBadge(i);
+}
+
+function setCustomVal(i,key,val){
+  state.emojis[i].custom[key]=val;
+  renderEmojiPreview(i);
+}
+
+function updateCustom(i){
+  const c=state.emojis[i].custom;
+  c.textEnabled=$('textEnabled-'+i).checked;
+  c.imgEnabled=$('imgEnabled-'+i).checked;
+  renderEmojiPreview(i);
+  updateBadge(i);
+}
+
+// V5: 单独抠图控制
+function updateCutoutOverride(i){
+  const c=state.emojis[i].custom;
+  c.cutoutOverride=$('cutoutOverride-'+i).checked;
+  const settings=$('settings-'+i);
+  if(settings&&settings.classList.contains('open')){
+    settings.innerHTML=renderSettings(i);
+    settings.classList.add('open');
+  }
+}
+function setCutoutVal(i,key,val){
+  state.emojis[i].custom[key]=val;
+}
+function getCutoutOpts(i){
+  const c=state.emojis[i].custom;
+  if(c.cutoutOverride){
+    return {
+      bgColor: c.cutoutBgColor?hexToRgb(c.cutoutBgColor):state.bgColor,
+      tolerance: c.cutoutTolerance!=null?c.cutoutTolerance:state.tolerance,
+      feather: c.cutoutFeather!=null?c.cutoutFeather:state.edgeFeather,
+    };
+  }
+  return null;
+}
+
+function toggleFlip(i,dir){
+  if(dir==='H')state.emojis[i].custom.flipH=!state.emojis[i].custom.flipH;
+  else state.emojis[i].custom.flipV=!state.emojis[i].custom.flipV;
+  const settingsEl=$('settings-'+i);
+  if(settingsEl&&settingsEl.classList.contains('open')){
+    settingsEl.innerHTML=renderSettings(i);
+    settingsEl.classList.add('open');
+  }
+  renderEmojiPreview(i);
+  updateBadge(i);
+}
+
+function resetCustom(i){
+  state.emojis[i].custom=createDefaultCustom();
+  const settingsEl=$('settings-'+i);
+  if(settingsEl){
+    settingsEl.innerHTML=renderSettings(i);
+    if(settingsEl.classList.contains('open'))settingsEl.classList.add('open');
+  }
+  const container=$('preview-'+i);
+  if(container){
+    const cvs=container.querySelector('canvas');
+    if(cvs)cvs.style.cursor='grab';
+  }
+  renderEmojiPreview(i);
+  updateBadge(i);
+  showToast(`#${i+1} 设置已重置`);
+}
+
+function resetPosition(i){
+  state.emojis[i].custom.offsetX=0;
+  state.emojis[i].custom.offsetY=0;
+  state.emojis[i].custom.imgScale=1;
+  const settingsEl=$('settings-'+i);
+  if(settingsEl&&settingsEl.classList.contains('open')){
+    settingsEl.innerHTML=renderSettings(i);
+    settingsEl.classList.add('open');
+  }
+  renderEmojiPreview(i);
+  showToast(`#${i+1} 位置已复位`);
+}
+
+function updateBadge(i){
+  const badge=$('badge-'+i);
+  if(badge)badge.textContent=getBadgeText(state.emojis[i]);
+}
+
+async function recutoutEmoji(i){
+  showLoading('正在重新抠图...');
+  await new Promise(r=>setTimeout(r,50));
+  const emoji=state.emojis[i];
+  const ci=emoji.cropInfo;
+  const opts=getCutoutOpts(i);
+  const result=processCell(state.originalImage,ci.gridX,ci.gridY,ci.gridW,ci.gridH,opts);
+  emoji.canvas=result.canvas;
+  hideLoading();
+  renderEmojiPreview(i);
+  showToast(`#${i+1} 已重新抠图`);
+}
+
+// V5: 单独抠图按钮
+function doPerCutout(i){
+  const c=state.emojis[i].custom;
+  if(!c.cutoutOverride){showToast('请先开启单独抠图');return}
+  c.cutoutBgColor=$('cutoutColor-'+i).value;
+  recutoutEmoji(i);
+}
+
+// V5: 橡皮擦
+function toggleEraser(i){
+  const c=state.emojis[i].custom;
+  c.eraserMode=!c.eraserMode;
+  const settings=$('settings-'+i);
+  if(settings&&settings.classList.contains('open')){
+    settings.innerHTML=renderSettings(i);
+    settings.classList.add('open');
+  }
+  const container=$('preview-'+i);
+  if(container){
+    const canvas=container.querySelector('canvas');
+    if(canvas)canvas.style.cursor=c.eraserMode?'crosshair':'grab';
+  }
+  showToast(c.eraserMode?'橡皮擦已开启，点击预览擦除':'橡皮擦已关闭');
+}
+function eraserSizeSet(i,v){
+  state.emojis[i].custom.eraserSize=parseInt(v);
+}
+function eraserSizeStep(i,dir){
+  const c=state.emojis[i].custom;
+  c.eraserSize=Math.max(2,Math.min(80,c.eraserSize+dir));
+  const tag=$('eraserSizeTag-'+i);
+  if(tag)tag.textContent=c.eraserSize;
+  const slider=document.querySelector('#settings-'+i+' input[type="range"][oninput*="eraserSizeSet"]');
+  if(slider)slider.value=c.eraserSize;
+}
+function undoEraser(i){
+  const emoji=state.emojis[i];
+  const stack=emoji.custom.undoStack;
+  if(!stack.length){showToast('没有可撤销的操作');return}
+  const prev=stack.pop();
+  const imgData=new ImageData(new Uint8ClampedArray(prev.data),prev.w,prev.h);
+  emoji.canvas.width=prev.w;
+  emoji.canvas.height=prev.h;
+  emoji.canvas.getContext('2d').putImageData(imgData,0,0);
+  const settings=$('settings-'+i);
+  if(settings&&settings.classList.contains('open')){
+    settings.innerHTML=renderSettings(i);
+    settings.classList.add('open');
+  }
+  renderEmojiPreview(i);
+  showToast('已撤销上一步擦除');
+}
+
+// ============ V2: Preview with Drag ============
+function renderEmojiPreview(idx){
+  const emoji=state.emojis[idx];
+  if(!emoji)return;
+  const container=$('preview-'+idx);
+  if(!container)return;
+  // V3: 预览背景色
+  container.style.background=state.previewBg||'';
+  // 保留drag-hint
+  const hint=container.querySelector('.drag-hint');
+  container.innerHTML='';
+  const previewSize=200;
+  const canvas=document.createElement('canvas');
+  canvas.width=previewSize;
+  canvas.height=previewSize;
+  const ctx=canvas.getContext('2d');
+  drawEmojiOnCanvas(ctx,emoji,previewSize,previewSize);
+  const styles=getEffectiveStyles(emoji,previewSize/240);
+  drawTextOnCanvas(ctx,emoji.text,previewSize,previewSize,styles);
+  container.appendChild(canvas);
+  if(hint)container.appendChild(hint);
+  setupPreviewDrag(idx);
+}
+
+// V2核心：图片100%填满画布（cover模式）
+function drawEmojiOnCanvas(ctx,emoji,w,h){
+  const src=emoji.canvas;
+  const c=emoji.custom;
+  // V5: contain模式 - 完整显示在预览框内
+  let baseScale;
+  if(Math.abs(src.width-src.height)<2){
+    baseScale=w/src.width;
+  }else{
+    // 非正方形：取min确保完整显示（contain）
+    baseScale=Math.min(w/src.width,h/src.height);
+  }
+  const customScale=c.imgEnabled?c.imgScale:1;
+  const finalScale=baseScale*customScale;
+  const drawW=src.width*finalScale;
+  const drawH=src.height*finalScale;
+  const customOffsetX=c.imgEnabled?c.offsetX*w/100:0;
+  const customOffsetY=c.imgEnabled?c.offsetY*h/100:0;
+  let dx=(w-drawW)/2+customOffsetX;
+  let dy=(h-drawH)/2+customOffsetY;
+  ctx.save();
+  if(c.rotation){
+    ctx.translate(w/2,h/2);
+    ctx.rotate(c.rotation*Math.PI/180);
+    ctx.translate(-w/2,-h/2);
+  }
+  if(c.flipH||c.flipV){
+    ctx.translate(w/2,h/2);
+    ctx.scale(c.flipH?-1:1,c.flipV?-1:1);
+    ctx.translate(-w/2,-h/2);
+  }
+  ctx.drawImage(src,dx,dy,drawW,drawH);
+  ctx.restore();
+}
+
+function getEffectiveStyles(emoji,scaleRatio){
+  const s={...state.styles};
+  s.fontSize=Math.round(state.styles.fontSize*scaleRatio);
+  const c=emoji.custom;
+  if(c.textEnabled){
+    if(c.textPosition)s.position=c.textPosition;
+    if(c.textAlign)s.align=c.textAlign;
+    if(c.fontSize&&c.fontSize>0)s.fontSize=Math.round(c.fontSize*scaleRatio);
+    if(c.textColor)s.textColor=c.textColor;
+    if(c.strokeColor)s.strokeColor=c.strokeColor;
+    if(c.strokeWidth!=null)s.strokeWidth=c.strokeWidth;
+  }
+  return s;
+}
+
+// V2: 拖拽定位
+const dragState={idx:-1,active:false,startX:0,startY:0,startOffX:0,startOffY:0};
+
+function setupPreviewDrag(idx){
+  const container=$('preview-'+idx);
+  if(!container)return;
+  const canvas=container.querySelector('canvas');
+  if(!canvas)return;
+  canvas.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    const c=state.emojis[idx].custom;
+    // V5: 橡皮擦模式
+    if(c.eraserMode){
+      doEraserClick(idx,e);
+      return;
+    }
+    dragState.idx=idx;
+    dragState.active=true;
+    dragState.startX=e.clientX;
+    dragState.startY=e.clientY;
+    dragState.startOffX=c.offsetX;
+    dragState.startOffY=c.offsetY;
+    // 自动启用图片定位
+    if(!c.imgEnabled){
+      c.imgEnabled=true;
+      const cb=$('imgEnabled-'+idx);
+      if(cb)cb.checked=true;
+      updateBadge(idx);
+    }
+  });
+}
+
+// V5: 橡皮擦擦除
+function doEraserClick(idx,e){
+  const container=$('preview-'+idx);
+  if(!container)return;
+  const pvCanvas=container.querySelector('canvas');
+  if(!pvCanvas)return;
+  const emoji=state.emojis[idx];
+  const srcCanvas=emoji.canvas;
+  if(!srcCanvas)return;
+  const rect=pvCanvas.getBoundingClientRect();
+  const px=e.clientX-rect.left;
+  const py=e.clientY-rect.top;
+  const sx=Math.round(px/pvCanvas.offsetWidth*srcCanvas.width);
+  const sy=Math.round(py/pvCanvas.offsetHeight*srcCanvas.height);
+  if(sx<0||sx>=srcCanvas.width||sy<0||sy>=srcCanvas.height)return;
+  // 保存撤销快照（仅保存一次连续擦除后的状态）
+  const c=emoji.custom;
+  if(!c._undoCapture){
+    const imgData=srcCanvas.getContext('2d').getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    c.undoStack.push({data:Array.from(imgData.data),w:srcCanvas.width,h:srcCanvas.height});
+    if(c.undoStack.length>20)c.undoStack.shift();
+    c._undoCapture=true;
+    setTimeout(()=>{c._undoCapture=false},300);
+  }
+  const ctx=srcCanvas.getContext('2d');
+  const radius=c.eraserSize;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(sx,sy,radius,0,Math.PI*2);
+  ctx.globalCompositeOperation='destination-out';
+  ctx.fillStyle='rgba(0,0,0,1)';
+  ctx.fill();
+  ctx.restore();
+  renderEmojiPreview(idx);
+}
+
+window.addEventListener('mousemove',e=>{
+  if(!dragState.active)return;
+  const idx=dragState.idx;
+  const container=$('preview-'+idx);
+  if(!container)return;
+  const canvas=container.querySelector('canvas');
+  if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();
+  const dxPx=e.clientX-dragState.startX;
+  const dyPx=e.clientY-dragState.startY;
+  const percentX=Math.round(dxPx/rect.width*100);
+  const percentY=Math.round(dyPx/rect.height*100);
+  const c=state.emojis[idx].custom;
+  c.offsetX=Math.max(-30,Math.min(30,dragState.startOffX+percentX));
+  c.offsetY=Math.max(-30,Math.min(30,dragState.startOffY+percentY));
+  renderEmojiPreview(idx);
+  // 更新滑块
+  const oxTag=$('offsetXTag-'+idx);
+  const oyTag=$('offsetYTag-'+idx);
+  if(oxTag)oxTag.textContent=c.offsetX;
+  if(oyTag)oyTag.textContent=c.offsetY;
+  const oxSlider=document.querySelector('#settings-'+idx+' .mini-row input[title=""]');
+  // 更新设置区域的滑块值
+  updateSliderValues(idx);
+});
+
+window.addEventListener('mouseup',()=>{
+  if(dragState.active){
+    dragState.active=false;
+    updateBadge(dragState.idx);
+  }
+});
+
+function updateSliderValues(idx){
+  const c=state.emojis[idx].custom;
+  const settings=$('settings-'+idx);
+  if(!settings||!settings.classList.contains('open'))return;
+  const sliders=settings.querySelectorAll('input[type="range"]');
+  // 找到X偏移和Y偏移的滑块（通过相邻的tag元素）
+  sliders.forEach(s=>{
+    const tag=s.nextElementSibling;
+    if(!tag)return;
+    if(tag.id==='offsetXTag-'+idx){s.value=c.offsetX;tag.textContent=c.offsetX}
+    if(tag.id==='offsetYTag-'+idx){s.value=c.offsetY;tag.textContent=c.offsetY}
+  });
+}
+
+// ============ Text ============
+function updateEmojiText(idx,text){
+  state.emojis[idx].text=text;
+  renderEmojiPreview(idx);
+}
+
+function parseBulkText(){
+  const lines=$('bulkText').value.split('\n').filter(l=>l.trim());
+  state.emojis.forEach((emoji,i)=>{
+    if(i<lines.length){
+      emoji.text=lines[i].trim();
+      const input=document.querySelector(`.emoji-card[data-idx="${i}"] .info input`);
+      if(input)input.value=emoji.text;
+      renderEmojiPreview(i);
+    }
+  });
+}
+
+// ============ Global Text Style ============
+const styleIds=['fontSize','fontWeight','textColor','strokeColor','strokeWidth','textPosition','textAlign','textOffset','shadowEnabled','shadowColor','shadowBlur','roundedBg','bgBarColor','bgOpacity','bgRadius'];
+styleIds.forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',updateStyles)});
+
+function updateStyles(){
+  const s=state.styles;
+  s.fontSize=parseInt($('fontSize').value);
+  s.fontWeight=$('fontWeight').value;
+  s.textColor=$('textColor').value;
+  s.strokeColor=$('strokeColor').value;
+  s.strokeWidth=parseInt($('strokeWidth').value);
+  s.position=$('textPosition').value;
+  s.align=$('textAlign').value;
+  s.offset=parseInt($('textOffset').value);
+  s.shadow=$('shadowEnabled').checked;
+  s.shadowColor=$('shadowColor').value;
+  s.shadowBlur=parseInt($('shadowBlur').value);
+  s.roundedBg=$('roundedBg').checked;
+  s.bgBarColor=$('bgBarColor').value;
+  s.bgOpacity=parseInt($('bgOpacity').value)/100;
+  s.bgRadius=parseInt($('bgRadius').value);
+  $('fontSizeVal').textContent=s.fontSize;
+  $('strokeWidthVal').textContent=s.strokeWidth;
+  $('textOffsetVal').textContent=s.offset;
+  $('shadowBlurVal').textContent=s.shadowBlur;
+  $('bgOpacityVal').textContent=Math.round(s.bgOpacity*100)+'%';
+  $('bgRadiusVal').textContent=s.bgRadius;
+  if(state.emojis.length)state.emojis.forEach((_,i)=>renderEmojiPreview(i));
+}
+
+// ============ Draw Text on Canvas ============
+function drawTextOnCanvas(ctx,text,w,h,styles){
+  if(!text||!text.trim())return;
+  ctx.save();
+  const fs=styles.fontSize;
+  if(fs<1){ctx.restore();return}
+  ctx.font=`${styles.fontWeight} ${fs}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+  ctx.textBaseline='middle';
+  const lines=text.split('\n');
+  const lineHeight=fs*1.2;
+  const totalHeight=lines.length*lineHeight;
+  let startX,startY;
+  ctx.textAlign=styles.align||'center';
+  switch(styles.position){
+    case 'top':startY=styles.offset+fs/2;break;
+    case 'center':startY=(h-totalHeight)/2+fs/2;break;
+    case 'bottom':startY=h-totalHeight-styles.offset+fs/2;break;
+    default:startY=h-totalHeight-styles.offset+fs/2;
+  }
+  if(styles.align==='center')startX=w/2;
+  else if(styles.align==='left')startX=styles.offset+fs/2;
+  else startX=w-styles.offset-fs/2;
+  lines.forEach((line,lineIdx)=>{
+    const y=startY+lineIdx*lineHeight;
+    const metrics=ctx.measureText(line);
+    const textWidth=metrics.width;
+    if(styles.roundedBg){
+      const bgW=textWidth+fs*0.6;
+      const bgH=fs*1.3;
+      let bgX;
+      if(styles.align==='center')bgX=startX-bgW/2;
+      else if(styles.align==='left')bgX=startX-fs*0.3;
+      else bgX=startX-bgW+fs*0.3;
+      ctx.save();
+      ctx.fillStyle=styles.bgBarColor;
+      ctx.globalAlpha=styles.bgOpacity;
+      roundRect(ctx,bgX,y-bgH/2,bgW,bgH,styles.bgRadius);
+      ctx.fill();
+      ctx.restore();
+    }
+    if(styles.shadow){
+      ctx.save();
+      ctx.shadowColor=styles.shadowColor;
+      ctx.shadowBlur=styles.shadowBlur;
+      ctx.shadowOffsetY=Math.max(1,Math.round(fs/20));
+      ctx.fillStyle=styles.textColor;
+      ctx.fillText(line,startX,y);
+      ctx.restore();
+    }
+    if(styles.strokeWidth>0){
+      ctx.save();
+      ctx.strokeStyle=styles.strokeColor;
+      ctx.lineWidth=styles.strokeWidth;
+      ctx.lineJoin='round';
+      ctx.miterLimit=2;
+      ctx.strokeText(line,startX,y);
+      ctx.restore();
+    }
+    ctx.fillStyle=styles.textColor;
+    ctx.fillText(line,startX,y);
+  });
+  ctx.restore();
+}
+
+// ============ Generate Export Canvas (V2: 100% fill) ============
+function generateExportCanvas(emoji,size){
+  const src=emoji.canvas;
+  // V5: 强制1:1正方形导出，按最大边作为正方形边长，内容居中，不填充背景
+  const canvas=document.createElement('canvas');
+  canvas.width=size;canvas.height=size;
+  const ctx=canvas.getContext('2d');
+  drawEmojiOnCanvas(ctx,emoji,size,size);
+  const scaleRatio=size/240;
+  const styles=getEffectiveStyles(emoji,scaleRatio);
+  drawTextOnCanvas(ctx,emoji.text,size,size,styles);
+  return canvas;
+}
+
+// ============ Report ============
+function showReport(){
+  if(state.emojis.length===0){showToast('请先拆分表情');return}
+  state.largeSize=parseInt($('largeSize').value)||240;
+  state.smallSize=parseInt($('smallSize').value)||120;
+  const body=$('reportBody');
+  let html='';
+  html+='<div class="report-tabs">';
+  html+='<span class="report-tab active" onclick="switchReportTab(this,\'large\')">大尺寸 '+state.largeSize+'×'+state.largeSize+'</span>';
+  html+='<span class="report-tab" onclick="switchReportTab(this,\'small\')">小尺寸 '+state.smallSize+'×'+state.smallSize+'</span>';
+  html+='<span class="report-tab" onclick="switchReportTab(this,\'banner\')" id="reportBannerTab">🖼 横幅</span>';
+  html+='</div>';
+  html+='<div class="report-grid" id="reportLarge">';
+  state.emojis.forEach((emoji,i)=>{
+    html+=`<div class="report-item"><div class="label">#${i+1} · ${state.largeSize}×${state.largeSize}</div><div class="img-wrap" id="report-img-large-${i}"></div><div class="name">${escapeHtml(emoji.text||'（无文字）')}</div><button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="downloadSingle(${i},'large')">下载</button></div>`;
+  });
+  html+='</div>';
+  html+='<div class="report-grid" id="reportSmall" style="display:none">';
+  state.emojis.forEach((emoji,i)=>{
+    html+=`<div class="report-item"><div class="label">#${i+1} · ${state.smallSize}×${state.smallSize}</div><div class="img-wrap" id="report-img-small-${i}"></div><div class="name">${escapeHtml(emoji.text||'（无文字）')}</div><button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="downloadSingle(${i},'small')">下载</button></div>`;
+  });
+  html+='</div>';
+  if($('genCover').checked){
+    html+='<div class="cover-section"><h3>🎨 封面图</h3><div class="cover-preview"><div class="cover-item"><div class="img-wrap" id="coverPreview"></div><div class="label">封面 240×240</div></div></div><div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="downloadCover()">下载封面</button></div></div>';
+  }
+  // V4: 横幅预览
+  html+='<div id="reportBannerSection" style="display:none"><div class="cover-section"><h3>🖼 横幅</h3><div class="cover-preview"><div class="cover-item"><div class="img-wrap" id="reportBannerPreview"></div><div class="label" id="reportBannerLabel">等待生成...</div></div></div><div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="downloadBanner()">下载横幅</button></div></div></div>';
+  body.innerHTML=html;
+  renderBannerInReport();
+  const hasBanner=state.banner!==null;
+  if(hasBanner)$('reportBannerTab').style.display='inline';
+  else $('reportBannerTab').style.display='none';
+  $('reportSummary').textContent=`共 ${state.emojis.length} 个表情 · 大图 ${state.largeSize}px + 小图 ${state.smallSize}px${$('genCover').checked?' + 封面':''}${hasBanner?' + 横幅':''}`;
+  $('reportModal').classList.add('show');
+  setTimeout(()=>{
+    state.emojis.forEach((emoji,i)=>{
+      const lc=generateExportCanvas(emoji,state.largeSize);
+      const lC=$('report-img-large-'+i);if(lC)lC.appendChild(lc);
+      const sc=generateExportCanvas(emoji,state.smallSize);
+      const sC=$('report-img-small-'+i);if(sC)sC.appendChild(sc);
+    });
+    if($('genCover').checked){
+      const cc=generateCoverCanvas();
+      const cC=$('coverPreview');if(cC)cC.appendChild(cc);
+    }
+  },50);
+}
+
+function switchReportTab(btn,tab){
+  document.querySelectorAll('.report-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  $('reportLarge').style.display=tab==='large'?'grid':'none';
+  $('reportSmall').style.display=tab==='small'?'grid':'none';
+  const bs=$('reportBannerSection');
+  if(bs)bs.style.display=tab==='banner'?'block':'none';
+  if(tab==='banner')renderBannerInReport();
+}
+
+function renderBannerInReport(){
+  if(!state.banner){return}
+  const label=$('reportBannerLabel');
+  if(label)label.textContent=`横幅 ${state.bannerState.cropW}×${state.bannerState.cropH}`;
+  const wrap=$('reportBannerPreview');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  const maxW=200;
+  const ratio=state.banner.height/state.banner.width;
+  const rc=document.createElement('canvas');
+  rc.width=Math.round(maxW);rc.height=Math.round(maxW*ratio);
+  const rctx=rc.getContext('2d');
+  rctx.drawImage(state.banner,0,0,rc.width,rc.height);
+  wrap.appendChild(rc);
+}
+function closeReport(){$('reportModal').classList.remove('show')}
+
+// ============ Cover ============
+function generateCoverCanvas(){
+  const size=240;
+  const canvas=document.createElement('canvas');
+  canvas.width=size;canvas.height=size;
+  const ctx=canvas.getContext('2d');
+  if($('coverUseFirst').checked&&state.emojis.length>0){
+    const emoji=state.emojis[0];
+    drawEmojiOnCanvas(ctx,emoji,size,size);
+  }else{
+    const count=state.emojis.length;
+    const cols=Math.ceil(Math.sqrt(count));
+    const rows=Math.ceil(count/cols);
+    const cellSize=size/Math.max(cols,rows);
+    state.emojis.forEach((emoji,i)=>{
+      const r=Math.floor(i/cols),c=i%cols;
+      const src=emoji.canvas;
+      const scale=Math.min(cellSize*0.85/src.width,cellSize*0.85/src.height);
+      const drawW=src.width*scale;
+      const drawH=src.height*scale;
+      ctx.drawImage(src,c*cellSize+(cellSize-drawW)/2,r*cellSize+(cellSize-drawH)/2,drawW,drawH);
+    });
+  }
+  return canvas;
+}
+function downloadCover(){
+  const canvas=generateCoverCanvas();
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='封面_240x240.png';a.click();
+    URL.revokeObjectURL(url);
+    showToast('封面已下载');
+  },'image/png');
+}
+
+// ============ Download ============
+function downloadSingle(idx,size){
+  const emoji=state.emojis[idx];
+  if(!emoji)return;
+  const targetSize=size==='large'?state.largeSize:state.smallSize;
+  const canvas=generateExportCanvas(emoji,targetSize);
+  const name=(emoji.text||'emoji_'+(idx+1)).replace(/[^\w\u4e00-\u9fa5]/g,'_').substring(0,20);
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`${idx+1}_${name}_${targetSize}x${targetSize}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`#${idx+1} ${size==='large'?'大图':'小图'}已下载`);
+  },'image/png');
+}
+
+async function downloadAllZip(){
+  if(typeof JSZip==='undefined'){showToast('打包库未加载，切换为逐个下载');return downloadAllIndividual()}
+  showLoading('正在打包...');
+  try{
+    const zip=new JSZip();
+    const largeFolder=zip.folder('large_'+state.largeSize);
+    const smallFolder=zip.folder('small_'+state.smallSize);
+    const iconFolder=zip.folder('icon_'+state.iconSize);
+    for(let i=0;i<state.emojis.length;i++){
+      const emoji=state.emojis[i];
+      const name=(emoji.text||'emoji_'+(i+1)).replace(/[^\w\u4e00-\u9fa5]/g,'_').substring(0,20);
+      const idxStr=String(i+1).padStart(2,'0');
+      const lc=generateExportCanvas(emoji,state.largeSize);
+      const lBlob=await new Promise(r=>lc.toBlob(r,'image/png'));
+      largeFolder.file(`${idxStr}_${name}.png`,lBlob);
+      const sc=generateExportCanvas(emoji,state.smallSize);
+      const sBlob=await new Promise(r=>sc.toBlob(r,'image/png'));
+      smallFolder.file(`${idxStr}_${name}.png`,sBlob);
+      const ic=generateExportCanvas(emoji,state.iconSize);
+      const iBlob=await new Promise(r=>ic.toBlob(r,'image/png'));
+      iconFolder.file(`${idxStr}_${name}.png`,iBlob);
+    }
+    if($('genCover').checked){
+      const cc=generateCoverCanvas();
+      const cBlob=await new Promise(r=>cc.toBlob(r,'image/png'));
+      zip.file('cover_240x240.png',cBlob);
+    }
+    // V5: 添加原图
+    if(state.originalBlob){
+      const ext=state.originalBlob.indexOf('image/png')>0?'png':'jpg';
+      const b64=state.originalBlob.split(',')[1];
+      if(b64)zip.file('original.'+ext,b64,{base64:true});
+    }
+    // V4: 添加横幅
+    if(state.banner){
+      const bannerBlob=await new Promise(r=>state.banner.toBlob(r,'image/png'));
+      zip.file(`banner_${state.bannerState.cropW}x${state.bannerState.cropH}.png`,bannerBlob);
+    }
+    const content=await zip.generateAsync({type:'blob'});
+    const url=URL.createObjectURL(content);
+    const a=document.createElement('a');
+    a.href=url;
+    const now=new Date();
+    const ts=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+String(now.getSeconds()).padStart(2,'0');
+    a.download='表情包_'+ts+'.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+    hideLoading();
+    showToast('打包下载完成');
+  }catch(e){
+    hideLoading();
+    console.error(e);
+    showToast('打包失败：'+e.message);
+  }
+}
+
+async function downloadAllIndividual(){
+  showLoading('正在逐个下载...');
+  for(let i=0;i<state.emojis.length;i++){
+    downloadSingle(i,'large');
+    await new Promise(r=>setTimeout(r,200));
+    downloadSingle(i,'small');
+    await new Promise(r=>setTimeout(r,200));
+  }
+  if($('genCover').checked){
+    downloadCover();
+    await new Promise(r=>setTimeout(r,200));
+  }
+  hideLoading();
+  showToast('全部下载完成');
+}
+
+function redrawAll(){
+  state.emojis.forEach((_,i)=>renderEmojiPreview(i));
+  showToast('预览已刷新');
+}
+
+function resetAll(){
+  if(!confirm('确定要重置所有内容吗？'))return;
+  state.originalImage=null;
+  state.originalBlob=null;
+  state.emojis=[];
+  state.viewState={zoom:1,focusX:0,focusY:0};
+  state.previewBg=null;
+  document.querySelectorAll('.bg-option').forEach(el=>el.classList.toggle('active',el.dataset.bg==='none'));
+  // V5: 重置行/列分割
+  state.rowSplitPct=50;state.colSplitPct=50;
+  const rw=$('rowSplitW');if(rw){rw.value=50;$('rowSplitVal').textContent='50%'}
+  const cw=$('colSplitW');if(cw){cw.value=50;$('colSplitVal').textContent='50%'}
+  // V4: 重置横幅
+  state.banner=null;
+  state.bannerState={image:null,srcW:0,srcH:0,cropW:750,cropH:400,zoom:1,focusX:0,focusY:0,confirmed:false};
+  $('bannerUploadZone').style.display='block';
+  $('bannerEditor').style.display='none';
+  $('bannerResultWrap').style.display='none';
+  $('bannerFileInput').value='';
+  $('uploadPreview').style.display='none';
+  $('gridCard').style.display='none';
+  $('cutoutCard').style.display='none';
+  $('textCard').style.display='none';
+  $('styleCard').style.display='none';
+  $('exportCard').style.display='none';
+  $('btnReport').disabled=true;
+  $('fileInput').value='';
+  $('bulkText').value='';
+  renderEmojis();
+  showToast('已重置');
+}
+
+// ============ Crop Editor ============
+const cropEditor={idx:-1,scale:1,rect:{x:0,y:0,w:0,h:0},dragMode:null,dragStart:{x:0,y:0},rectStart:null,canvas:null,ctx:null};
+
+function openCropEditor(idx){
+  cropEditor.idx=idx;
+  const emoji=state.emojis[idx];
+  const ci=emoji.cropInfo;
+  const img=state.originalImage;
+  const maxW=620,maxH=380;
+  const scale=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
+  cropEditor.scale=scale;
+  cropEditor.rect={x:ci.gridX*scale,y:ci.gridY*scale,w:ci.gridW*scale,h:ci.gridH*scale};
+  $('cropTitle').textContent='表情 #'+(idx+1);
+  $('cropModal').classList.add('show');
+  setTimeout(drawCropEditor,50);
+}
+
+function drawCropEditor(){
+  const canvas=$('cropCanvas');
+  cropEditor.canvas=canvas;
+  const img=state.originalImage;
+  const scale=cropEditor.scale;
+  canvas.width=img.naturalWidth*scale;
+  canvas.height=img.naturalHeight*scale;
+  const ctx=canvas.getContext('2d');
+  cropEditor.ctx=ctx;
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  ctx.fillStyle='rgba(0,0,0,0.55)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  const r=cropEditor.rect;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(r.x,r.y,r.w,r.h);
+  ctx.clip();
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  ctx.restore();
+  ctx.strokeStyle='#07c160';
+  ctx.lineWidth=2;
+  ctx.strokeRect(r.x,r.y,r.w,r.h);
+  ctx.strokeStyle='rgba(255,255,255,0.3)';
+  ctx.lineWidth=1;
+  for(let i=1;i<3;i++){
+    ctx.beginPath();ctx.moveTo(r.x+r.w*i/3,r.y);ctx.lineTo(r.x+r.w*i/3,r.y+r.h);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(r.x,r.y+r.h*i/3);ctx.lineTo(r.x+r.w,r.y+r.h*i/3);ctx.stroke();
+  }
+  const handles=getCropHandles(r);
+  ctx.fillStyle='#07c160';
+  ctx.strokeStyle='#fff';
+  ctx.lineWidth=1.5;
+  handles.forEach(h=>{ctx.fillRect(h.x-5,h.y-5,10,10);ctx.strokeRect(h.x-5,h.y-5,10,10)});
+  $('cropCoords').textContent=`x:${Math.round(r.x/scale)}, y:${Math.round(r.y/scale)}, w:${Math.round(r.w/scale)}, h:${Math.round(r.h/scale)}`;
+}
+
+function getCropHandles(r){
+  return[
+    {x:r.x,y:r.y,mode:'nw'},{x:r.x+r.w,y:r.y,mode:'ne'},
+    {x:r.x,y:r.y+r.h,mode:'sw'},{x:r.x+r.w,y:r.y+r.h,mode:'se'},
+    {x:r.x+r.w/2,y:r.y,mode:'n'},{x:r.x+r.w/2,y:r.y+r.h,mode:'s'},
+    {x:r.x,y:r.y+r.h/2,mode:'w'},{x:r.x+r.w,y:r.y+r.h/2,mode:'e'},
+  ];
+}
+
+$('cropCanvas').addEventListener('mousedown',e=>{
+  const canvas=cropEditor.canvas;
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/canvas.offsetWidth;
+  const sy=canvas.height/canvas.offsetHeight;
+  const mx=(e.clientX-rect.left)*sx;
+  const my=(e.clientY-rect.top)*sy;
+  const handles=getCropHandles(cropEditor.rect);
+  for(const h of handles){
+    if(Math.abs(mx-h.x)<10&&Math.abs(my-h.y)<10){
+      cropEditor.dragMode=h.mode;
+      cropEditor.dragStart={x:mx,y:my};
+      cropEditor.rectStart={...cropEditor.rect};
+      return;
+    }
+  }
+  const r=cropEditor.rect;
+  if(mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h){
+    cropEditor.dragMode='move';
+    cropEditor.dragStart={x:mx,y:my};
+    cropEditor.rectStart={...cropEditor.rect};
+  }
+});
+
+$('cropCanvas').addEventListener('mousemove',e=>{
+  if(!cropEditor.dragMode)return;
+  const canvas=cropEditor.canvas;
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/canvas.offsetWidth;
+  const sy=canvas.height/canvas.offsetHeight;
+  const mx=(e.clientX-rect.left)*sx;
+  const my=(e.clientY-rect.top)*sy;
+  const dx=mx-cropEditor.dragStart.x;
+  const dy=my-cropEditor.dragStart.y;
+  const start=cropEditor.rectStart;
+  const img=state.originalImage;
+  const maxW=img.naturalWidth*cropEditor.scale;
+  const maxH=img.naturalHeight*cropEditor.scale;
+  const minSize=20;
+  let r={...start};
+  switch(cropEditor.dragMode){
+    case'move':r.x=Math.max(0,Math.min(maxW-r.w,start.x+dx));r.y=Math.max(0,Math.min(maxH-r.h,start.y+dy));break;
+    case'nw':r.x=Math.max(0,Math.min(start.x+start.w-minSize,start.x+dx));r.y=Math.max(0,Math.min(start.y+start.h-minSize,start.y+dy));r.w=start.x+start.w-r.x;r.h=start.y+start.h-r.y;break;
+    case'ne':r.y=Math.max(0,Math.min(start.y+start.h-minSize,start.y+dy));r.w=Math.max(minSize,Math.min(maxW-start.x,start.w+dx));r.h=start.y+start.h-r.y;break;
+    case'sw':r.x=Math.max(0,Math.min(start.x+start.w-minSize,start.x+dx));r.w=start.x+start.w-r.x;r.h=Math.max(minSize,Math.min(maxH-start.y,start.h+dy));break;
+    case'se':r.w=Math.max(minSize,Math.min(maxW-start.x,start.w+dx));r.h=Math.max(minSize,Math.min(maxH-start.y,start.h+dy));break;
+    case'n':r.y=Math.max(0,Math.min(start.y+start.h-minSize,start.y+dy));r.h=start.y+start.h-r.y;break;
+    case's':r.h=Math.max(minSize,Math.min(maxH-start.y,start.h+dy));break;
+    case'w':r.x=Math.max(0,Math.min(start.x+start.w-minSize,start.x+dx));r.w=start.x+start.w-r.x;break;
+    case'e':r.w=Math.max(minSize,Math.min(maxW-start.x,start.w+dx));break;
+  }
+  cropEditor.rect=r;
+  drawCropEditor();
+});
+
+window.addEventListener('mouseup',()=>{cropEditor.dragMode=null});
+
+function closeCropEditor(){$('cropModal').classList.remove('show')}
+
+function resetCropRect(){
+  const emoji=state.emojis[cropEditor.idx];
+  const ci=emoji.cropInfo;
+  cropEditor.rect={x:ci.gridX*cropEditor.scale,y:ci.gridY*cropEditor.scale,w:ci.gridW*cropEditor.scale,h:ci.gridH*cropEditor.scale};
+  drawCropEditor();
+}
+
+function applyCrop(){
+  const idx=cropEditor.idx;
+  const emoji=state.emojis[idx];
+  const scale=cropEditor.scale;
+  const r=cropEditor.rect;
+  const sx=r.x/scale,sy=r.y/scale,sw=r.w/scale,sh=r.h/scale;
+  const result=processCell(state.originalImage,sx,sy,sw,sh);
+  emoji.canvas=result.canvas;
+  emoji.cropInfo={gridX:sx,gridY:sy,gridW:sw,gridH:sh};
+  $('cropModal').classList.remove('show');
+  renderEmojiPreview(idx);
+  showToast(`#${idx+1} 裁剪已更新`);
+}
+
+// ============ Init ============
+updateStyles();
+(function initDrag(){
+  const c=$('previewCanvas');
+  if(c&&!c._dragBound){c._dragBound=true;setupViewportDrag();return}
+  const obs=new MutationObserver(()=>{
+    const c2=$('previewCanvas');
+    if(c2&&!c2._dragBound){c2._dragBound=true;setupViewportDrag();obs.disconnect()}
+  });
+  obs.observe(document.body,{childList:true,subtree:true});
+})();
+// V4: 初始化横幅画布拖拽
+(function initBannerDrag(){
+  const cb=$('bannerCanvas');
+  if(cb&&!cb._bannerDrag){cb._bannerDrag=true;setupBannerCanvasDrag();return}
+  const obs=new MutationObserver(()=>{
+    const c2=$('bannerCanvas');
+    if(c2&&!c2._bannerDrag){c2._bannerDrag=true;setupBannerCanvasDrag();obs.disconnect()}
+  });
+  obs.observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+</body>
+</html>
