@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>公众号编辑器 v1 · 排版工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 /* ========== 全局 ========== */
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -210,6 +211,7 @@ input[type=range]{width:84px;accent-color:var(--accent);}
   <button class="tbtn ghost" id="btnExpImg"><span class="ico">🖼</span>导出图片</button>
   <button class="tbtn ghost" id="btnImportMd"><span class="ico">📥</span>导入MD</button>
   <button class="tbtn ghost" id="btnClear"><span class="ico">🗑</span>清空</button>
+  <a href="../../index.html" style="text-decoration:none;color:inherit;" title="返回主页"><button class="tbtn ghost" style="font-size:14px;padding:0 10px;">🏠 主页</button></a>
 </header>
 
 <!-- ===== 工作区 ===== -->
@@ -445,6 +447,32 @@ const TEMPLATES = [
       'a':'color:#fe2c55;text-decoration:none;border-bottom:1px solid #fe2c55;',
       'code':'background:#fff0f2;color:#fe2c55;padding:2px 6px;border-radius:3px;font-size:90%;',
       'pre':'background:#fff5f7;padding:12px;border-radius:8px;overflow:auto;border:1px solid #ffe0e6;'
+    }
+  },
+  { id:'deepblue', name:'精读蓝', accent:'#2B77BF', hSizes:{h1:22,h2:19,h3:17}, defaultBodySize:17, defaultHeadingScale:1,
+    styles:{
+      '':'color:rgba(0,0,0,0.9);background:#ffffff;line-height:2.0;font-size:17px;font-weight:300;',
+      'h1':'color:#2B77BF;font-weight:400;text-align:center;margin:28px 0 12px;line-height:2.0;',
+      'h2':'color:#2B77BF;font-weight:400;margin:22px 0 10px;border-left:4px solid #2B77BF;padding:2px 0 2px 12px;line-height:1.8;',
+      'h3':'color:#2B77BF;font-weight:400;margin:18px 0 8px;border-bottom:1px solid #d0e0f5;padding-bottom:4px;line-height:1.8;',
+      'blockquote':'border-left:4px solid #2B77BF;color:#555;background:#f5f8fe;margin:14px 0;padding:8px 14px;border-radius:0 6px 6px 0;font-size:15px;font-weight:300;line-height:2.0;',
+      'hr':'border:none;border-top:1px solid #e0e8f0;margin:24px 0;',
+      'a':'color:#2B77BF;text-decoration:none;border-bottom:1px solid #2B77BF;',
+      'code':'background:#f0f5ff;color:#2B77BF;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#f5f8fe;padding:14px;border-radius:6px;overflow:auto;border:1px solid #e0e8f0;font-size:15px;'
+    }
+  },
+  { id:'xhs-thin', name:'小红书（细）', accent:'#fe2c55', hSizes:{h1:22,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#333333;background:#ffffff;line-height:2.0;font-size:16px;font-weight:300;letter-spacing:0.5px;',
+      'h1':'color:#fe2c55;font-weight:400;text-align:center;margin:28px 0 14px;border-bottom:1px solid #fe2c55;padding-bottom:8px;letter-spacing:2px;line-height:2.0;',
+      'h2':'color:#fe2c55;font-weight:400;margin:24px 0 12px;border-left:3px solid #fe2c55;padding:2px 0 2px 10px;line-height:1.8;',
+      'h3':'color:#fe2c55;font-weight:400;margin:20px 0 8px;border-bottom:1px solid #ffd6de;padding-bottom:4px;line-height:1.8;',
+      'blockquote':'border-left:4px solid #fe2c55;color:#555;background:#fff5f7;margin:14px 0;padding:8px 14px;border-radius:0 6px 6px 0;font-size:15px;font-weight:300;line-height:2.0;',
+      'hr':'border:none;border-top:1px dashed #ffb3c1;margin:20px 0;',
+      'a':'color:#fe2c55;text-decoration:none;border-bottom:1px solid #fe2c55;',
+      'code':'background:#fff0f2;color:#fe2c55;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#fff5f7;padding:12px;border-radius:8px;overflow:auto;border:1px solid #ffe0e6;font-size:15px;'
     }
   },
   // 强调（strong/em）用蓝色 #3eb0e0 区分；引用浅灰底带主题色左边框
@@ -1329,22 +1357,19 @@ $('#btnExpMd').onclick=()=>{
 };
 $('#btnExpImg').onclick=()=>{
   try{
-    const w=previewBody.scrollWidth, h=previewBody.scrollHeight;
-    const clone=previewBody.cloneNode(true);
-    const t=currentTemplate();
-    for(const sel in t.styles){ if(sel==='') continue; clone.querySelectorAll(sel).forEach(el=> el.setAttribute('style', mergeStyle(el.getAttribute('style'), t.styles[sel]))); }
-    clone.setAttribute('style', mergeStyle(t.styles[''], 'width:'+w+'px;'));
-    const xmlns='xmlns="http://www.w3.org/1999/xhtml"';
-    const outer='<div '+xmlns+' style="'+mergeStyle(t.styles[''],'width:'+w+'px;')+'">'+clone.innerHTML+'</div>';
-    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><foreignObject width="100%" height="100%">'+outer+'</foreignObject></svg>';
-    const img=new Image();
-    img.onload=()=>{
-      const c=document.createElement('canvas'); const dpr=2; c.width=w*dpr; c.height=h*dpr;
-      const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.scale(dpr,dpr); ctx.drawImage(img,0,0);
-      c.toBlob(b=>{ download('公众号文章.png', b); toast('已导出图片','ok'); });
-    };
-    img.onerror=()=>toast('图片导出失败，请尝试导出HTML','err');
-    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+    const node = previewScroll.querySelector('.phone') || previewBody;
+    toast('正在生成图片…');
+    html2canvas(node, {
+      scale: 2,
+      backgroundColor: '#fff',
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+    }).then(canvas => {
+      canvas.toBlob(b => { download('公众号文章.png', b); toast('已导出图片','ok'); });
+    }).catch(err => {
+      toast('图片导出失败：'+err.message,'err');
+    });
   }catch(e){ toast('图片导出失败：'+e.message,'err'); }
 };
 

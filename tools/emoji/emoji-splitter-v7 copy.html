@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>表情包智能拆解工具 V8 — 智能网格 · 还原橡皮擦</title>
+<title>表情包智能拆解工具 V7 — 智能网格 · 还原橡皮擦</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -223,11 +223,10 @@ textarea:focus{border-color:var(--primary)}
 
 <div class="header">
   <div>
-    <h1><span class="icon">😀</span> 表情包智能拆解工具 V8<span class="square-badge">智能网格</span></h1>
+    <h1><span class="icon">😀</span> 表情包智能拆解工具 V7<span class="square-badge">智能网格</span></h1>
     <div class="subtitle">上传网格图 → 拖拽/缩放底图对齐网格 → 智能避让主体 → 矩形/正方形拆分 → 智能抠图 → 导出微信表情包</div>
   </div>
   <div class="header-actions">
-    <a href="../../index.html" style="text-decoration:none;" title="返回主页"><button class="btn btn-outline btn-sm" style="font-size:11px;">🏠 主页</button></a>
     <button class="btn btn-accent btn-sm" onclick="openBannerModal()">🖼 横幅</button>
     <button class="btn btn-outline btn-sm" onclick="resetAll()">重置</button>
     <button class="btn btn-primary btn-sm" onclick="showReport()" id="btnReport" disabled>📊 生成预览报告</button>
@@ -527,22 +526,6 @@ textarea:focus{border-color:var(--primary)}
           </div>
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-light);margin-top:1px"><span>严格</span><span>宽松</span></div>
         </div>
-        <div class="tb-group" id="eraserEdgeGroup">
-          <div class="tb-label">擦白边强度</div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input type="range" id="eraserEdgeWidth" min="1" max="15" value="3" style="flex:1;height:4px;accent-color:var(--primary)" oninput="updateEraserEdgeWidth(this.value)">
-            <span style="font-size:11px;min-width:24px;text-align:center" id="eraserEdgeWidthLabel">3</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-light);margin-top:1px"><span>弱</span><span>强</span></div>
-        </div>
-        <div class="tb-group" id="eraserLineGroup">
-          <div class="tb-label">擦白线强度</div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input type="range" id="eraserLineWidth" min="1" max="10" value="3" style="flex:1;height:4px;accent-color:var(--primary)" oninput="updateEraserLineWidth(this.value)">
-            <span style="font-size:11px;min-width:24px;text-align:center" id="eraserLineWidthLabel">3</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-light);margin-top:1px"><span>少</span><span>多</span></div>
-        </div>
         <div class="tb-group" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
           <div style="display:flex;gap:3px;flex-wrap:wrap">
             <button class="btn btn-outline btn-xs" style="flex:1" onclick="eraserModalUndo()" id="eraserModalUndoBtn" disabled>↩️ 撤销</button>
@@ -571,7 +554,7 @@ textarea:focus{border-color:var(--primary)}
       </div>
     </div>
     <div class="modal-footer">
-      <span style="font-size:12px;color:var(--text-light)">🧹擦除 🎨画笔 🔙还原 ✋拖拽 🔗套索 ⚡魔力擦 🎯背景色擦 🔲选框 🧹擦白边 〰️擦白线 · [ ]笔刷 · 空格拖拽</span>
+      <span style="font-size:12px;color:var(--text-light)">🧹擦除 🎨画笔 🔙还原 ✋拖拽 🔗套索 ⚡魔力擦 🎯背景色擦 🔲选框 · [ ]笔刷 · 空格拖拽 · 选框限制所有操作</span>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" onclick="closeEraserModal(true)">取消</button>
         <button class="btn btn-primary btn-sm" onclick="closeEraserModal(false)">✓ 确认</button>
@@ -647,7 +630,7 @@ const state = {
   originalImage: null,
   originalBlob: null, // V5: 原图数据用于下载
   rows: 2, cols: 3, padding: 0,
-  smartAvoid: true, // V8: 智能网格避让
+  smartAvoid: true, // V7: 智能网格避让
   // V5: 行/列分割宽度百分比（50=正方形基准）
   rowSplitPct: 50, colSplitPct: 50,
   bgColor: {r:255,g:255,b:255},
@@ -2039,8 +2022,6 @@ function openEraserModal(i){
   eraserModalState._trimOffset=0;
   eraserModalState._cleanPass=0;
   eraserModalState._linePass=0;
-  eraserModalState._edgeWidth=3;
-  eraserModalState._lineWidth=3;
   $('eraserModalTitle').textContent='表情 #'+(i+1);
   $('eraserModal').classList.add('show');
   setTimeout(drawEraserModal,50);
@@ -2198,17 +2179,7 @@ function eraserModalSizeChange(v){
   drawEraserModal();
 }
 
-// V8: 魔力擦容差滑块
-
-// V8: 橡皮擦擦白边/白线强度控件
-function updateEraserEdgeWidth(v){
-  eraserModalState._edgeWidth=parseInt(v);
-  document.getElementById('eraserEdgeWidthLabel').textContent=v;
-}
-function updateEraserLineWidth(v){
-  eraserModalState._lineWidth=parseInt(v);
-  document.getElementById('eraserLineWidthLabel').textContent=v;
-}
+// V7: 魔力擦容差滑块
 function updateMagicTol(v){
   eraserModalState.magicTolerance=parseInt(v);
   document.getElementById('eraserMagicTolLabel').textContent=v;
@@ -2279,13 +2250,13 @@ function eraserModalCleanEdge(){
   if(!ems.canvas)return;
   eraserModalSaveSnapshot();
   var edgeColor = $('cleanEdgeColor') ? $('cleanEdgeColor').value : '#ffffff';
-  // V8: 使用橡皮擦工具栏的强度控件
-  var edgeWidth = ems._edgeWidth || 3;
+  var edgeWidth = $('cleanEdgeWidth') ? parseInt($('cleanEdgeWidth').value) : 3;
+  // 累计轮次：每次点击从轮廓外缘向内再削一层
   if(ems._cleanPass==null)ems._cleanPass=0;
   ems._cleanPass++;
   cleanWhiteEdges(ems.canvas, edgeColor, edgeWidth * ems._cleanPass);
   drawEraserModal();
-  showToast('已去除白边（第 '+ems._cleanPass+' 次，强度 '+edgeWidth+'）');
+  showToast('已去除轮廓白边（第 '+ems._cleanPass+' 次）');
 }
 
 // V7: 橡皮擦内一键擦白线
@@ -2294,13 +2265,12 @@ function eraserModalCleanLine(){
   if(!ems.canvas)return;
   eraserModalSaveSnapshot();
   var lineColor = $('cleanLineColor') ? $('cleanLineColor').value : '#ffffff';
-  // V8: 使用橡皮擦工具栏的强度控件
-  var lineWidth = ems._lineWidth || 3;
+  var lineWidth = $('cleanLineWidth') ? parseInt($('cleanLineWidth').value) : 3;
   if(ems._linePass==null)ems._linePass=0;
   ems._linePass++;
   cleanWhiteLines(ems.canvas, lineColor, lineWidth * ems._linePass);
   drawEraserModal();
-  showToast('已去除白线（第 '+ems._linePass+' 次，强度 '+lineWidth+'）');
+  showToast('已去除白线（第 '+ems._linePass+' 次）');
 }
 
 function eraserModalReset(){

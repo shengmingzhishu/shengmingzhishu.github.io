@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>表情包智能拆解工具 V8 — 智能网格 · 还原橡皮擦</title>
+<title>表情包智能拆解工具 V9 — 追加拆分 · 删除精选</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -223,8 +223,8 @@ textarea:focus{border-color:var(--primary)}
 
 <div class="header">
   <div>
-    <h1><span class="icon">😀</span> 表情包智能拆解工具 V8<span class="square-badge">智能网格</span></h1>
-    <div class="subtitle">上传网格图 → 拖拽/缩放底图对齐网格 → 智能避让主体 → 矩形/正方形拆分 → 智能抠图 → 导出微信表情包</div>
+    <h1><span class="icon">😀</span> 表情包智能拆解工具 V9<span class="square-badge">追加拆分</span></h1>
+    <div class="subtitle">多次上传网格图分别拆分 → 每个表情可单独删除 → 只留下你最满意的</div>
   </div>
   <div class="header-actions">
     <a href="../../index.html" style="text-decoration:none;" title="返回主页"><button class="btn btn-outline btn-sm" style="font-size:11px;">🏠 主页</button></a>
@@ -237,10 +237,10 @@ textarea:focus{border-color:var(--primary)}
 <div class="main">
   <div class="left-panel">
     <div class="card">
-      <div class="card-title"><span class="step-num">1</span> 上传表情包图片</div>
+      <div class="card-title"><span class="step-num">1</span> 追加拆分图片</div>
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <div class="upload-icon">📁</div>
-        <p>点击或拖拽图片到此处</p>
+        <p>点击或拖拽图片（支持多选，追加拆分）</p>
         <p style="font-size:11px;color:var(--text-light);margin-top:4px">支持 PNG / JPG / WEBP</p>
         <input type="file" id="fileInput" accept="image/*">
       </div>
@@ -355,7 +355,7 @@ textarea:focus{border-color:var(--primary)}
         <input type="range" id="cleanLineWidth" value="3" min="1" max="8" style="flex:0.5;height:4px">
         <span class="value-tag" id="cleanLineWidthVal">3px</span>
       </div>
-      <button class="btn btn-primary btn-block" onclick="processImage()" id="btnProcess" style="margin-top:8px">⚡ 开始拆分抠图</button>
+      <button class="btn btn-primary btn-block" onclick="processImage()" id="btnProcess" style="margin-top:8px">⚡ 当前图追加拆分</button>
     </div>
 
     <div class="card" id="textCard" style="display:none">
@@ -748,28 +748,102 @@ const uploadZone=$('uploadZone');
 const fileInput=$('fileInput');
 uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('dragover')});
 uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
-fileInput.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0])});
+uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('dragover');const files=Array.from(e.dataTransfer.files);if(files.length)handleFiles(files)});
+fileInput.addEventListener('change',e=>{const files=Array.from(e.target.files);if(files.length)handleFiles(files);e.target.value=''});
 
-function handleFile(file){
-  if(!file.type.startsWith('image/')){showToast('请上传图片文件');return}
+function handleFiles(files){
+  const images=files.filter(f=>f.type.startsWith('image/'));
+  if(!images.length){showToast('请上传图片文件');return}
+  // 用最后一张图作为预览（用户可以调整网格后再拆分）
+  const last=images.pop();
+  // 把其他图先排入待处理队列
+  if(images.length){
+    const remain=images.slice();
+    (function processQueue(){
+      const f=remain.shift();
+      if(!f){showToast('已添加 '+images.length+' 张图，可继续调整网格拆分');return}
+      const r=new FileReader();
+      r.onload=function(ev){
+        const img=new Image();
+        img.onload=function(){
+          processImageFrom(img,ev.target.result,function(){
+            processQueue();
+          });
+        };
+        img.src=ev.target.result;
+      };
+      r.readAsDataURL(f);
+    })();
+  }
+  // 加载最后一张到预览区
   const reader=new FileReader();
   reader.onload=e=>{
     const img=new Image();
     img.onload=()=>{
       state.originalImage=img;
       state.originalBlob=e.target.result;
-      state.emojis=[];
       $('uploadPreview').style.display='block';
       $('gridCard').style.display='block';
       $('cutoutCard').style.display='block';
       initViewport();
       drawPreview();
-      showToast('图片上传成功');
+      showToast('可调整网格后点击"当前图追加拆分"追加拆分');
     };
     img.src=e.target.result;
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(last);
+}
+
+// V9: 直接用图片拆分并追加到 emojis（不依赖预览视口）
+function processImageFrom(img, blob, callback){
+  showLoading('正在拆分图片...');
+  const iw=img.naturalWidth, ih=img.naturalHeight;
+  // 在内存 canvas 上计算网格
+  const tmpCanvas=document.createElement('canvas');
+  const maxPreviewW=600;
+  const ratio=ih/iw;
+  let cw=maxPreviewW, ch=cw*ratio;
+  if(ch>600){ch=600;cw=ch/ratio}
+  tmpCanvas.width=Math.round(cw);
+  tmpCanvas.height=Math.round(ch);
+  const tmpCtx=tmpCanvas.getContext('2d');
+  tmpCtx.drawImage(img,0,0,tmpCanvas.width,tmpCanvas.height);
+  const vw=tmpCanvas.width, vh=tmpCanvas.height;
+  var viewportCells;
+  if(state.smartAvoid){
+    try{viewportCells=getSmartAdjustedCells(img,vw,vh,state.rows,state.cols);}
+    catch(e){viewportCells=getViewportGridCells(vw,vh,state.rows,state.cols,state.padding);}
+  }else{
+    viewportCells=getViewportGridCells(vw,vh,state.rows,state.cols,state.padding);
+  }
+  // 映射到原图坐标并拆分
+  const savedVS=state.viewState;
+  state.viewState={zoom:Math.min(cw/iw,ch/ih), focusX:iw/2, focusY:ih/2};
+  const newEmojis=[];
+  for(let i=0;i<viewportCells.length;i++){
+    const vc=viewportCells[i];
+    const tl=viewportToImage(vc.cx,vc.cy,vw,vh);
+    const br=viewportToImage(vc.cx+vc.cw,vc.cy+vc.ch,vw,vh);
+    const sx=tl.x,sy=tl.y,sw=br.x-tl.x,sh=br.y-tl.y;
+    const result=processCell(img,sx,sy,sw,sh);
+    newEmojis.push({
+      canvas:result.canvas,
+      text:'',
+      index:state.emojis.length+newEmojis.length,
+      cropInfo:{gridX:sx,gridY:sy,gridW:sw,gridH:sh},
+      custom:createDefaultCustom()
+    });
+  }
+  state.viewState=savedVS;
+  state.emojis=state.emojis.concat(newEmojis);
+  hideLoading();
+  $('textCard').style.display='block';
+  $('styleCard').style.display='block';
+  $('exportCard').style.display='block';
+  $('btnReport').disabled=false;
+  renderEmojis();
+  showToast('拆分 '+newEmojis.length+' 个表情，共 '+state.emojis.length+' 个');
+  if(callback)setTimeout(callback,30);
 }
 
 // V3: 初始化视口画布
@@ -1452,7 +1526,7 @@ function confirmBanner(){
   $('bannerStatus').textContent='✓ 已确认';
   showToast('横幅已确认');
   // 刷新报告
-  if($('btnReport').disabled===false)renderBannerInReport();
+  const br=$('btnReport');if(br&&br.disabled===false)renderBannerInReport();
 }
 
 // ============ Cutout Settings ============
@@ -1522,29 +1596,31 @@ async function processImage(){
   } else {
     viewportCells = getViewportGridCells(vw, vh, state.rows, state.cols, state.padding);
   }
-  state.emojis=[];
+  const startIdx=state.emojis.length;
+  const newOnes=[];
   for(let i=0;i<viewportCells.length;i++){
     const vc=viewportCells[i];
     const tl=viewportToImage(vc.cx,vc.cy,vw,vh);
     const br=viewportToImage(vc.cx+vc.cw,vc.cy+vc.ch,vw,vh);
     const sx=tl.x,sy=tl.y,sw=br.x-tl.x,sh=br.y-tl.y;
     const result=processCell(img,sx,sy,sw,sh);
-    state.emojis.push({
+    newOnes.push({
       canvas:result.canvas,
       text:'',
-      index:state.emojis.length,
+      index:startIdx+newOnes.length,
       cropInfo:{gridX:sx,gridY:sy,gridW:sw,gridH:sh},
       custom:createDefaultCustom()
     });
   }
+  state.emojis=state.emojis.concat(newOnes);
   hideLoading();
-  if(state.emojis.length===0){showToast('未检测到有效表情，请检查网格设置');return}
+  if(newOnes.length===0){showToast('未检测到有效表情，请检查网格设置');return}
   $('textCard').style.display='block';
   $('styleCard').style.display='block';
   $('exportCard').style.display='block';
   $('btnReport').disabled=false;
   renderEmojis();
-  showToast(`成功拆分 ${state.emojis.length} 个1:1正方形表情`);
+  showToast(`追加拆分 ${newOnes.length} 个表情，共 ${state.emojis.length} 个`);
 }
 
 // V5: 处理单元 - 支持矩形，接受可选抠图参数
@@ -1750,6 +1826,7 @@ function renderEmojis(){
         <button class="btn btn-outline" onclick="openCropEditor(${i})" title="调整裁剪范围">✂️裁剪</button>
         <button class="btn btn-outline" onclick="toggleFlip(${i},'H')" title="水平翻转">⇄翻转</button>
         <button class="btn btn-outline" onclick="resetPosition(${i})" title="重置位置">📍复位</button>
+        <button class="btn btn-outline" style="background:#fee;color:#c00;border-color:#fcc" onclick="deleteEmoji(${i})" title="删除此表情">🗑删除</button>
       </div>
       <div class="settings-toggle">
         <button onclick="toggleSettings(${i})" id="settings-btn-${i}">⚙️ 单独设置 <span class="arrow">▼</span></button>
@@ -1835,6 +1912,14 @@ function renderSettings(i){
     </div>
 
   `;
+}
+
+// V9: 删除单个表情（直接删除，不弹确认）
+function deleteEmoji(idx){
+  state.emojis.splice(idx,1);
+  state.emojis.forEach((e,i)=>e.index=i);
+  renderEmojis();
+  showToast('已删除表情 #'+(idx+1));
 }
 
 function toggleSettings(i){
@@ -3070,9 +3155,6 @@ function showReport(){
   html+='<span class="report-tab active" onclick="switchReportTab(this,\'large\')">大尺寸 '+state.largeSize+'×'+state.largeSize+'</span>';
   html+='<span class="report-tab" onclick="switchReportTab(this,\'small\')">小尺寸 '+state.smallSize+'×'+state.smallSize+'</span>';
   html+='<span class="report-tab" onclick="switchReportTab(this,\'icon\')">图标 '+state.iconSize+'×'+state.iconSize+'</span>';
-  html+='<span class="report-tab" onclick="switchReportTab(this,\'icon\')">图标 '+state.iconSize+'×'+state.iconSize+'</span>';
-  html+='<span class="report-tab" onclick="switchReportTab(this,\'icon\')">图标 '+state.iconSize+'×'+state.iconSize+'</span>';
-  html+='<span class="report-tab" onclick="switchReportTab(this,\'icon\')">图标 '+state.iconSize+'×'+state.iconSize+'</span>';
   html+='<span class="report-tab" onclick="switchReportTab(this,\'banner\')" id="reportBannerTab">🖼 横幅</span>';
   html+='</div>';
   html+='<div class="report-grid" id="reportLarge">';
@@ -3088,13 +3170,8 @@ function showReport(){
   if($('genCover').checked){
     html+='<div class="cover-section"><h3>🎨 封面图</h3><div class="cover-preview"><div class="cover-item"><div class="img-wrap" id="coverPreview"></div><div class="label">封面 240×240</div></div></div><div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="downloadCover()">下载封面</button></div></div>';
   }
-  // V4: 横幅预览
+  // V4: 横幅预览 + 图标（图标后放，确保 reportBannerSection 独立）
   html+='<div class="report-grid" id="reportIcon" style="display:none">';
-  state.emojis.forEach((emoji,i)=>{
-    html+=['<div class="report-item"><div class="label">#',(i+1),' · ',state.iconSize,'×',state.iconSize,'</div><div class="img-wrap" id="report-img-icon-',i,'"></div><div class="name">',escapeHtml(emoji.text||'（无文字）'),'</div><button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="downloadSingle(',i,',\'icon\')">下载</button></div>'].join('');
-  });
-  html+='</div>';
-
   state.emojis.forEach((emoji,i)=>{
     html+=['<div class="report-item"><div class="label">#',(i+1),' · ',state.iconSize,'×',state.iconSize,'</div><div class="img-wrap" id="report-img-icon-',i,'"></div><div class="name">',escapeHtml(emoji.text||'（无文字）'),'</div><button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="downloadSingle(',i,',\'icon\')">下载</button></div>'].join('');
   });
@@ -3105,7 +3182,7 @@ function showReport(){
   const hasBanner=state.banner!==null;
   if(hasBanner)$('reportBannerTab').style.display='inline';
   else $('reportBannerTab').style.display='none';
-  $('reportSummary').textContent=`共 ${state.emojis.length} 个表情 · 大图 ${state.largeSize}px + 小图 ${state.smallSize}px + 图标 ${state.iconSize}px + 图标 ${state.iconSize}px${$('genCover').checked?' + 封面':''}${hasBanner?' + 横幅':''}`;
+  $('reportSummary').textContent=`共 ${state.emojis.length} 个表情 · 大图 ${state.largeSize}px + 小图 ${state.smallSize}px + 图标 ${state.iconSize}px${$('genCover').checked?' + 封面':''}${hasBanner?' + 横幅':''}`;
   $('reportModal').classList.add('show');
   setTimeout(()=>{
     state.emojis.forEach((emoji,i)=>{
