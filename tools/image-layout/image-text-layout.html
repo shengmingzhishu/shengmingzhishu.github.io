@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片配文排版工具</title>
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --bg-panel: #ffffff;
+      --bg-soft: #f8f8f8;
+      --ink: #2D3436;
+      --muted: #636E72;
+      --border: #e0e0e0;
+      --border-light: #f0f0f0;
+      --accent: #FF6B6B;
+      --accent2: #4ECDC4;
+      --accent3: #FFE66D;
+      --radius: 8px;
+      --radius-sm: 4px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,0.1);
+      --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: var(--font); font-size: 14px; color: var(--ink); background: var(--bg); }
+    body { overflow: hidden; }
+
+    /* === Layout === */
+    .container {
+      display: flex;
+      gap: 12px;
+      height: 100vh;
+      padding: 12px;
+    }
+    .panel-left {
+      flex: 0 0 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      background: var(--bg-panel);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+    .panel-center {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+      background: var(--bg-panel);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+    .panel-right {
+      flex: 0 0 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      background: var(--bg-panel);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+    .panel-left.dragover { border: 2px dashed var(--accent); background: rgba(255,107,107,0.04); }
+
+    /* === Section headers === */
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-title .badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    /* === Left panel: textarea === */
+    textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      font-family: var(--font);
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+    textarea { min-height: 80px; line-height: 1.5; }
+
+    /* === Buttons === */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #ff5555; }
+    .btn-secondary { background: var(--bg-soft); color: var(--ink); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #efefef; }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn-block { width: 100%; }
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* === Filter radio === */
+    .radio-group {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .radio-group label {
+      flex: 1;
+      text-align: center;
+      padding: 4px 6px;
+      font-size: 12px;
+      cursor: pointer;
+      border-right: 1px solid var(--border);
+      transition: all 0.15s;
+      color: var(--muted);
+    }
+    .radio-group label:last-child { border-right: none; }
+    .radio-group input { display: none; }
+    .radio-group input:checked + span { color: #fff; }
+    .radio-group label:has(input:checked) { background: var(--accent); color: #fff; }
+    .radio-group label:has(input:checked) span { color: #fff; }
+
+    /* === Image gallery === */
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .gallery-count { font-size: 12px; color: var(--muted); }
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 6px;
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      min-height: 62px;
+    }
+    .gallery:empty::after {
+      content: "图片库为空，请添加图片";
+      display: block;
+      width: 100%;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 50px;
+    }
+    .thumb {
+      position: relative;
+      width: 50px;
+      height: 50px;
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 1;
+    }
+    .thumb::after {
+      content: "\00d7";
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      line-height: 16px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 2;
+    }
+    .thumb:hover::after { opacity: 1; }
+
+    /* === Settings === */
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .settings-row label { color: var(--muted); flex-shrink: 0; }
+    .settings-row input[type="range"] {
+      flex: 1;
+      margin: 0 8px;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    .settings-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    .settings-row .value {
+      min-width: 36px;
+      text-align: right;
+      font-weight: 600;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-switch.active { background: var(--accent); }
+    .toggle-switch::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch.active::after { transform: translateX(16px); }
+
+    .settings-section {
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      border: 1px solid var(--border-light);
+    }
+    .settings-section summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      user-select: none;
+      margin-bottom: 4px;
+    }
+    .settings-section[open] summary { margin-bottom: 8px; }
+
+    /* === Center panel === */
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .preview-wrap {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      padding: 16px;
+      min-height: 0;
+    }
+    .preview-wrap.mobile { max-width: 375px; margin: 0 auto; }
+    #preview {
+      font-family: var(--font);
+      line-height: 1.6;
+    }
+    #preview:empty::after {
+      content: "预览区域为空，请先添加图片或输入配文";
+      display: block;
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 0;
+      font-size: 14px;
+    }
+    .caption-input {
+      min-height: 100px;
+      max-height: 200px;
+    }
+
+    /* === Right panel === */
+    .theme-section {
+      margin-bottom: 4px;
+    }
+    .theme-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .theme-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      background: #fff;
+    }
+    .theme-card:hover { border-color: var(--accent2); }
+    .theme-card.active {
+      border-color: var(--accent);
+      background: rgba(255,107,107,0.04);
+    }
+    .theme-card .theme-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .theme-card .theme-preview {
+      width: 100%;
+      height: 36px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      background: var(--bg-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .theme-card.active .theme-name { color: var(--accent); }
+
+    .text-tools {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .text-tools .btn { width: 100%; justify-content: flex-start; }
+
+    /* === Toast === */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(45,52,54,0.92);
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      z-index: 9999;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { background: rgba(255,107,107,0.92); }
+
+    /* === Parse result === */
+    .parse-result {
+      font-size: 11px;
+      color: var(--muted);
+      max-height: 80px;
+      overflow-y: auto;
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      border: 1px solid var(--border-light);
+      display: none;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .parse-result.show { display: block; }
+
+    /* === Scrollbar === */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* === Responsive === */
+    @media (max-width: 1024px) {
+      .container { flex-direction: column; height: auto; overflow-y: auto; }
+      body { overflow: auto; }
+      .panel-left, .panel-right { flex: 0 0 auto; max-height: none; }
+      .panel-center { min-height: 500px; }
+    }
+
+    /* === Upload area === */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .upload-area:hover {
+      border-color: var(--accent);
+      background: rgba(255,107,107,0.02);
+      color: var(--accent);
+    }
+    .upload-area .icon { font-size: 20px; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- === Left Panel === -->
+    <aside class="panel-left" id="panelLeft">
+      <div class="section-title">图片来源</div>
+
+      <textarea id="urlInput" placeholder="粘贴URL列表（每行一个）或HTML源码（含&lt;img&gt;标签）&#10;https://example.com/img1.jpg&#10;https://example.com/img2.jpg"></textarea>
+
+      <div class="radio-group" id="filterGroup">
+        <label><input type="radio" name="filter" value="all" checked><span>全部URL</span></label>
+        <label><input type="radio" name="filter" value="image"><span>仅图片</span></label>
+        <label><input type="radio" name="filter" value="article"><span>仅文章</span></label>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary btn-sm" onclick="parseAndAddImages()">解析并添加</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fileInput').click()">选择图片</button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFileSelect(event)">
+
+      <div class="upload-area" id="uploadArea">
+        <div class="icon">📁</div>
+        <div>拖拽图片到此处</div>
+      </div>
+
+      <div class="section-title" style="margin-top:2px;">公众号文章链接提取</div>
+      <div class="btn-group">
+        <input type="text" id="articleUrl" placeholder="粘贴公众号文章链接" style="flex:1;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);">
+        <button class="btn btn-secondary btn-sm" onclick="fetchArticleImages()">提取图片</button>
+      </div>
+
+      <div class="parse-result" id="parseResult"></div>
+
+      <div class="section-title" style="margin-top:4px;">
+        图片库
+        <span class="gallery-count" id="galleryCount">共 0 张</span>
+      </div>
+      <div style="display:flex;gap:4px;margin-bottom:4px;">
+        <button class="btn btn-secondary btn-sm" onclick="clearGallery()" style="flex:1">清空</button>
+      </div>
+      <div class="gallery" id="gallery"></div>
+
+      <details class="settings-section" open>
+        <summary>预览设定项</summary>
+
+        <div class="settings-row">
+          <label>列数</label>
+          <div class="radio-group" style="flex:1;max-width:160px;">
+            <label><input type="radio" name="columns" value="2"><span>2列</span></label>
+            <label><input type="radio" name="columns" value="3" checked><span>3列</span></label>
+            <label><input type="radio" name="columns" value="4"><span>4列</span></label>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <label>圆角</label>
+          <input type="range" id="borderRadius" min="0" max="32" value="16" oninput="updateSetting('borderRadius', this.value)">
+          <span class="value" id="borderRadiusVal">16px</span>
+        </div>
+
+        <div class="settings-row">
+          <label>阴影</label>
+          <div class="radio-group" style="flex:1;max-width:120px;">
+            <label><input type="radio" name="shadow" value="none"><span>无</span></label>
+            <label><input type="radio" name="shadow" value="light"><span>轻</span></label>
+            <label><input type="radio" name="shadow" value="medium" checked><span>中</span></label>
+            <label><input type="radio" name="shadow" value="heavy"><span>重</span></label>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <label>填充</label>
+          <div class="radio-group" style="flex:1;max-width:120px;">
+            <label><input type="radio" name="fillMode" value="contain" checked><span>平铺</span></label>
+            <label><input type="radio" name="fillMode" value="cover"><span>截取</span></label>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <label>宽度</label>
+          <input type="range" id="imgWidth" min="60" max="100" value="100" oninput="updateSetting('imgWidth', this.value)">
+          <span class="value" id="imgWidthVal">100%</span>
+        </div>
+
+        <div class="settings-row">
+          <label>间距</label>
+          <input type="range" id="imgGap" min="0" max="30" value="10" oninput="updateSetting('imgGap', this.value)">
+          <span class="value" id="imgGapVal">10px</span>
+        </div>
+
+        <div class="settings-row">
+          <label>随机顺序</label>
+          <div class="toggle-switch" id="randomToggle" onclick="toggleRandom()"></div>
+        </div>
+
+        <div class="settings-row">
+          <label>奇数图策略</label>
+          <select id="oddStrategy" onchange="updateSetting('oddStrategy', this.value)" style="flex:1;font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;">
+            <option value="full">占满整行</option>
+            <option value="center">居中展示</option>
+            <option value="discard">丢弃尾部</option>
+          </select>
+        </div>
+      </details>
+    </aside>
+
+    <!-- === Center Panel === -->
+    <main class="panel-center">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="copyWechatHTML()">📋 一键复制样式</button>
+        <button class="btn btn-secondary" onclick="refreshPreview()">🔄 刷新</button>
+        <button class="btn btn-secondary" onclick="toggleMobile()">📱 手机模式</button>
+        <button class="btn btn-secondary" onclick="resetAll()">🏠 重置</button>
+      </div>
+
+      <div class="preview-wrap" id="previewWrap">
+        <div id="preview"></div>
+      </div>
+
+      <div class="section-title">配文文本（段落间空行分隔，空行处用图片填充）</div>
+      <textarea class="caption-input" id="captionInput" placeholder="输入配文内容...&#10;&#10;段落之间用空行分隔&#10;空行位置会自动填充图片行&#10;&#10;例如：&#10;这是第一段配文&#10;&#10;这是第二段配文"></textarea>
+    </main>
+
+    <!-- === Right Panel === -->
+    <aside class="panel-right">
+      <div class="theme-section">
+        <div class="section-title">图片样式主题</div>
+        <div class="theme-grid" id="imageThemeGrid"></div>
+      </div>
+
+      <div class="theme-section">
+        <div class="section-title">配文样式主题</div>
+        <div class="theme-grid" id="textThemeGrid"></div>
+      </div>
+
+      <div class="theme-section">
+        <div class="section-title">配文处理</div>
+        <div class="settings-row">
+          <label>对齐</label>
+          <div class="radio-group" style="flex:1;">
+            <label><input type="radio" name="align" value="left" checked><span>左</span></label>
+            <label><input type="radio" name="align" value="center"><span>中</span></label>
+            <label><input type="radio" name="align" value="right"><span>右</span></label>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label>块模式</label>
+          <div class="radio-group" style="flex:1;">
+            <label><input type="radio" name="blockMode" value="paragraph" checked><span>段落</span></label>
+            <label><input type="radio" name="blockMode" value="line"><span>行</span></label>
+          </div>
+        </div>
+        <div class="text-tools" style="margin-top:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="textShuffle()">🔀 文本乱序</button>
+          <button class="btn btn-secondary btn-sm" onclick="textClearEnter()">🗑 删除空行</button>
+          <button class="btn btn-secondary btn-sm" onclick="textPeriodLine()">↵ 句号换行</button>
+        </div>
+      </div>
+
+      <div class="theme-section">
+        <div class="section-title">用户信息（朋友圈主题）</div>
+        <input type="text" id="userName" placeholder="用户名" value="北屿的蓝色" style="margin-bottom:4px;font-size:12px;">
+        <input type="text" id="avatarUrl" placeholder="头像URL（可选）" style="font-size:12px;">
+      </div>
+    </aside>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    // ============================================
+    // STATE MANAGEMENT
+    // ============================================
+    const state = {
+      imageSrcList: [],
+      captionText: '',
+      preview: {
+        columns: 3,
+        borderRadius: 16,
+        shadow: 'medium',
+        fillMode: 'contain',
+        imgWidth: 100,
+        imgGap: 10,
+        randomOrder: false,
+        oddStrategy: 'full'
+      },
+      themes: {
+        imageTheme: 'rounded-shadow',
+        textTheme: 'book'
+      },
+      text: {
+        alignMode: 'left',
+        blockMode: 'paragraph'
+      },
+      user: {
+        name: '北屿的蓝色',
+        avatar: ''
+      },
+      mobilePreview: false
+    };
+
+    let imgIdCounter = 0;
+
+    function updateState(path, value) {
+      const keys = path.split('.');
+      let obj = state;
+      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      obj[keys[keys.length - 1]] = value;
+      updatePreview();
+      saveState();
+    }
+
+    function saveState() {
+      try {
+        const toSave = {
+          preview: state.preview,
+          themes: state.themes,
+          text: state.text,
+          user: state.user,
+          imageSrcList: state.imageSrcList.filter(img => img.type === 'url')
+        };
+        localStorage.setItem('imageLayoutTool', JSON.stringify(toSave));
+      } catch(e) { /* localStorage full, ignore */ }
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('imageLayoutTool'));
+        if (!saved) return;
+        if (saved.preview) Object.assign(state.preview, saved.preview);
+        if (saved.themes) Object.assign(state.themes, saved.themes);
+        if (saved.text) Object.assign(state.text, saved.text);
+        if (saved.user) Object.assign(state.user, saved.user);
+        if (saved.imageSrcList) {
+          state.imageSrcList = saved.imageSrcList.map(img => ({
+            id: 'img_' + Date.now() + '_' + (imgIdCounter++),
+            src: img.src,
+            type: 'url',
+            addedAt: Date.now()
+          }));
+        }
+      } catch(e) { /* parse error, ignore */ }
+    }
+
+    // ============================================
+    // IMAGE LIBRARY
+    // ============================================
+    function parseAndAddImages() {
+      const rawText = document.getElementById('urlInput').value.trim();
+      if (!rawText) { showToast('请输入内容', true); return; }
+
+      let urls = [];
+      const filterMode = document.querySelector('input[name="filter"]:checked').value;
+
+      // Strategy 1: HTML source code parsing
+      if (rawText.includes('<img')) {
+        const imgRegex = /<img[^>]*(?:src|data-src)=["']([^"']+)["']/gi;
+        let match;
+        while ((match = imgRegex.exec(rawText)) !== null) {
+          urls.push(match[1]);
+        }
+      }
+
+      // Strategy 2: URL list parsing
+      if (urls.length === 0) {
+        const urlRegex = /https:\/\/[^\s"',;<>\]]+/g;
+        urls = rawText.match(urlRegex) || [];
+      }
+
+      // Filter
+      if (filterMode === 'image') {
+        urls = urls.filter(u => u.includes('qpic.cn') || /\.(jpg|jpeg|png|gif|webp|bmp|svg)/i.test(u));
+      } else if (filterMode === 'article') {
+        urls = urls.filter(u => u.includes('mp.weixin.qq.com'));
+      }
+
+      // Dedup against existing
+      const existingSrcs = new Set(state.imageSrcList.map(img => img.src));
+      const newUrls = [];
+      const dupCount = { val: 0 };
+      urls.forEach(url => {
+        if (existingSrcs.has(url)) {
+          dupCount.val++;
+        } else {
+          existingSrcs.add(url);
+          newUrls.push(url);
+        }
+      });
+
+      newUrls.forEach(url => addImage(url, 'url'));
+      renderGallery();
+      updatePreview();
+
+      // Show parse result
+      const resultEl = document.getElementById('parseResult');
+      if (urls.length > 0) {
+        resultEl.textContent = urls.map((u, i) => `${i+1}. ${u}`).join('\n');
+        resultEl.classList.add('show');
+      }
+
+      let msg = `成功添加 ${newUrls.length} 张图片`;
+      if (dupCount.val > 0) msg += `（${dupCount.val} 张已存在）`;
+      showToast(msg);
+
+      document.getElementById('urlInput').value = '';
+    }
+
+    // ============================================
+    // ARTICLE URL EXTRACTION
+    // ============================================
+    async function fetchArticleImages() {
+      const url = document.getElementById('articleUrl').value.trim();
+      if (!url) { showToast('请输入公众号文章链接', true); return; }
+      if (!url.includes('mp.weixin.qq.com')) {
+        showToast('请输入有效的公众号文章链接', true);
+        return;
+      }
+
+      const btn = event.target;
+      const originalText = btn.textContent;
+      btn.textContent = '提取中...';
+      btn.disabled = true;
+
+      try {
+        // Use CORS proxy to fetch the article
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error('网络请求失败');
+        const html = await response.text();
+
+        // Extract image URLs from the article HTML
+        let urls = [];
+        // Pattern 1: data-src attribute (WeChat lazy loading)
+        const dataSrcRegex = /data-src=["'](https?:\/\/mmbiz[^"']+)["']/gi;
+        let match;
+        while ((match = dataSrcRegex.exec(html)) !== null) {
+          urls.push(match[1]);
+        }
+        // Pattern 2: src attribute with mmbiz domain
+        const srcRegex = /src=["'](https?:\/\/mmbiz[^"']+)["']/gi;
+        while ((match = srcRegex.exec(html)) !== null) {
+          if (!urls.includes(match[1])) urls.push(match[1]);
+        }
+        // Pattern 3: any other image URLs
+        if (urls.length === 0) {
+          const imgRegex = /<img[^>]*src=["']([^"']+)["']/gi;
+          while ((match = imgRegex.exec(html)) !== null) {
+            if (match[1].startsWith('http') && !match[1].includes('data:image')) {
+              urls.push(match[1]);
+            }
+          }
+        }
+
+        // Dedup
+        urls = [...new Set(urls)];
+
+        if (urls.length === 0) {
+          showToast('未在文章中找到图片', true);
+          return;
+        }
+
+        // Dedup against existing library
+        const existingSrcs = new Set(state.imageSrcList.map(img => img.src));
+        let newCount = 0;
+        let dupCount = 0;
+        urls.forEach(u => {
+          if (!existingSrcs.has(u)) {
+            existingSrcs.add(u);
+            addImage(u, 'url');
+            newCount++;
+          } else {
+            dupCount++;
+          }
+        });
+
+        renderGallery();
+        updatePreview();
+        saveState();
+
+        // Show parse result
+        const resultEl = document.getElementById('parseResult');
+        resultEl.textContent = urls.map((u, i) => `${i+1}. ${u}`).join('\n');
+        resultEl.classList.add('show');
+
+        let msg = `从文章提取 ${newCount} 张图片`;
+        if (dupCount > 0) msg += `（${dupCount} 张已存在）`;
+        showToast(msg);
+        document.getElementById('articleUrl').value = '';
+      } catch(err) {
+        showToast('提取失败：' + err.message + '。也可复制文章源码粘贴到上方文本框', true);
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function addImage(src, type, filename) {
+      const img = {
+        id: 'img_' + Date.now() + '_' + (imgIdCounter++),
+        src: src,
+        type: type,
+        filename: filename || '',
+        addedAt: Date.now()
+      };
+      state.imageSrcList.push(img);
+      return img;
+    }
+
+    function removeImage(id) {
+      const idx = state.imageSrcList.findIndex(img => img.id === id);
+      if (idx !== -1) {
+        state.imageSrcList.splice(idx, 1);
+        renderGallery();
+        updatePreview();
+        saveState();
+        showToast('已删除1张图片');
+      }
+    }
+
+    function clearGallery() {
+      if (state.imageSrcList.length === 0) return;
+      if (!confirm(`确定要清空全部 ${state.imageSrcList.length} 张图片吗？`)) return;
+      state.imageSrcList = [];
+      renderGallery();
+      updatePreview();
+      saveState();
+      showToast('已清空图片库');
+    }
+
+    function renderGallery() {
+      const gallery = document.getElementById('gallery');
+      document.getElementById('galleryCount').textContent = `共 ${state.imageSrcList.length} 张`;
+      gallery.innerHTML = state.imageSrcList.map(img => `
+        <div class="thumb" onclick="removeImage('${img.id}')" title="${img.type === 'url' ? img.src : img.filename || '本地图片'}">
+          <img src="${img.src}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22><rect width=%2250%22 height=%2250%22 fill=%22%23ddd%22/><text x=%2225%22 y=%2230%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2210%22>ERR</text></svg>'">
+        </div>
+      `).join('');
+    }
+
+    // ============================================
+    // DEFAULT IMAGES (from word-book.html / word-moment.html)
+    // ============================================
+    const defaultImgLinks = [
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221577",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221748",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221929",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222005",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222116",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431221856",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222370",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222487",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752431222229"
+    ];
+
+    const defaultAvatars = [
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687305",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687508",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687629",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687710",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400687826",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400743924",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744121",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400744211",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002298",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752401002474"
+    ];
+
+    const defaultMomentImages = [
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242579",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242375",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242155",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242488",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242881",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400242781",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277068",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400277220",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400410984",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400500142",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551667",
+      "https://tencentcdna.production.link3.cc/user_create_images/link3_1741542924688/multiple_images/1752400551875"
+    ];
+
+    const defaultNames = [
+      "云舒", "星眠", "月汀", "风禾", "桑榆",
+      "清晏", "南乔", "知夏", "砚秋", "汀兰",
+      "桃夭", "小满", "柚柚", "棠梨", "青雀",
+      "Daisy", "Luna", "Willow", "Elena", "Clover",
+      "予安", "知遥", "念初", "简宁", "未晞",
+      "莓莓", "棠棠", "穗穗", "皎皎", "沅沅"
+    ];
+
+    const defaultTimes = [
+      "3分钟前", "5分钟前", "10分钟前", "分享会暴富", "点赞会暴富"
+    ];
+
+    function getRandomItem(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    // Get effective images: user images if available, otherwise defaults
+    function getEffectiveImages() {
+      if (state.imageSrcList.length > 0) {
+        return state.imageSrcList.map(img => img.src);
+      }
+      return defaultImgLinks;
+    }
+
+    // ============================================
+    // FILE UPLOAD
+    // ============================================
+    function handleFileSelect(event) {
+      const files = event.target.files;
+      handleFiles(files);
+      event.target.value = '';
+    }
+
+    function handleFiles(files) {
+      const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+      if (imageFiles.length === 0) {
+        showToast('未检测到图片文件', true);
+        return;
+      }
+      if (imageFiles.length > 50) {
+        showToast('图片数量较多，正在处理...', true);
+      }
+
+      let processed = 0;
+      imageFiles.forEach(file => {
+        if (file.size > 10 * 1024 * 1024) {
+          showToast(`图片 ${file.name} 超过10MB，已跳过`, true);
+          return;
+        }
+        compressAndAdd(file, () => {
+          processed++;
+          if (processed === imageFiles.length || processed === Math.min(imageFiles.length, 50)) {
+            renderGallery();
+            updatePreview();
+            saveState();
+            showToast(`成功添加 ${processed} 张图片`);
+          }
+        });
+      });
+    }
+
+    function compressAndAdd(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          let canvas = document.createElement('canvas');
+          let maxW = 1080;
+          let w = img.width, h = img.height;
+          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+          canvas.width = w;
+          canvas.height = h;
+          let ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          let quality = 0.85;
+          if (file.size > 5 * 1024 * 1024) quality = 0.75;
+          let dataUrl = canvas.toDataURL('image/jpeg', quality);
+          addImage(dataUrl, 'base64', file.name);
+          callback();
+        };
+        img.onerror = function() {
+          // Fallback: use original data URL
+          addImage(e.target.result, 'base64', file.name);
+          callback();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ============================================
+    // DRAG & DROP
+    // ============================================
+    const panelLeft = document.getElementById('panelLeft');
+    const uploadArea = document.getElementById('uploadArea');
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      panelLeft.addEventListener(evt, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        panelLeft.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+      panelLeft.addEventListener(evt, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (evt === 'dragleave' && e.target !== panelLeft) return;
+        panelLeft.classList.remove('dragover');
+      });
+    });
+    panelLeft.addEventListener('drop', e => {
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFiles(files);
+    });
+
+    uploadArea.addEventListener('click', () => document.getElementById('fileInput').click());
+
+    // ============================================
+    // THEME SYSTEM
+    // ============================================
+    const imageThemes = {
+      'rounded-shadow': {
+        name: '圆角阴影',
+        icon: '🖼',
+        getStyle: (s) => ({
+          borderRadius: s.borderRadius + 'px',
+          boxShadow: getShadowValue(s.shadow),
+          border: 'none',
+          padding: '0',
+          transform: 'none'
+        })
+      },
+      'no-border': {
+        name: '无边框纯图',
+        icon: '⬜',
+        getStyle: (s) => ({
+          borderRadius: '0px',
+          boxShadow: 'none',
+          border: 'none',
+          padding: '0',
+          transform: 'none'
+        })
+      },
+      'photo-frame': {
+        name: '相框风格',
+        icon: '🖼',
+        getStyle: (s) => ({
+          borderRadius: '4px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          border: '8px solid #fff',
+          padding: '4px',
+          transform: 'none'
+        })
+      },
+      'polaroid': {
+        name: '拍立得',
+        icon: '📷',
+        getStyle: (s) => ({
+          borderRadius: '0px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          border: 'none',
+          padding: '0 0 20px 0',
+          background: '#fff',
+          transform: 'rotate(-2deg)'
+        })
+      },
+      'gradient-border': {
+        name: '渐变边框',
+        icon: '🌈',
+        getStyle: (s) => ({
+          borderRadius: s.borderRadius + 'px',
+          boxShadow: '0 4px 14px rgba(255,107,107,0.2)',
+          border: '3px solid transparent',
+          padding: '0',
+          background: 'linear-gradient(135deg, #FF6B6B, #4ECDC4, #FFE66D)',
+          transform: 'none',
+          isGradient: true
+        })
+      },
+      'film-strip': {
+        name: '胶片风',
+        icon: '🎞',
+        getStyle: (s) => ({
+          borderRadius: '2px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          border: 'none',
+          padding: '8px 8px 8px 8px',
+          background: '#222',
+          transform: 'none'
+        })
+      },
+      'emboss': {
+        name: '浮雕风',
+        icon: '🔰',
+        getStyle: (s) => ({
+          borderRadius: s.borderRadius + 'px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(0,0,0,0.1)',
+          border: '1px solid #d0d0d0',
+          padding: '0',
+          transform: 'none'
+        })
+      },
+      'card-hover': {
+        name: '卡片悬浮',
+        icon: '📇',
+        getStyle: (s) => ({
+          borderRadius: '12px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+          border: 'none',
+          padding: '0',
+          transform: 'none'
+        })
+      }
+    };
+
+    function getShadowValue(level) {
+      const shadows = {
+        none: 'none',
+        light: '0 1px 4px rgba(0,0,0,0.08)',
+        medium: '0 2px 8px rgba(0,0,0,0.12)',
+        heavy: '0 6px 20px rgba(0,0,0,0.18)'
+      };
+      return shadows[level] || shadows.medium;
+    }
+
+    const textThemes = {
+      'book': {
+        name: '书籍风格',
+        icon: '📖',
+        render: function(text, index, align, user) {
+          const escapedText = escapeHtml(text);
+          const partNum = String(index).padStart(2, '0');
+          const effectiveImages = getEffectiveImages();
+          const imgUrl = getRandomItem(effectiveImages);
+          return `<section style="margin:16px auto;padding:16px 20px;border:2px groove #ddd;border-radius:20px;background:#fdfdfd;max-width:95%;">
+  <p style="text-align:center;font-size:14px;color:#888;margin-bottom:10px;letter-spacing:0.1em;">◎ Part ${partNum}</p>
+  <section style="text-align:center;margin:10px 0;">
+    <img data-src="${imgUrl}" class="rich_pages wxw-img" style="max-width:80%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);" src="${imgUrl}">
+  </section>
+  <p style="text-align:${align};text-indent:2em;font-size:15px;color:#555;line-height:1.8;margin:10px 0 0 0;white-space:pre-wrap;">${processInlineMarkdown(escapedText)}</p>
+</section>`;
+        }
+      },
+      'box': {
+        name: '方框风格',
+        icon: '📦',
+        render: function(text, index, align, user) {
+          const escapedText = escapeHtml(text);
+          return `<section style="margin:16px auto;padding:12px 16px;box-shadow:3px 3px 10px rgba(0,0,0,0.12);border-radius:8px;background:#fff;max-width:95%;border:1px solid #eee;">
+  <p style="text-align:${align};font-size:15px;color:#333;line-height:1.8;margin:0;white-space:pre-wrap;">${processInlineMarkdown(escapedText)}</p>
+</section>`;
+        }
+      },
+      'moment': {
+        name: '朋友圈',
+        icon: '💬',
+        render: function(text, index, align, user) {
+          const escapedText = escapeHtml(text);
+          // Use user avatar if provided, otherwise random default avatar
+          const avatar = user.avatar || getRandomItem(defaultAvatars);
+          // Use user name if provided, otherwise random default name
+          const userName = escapeHtml(user.name || getRandomItem(defaultNames));
+          const timeStr = getRandomItem(defaultTimes);
+          // Random content image
+          const effectiveImages = state.imageSrcList.length > 0
+            ? state.imageSrcList.map(img => img.src)
+            : defaultMomentImages;
+          const contentImg = getRandomItem(effectiveImages);
+          return `<section style="margin:10px auto;padding:12px;background:#fff;max-width:95%;border-bottom:1px solid #f0f0f0;">
+  <section style="display:flex;align-items:flex-start;gap:8px;">
+    <img src="${avatar}" data-src="${avatar}" style="width:42px;height:42px;border-radius:6px;flex-shrink:0;">
+    <section style="flex:1;min-width:0;">
+      <p style="font-size:14px;color:#576b95;font-weight:600;margin:0 0 4px 0;">${userName}</p>
+      <p style="text-align:${align};font-size:15px;color:#333;line-height:1.6;margin:4px 0;white-space:pre-wrap;">${processInlineMarkdown(escapedText)}</p>
+      <section style="margin:8px 0;">
+        <img data-src="${contentImg}" class="rich_pages wxw-img" style="max-width:100%;border-radius:6px;" src="${contentImg}">
+      </section>
+      <p style="font-size:12px;color:#999;margin:4px 0 0 0;">${timeStr}</p>
+    </section>
+  </section>
+</section>`;
+        }
+      },
+      'art': {
+        name: '艺术字',
+        icon: '🎨',
+        render: function(text, index, align, user) {
+          const escapedText = escapeHtml(text);
+          const gradients = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+            'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+            'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
+          ];
+          const gradient = gradients[index % gradients.length];
+          const symbols = ['❀', '✦', '◈', '◆', '✿', '❉', '☼', '☆', '♢', '◇'];
+          const sym1 = symbols[(index * 2) % symbols.length];
+          const sym2 = symbols[(index * 2 + 1) % symbols.length];
+          return `<section style="margin:20px auto;padding:0;max-width:95%;text-align:${align};">
+  <section style="display:inline-block;padding:20px 28px;border-radius:16px;background:rgba(255,255,255,0.9);box-shadow:0 4px 20px rgba(0,0,0,0.06);position:relative;">
+    <section style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:40px;height:3px;border-radius:0 0 3px 3px;background:${gradient};"></section>
+    <p style="font-size:12px;color:#ccc;margin-bottom:10px;letter-spacing:0.3em;">${sym1}  ${sym2}  ${sym1}</p>
+    <p style="text-align:${align};font-size:16px;line-height:2;margin:0;white-space:pre-wrap;font-weight:400;letter-spacing:0.05em;background:${gradient};-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;color:#333;">${processInlineMarkdown(escapedText)}</p>
+    <p style="font-size:12px;color:#ccc;margin-top:10px;letter-spacing:0.3em;">${sym2}  ${sym1}  ${sym2}</p>
+  </section>
+</section>`;
+        }
+      }
+    };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function processInlineMarkdown(text) {
+      // **bold**, *italic*, ~~strike~~, `code`
+      text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+      text = text.replace(/`(.+?)`/g, '<code style="background:#f5f5f5;padding:1px 4px;border-radius:3px;font-size:0.9em;">$1</code>');
+      return text;
+    }
+
+    // ============================================
+    // LAYOUT ENGINE
+    // ============================================
+    function renderInterleavedLayout() {
+      // 1. Prepare images
+      let images = [...state.imageSrcList];
+      if (state.preview.randomOrder) {
+        images.sort(() => Math.random() - 0.5);
+      }
+
+      const columns = state.preview.columns;
+      const captionText = state.captionText;
+
+      // 2. Parse paragraphs
+      let paragraphs = [];
+      if (captionText.trim()) {
+        if (state.text.blockMode === 'paragraph') {
+          paragraphs = captionText.split(/\n{2,}/g)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+        } else {
+          paragraphs = captionText.split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 0);
+        }
+      }
+
+      // 3. Determine first line type
+      let firstIsText = true;
+      if (captionText.trimStart().startsWith('\n') || paragraphs.length === 0) {
+        firstIsText = false;
+      }
+
+      // 4. Build interleaved rows
+      let html = [];
+      let imgIndex = 0;
+      let paraIndex = 0;
+      let textTurn = firstIsText;
+
+      while (paraIndex < paragraphs.length || imgIndex < images.length) {
+        if (textTurn && paraIndex < paragraphs.length) {
+          // Render text block
+          html.push(renderTextBlock(paragraphs[paraIndex], paraIndex + 1));
+          paraIndex++;
+          textTurn = false;
+        } else if (!textTurn && imgIndex < images.length) {
+          // Render image row
+          let rowImages = images.slice(imgIndex, imgIndex + columns);
+          // Handle odd images
+          if (rowImages.length < columns && imgIndex + columns >= images.length) {
+            rowImages = handleOddImages(rowImages, columns);
+          }
+          html.push(renderImageRow(rowImages, columns));
+          imgIndex += columns;
+          textTurn = true;
+        } else if (textTurn && paraIndex >= paragraphs.length) {
+          // No more text, render remaining images
+          if (imgIndex < images.length) {
+            let rowImages = images.slice(imgIndex, imgIndex + columns);
+            if (rowImages.length < columns) {
+              rowImages = handleOddImages(rowImages, columns);
+            }
+            html.push(renderImageRow(rowImages, columns));
+            imgIndex += columns;
+          } else {
+            break;
+          }
+        } else if (!textTurn && imgIndex >= images.length) {
+          // No more images, render remaining text
+          if (paraIndex < paragraphs.length) {
+            html.push(renderTextBlock(paragraphs[paraIndex], paraIndex + 1));
+            paraIndex++;
+            textTurn = !textTurn;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+
+      return wrapInArticle(html.join('\n'));
+    }
+
+    function handleOddImages(rowImages, columns) {
+      const strategy = state.preview.oddStrategy;
+      if (strategy === 'discard' && rowImages.length < columns) {
+        return []; // Discard incomplete row
+      }
+      if (strategy === 'full' && rowImages.length === 1) {
+        // Single image fills the row
+        return rowImages;
+      }
+      return rowImages;
+    }
+
+    function renderImageRow(images, columns) {
+      if (images.length === 0) return '';
+
+      const theme = imageThemes[state.themes.imageTheme];
+      const themeStyle = theme.getStyle(state.preview);
+      const gap = state.preview.imgGap;
+      const fillMode = state.preview.fillMode;
+      const imgWidth = state.preview.imgWidth;
+
+      // Determine if single image should fill the row
+      const isSingle = images.length === 1 && state.preview.oddStrategy === 'full';
+
+      let colWidth;
+      if (isSingle) {
+        colWidth = '100%';
+      } else {
+        colWidth = `calc((100% - ${(images.length - 1) * gap}px) / ${images.length})`;
+      }
+
+      const imgFillStyle = fillMode === 'cover'
+        ? `width:100%;height:100%;object-fit:cover;aspect-ratio:1;`
+        : `width:100%;height:auto;`;
+
+      let imgSections = images.map(img => {
+        const borderStyle = themeStyle.border !== 'none' ? `border:${themeStyle.border};` : '';
+        const paddingStyle = themeStyle.padding !== '0' ? `padding:${themeStyle.padding};` : '';
+        const bgStyle = themeStyle.background ? `background:${themeStyle.background};` : '';
+        const transformStyle = themeStyle.transform !== 'none' ? `transform:${themeStyle.transform};` : '';
+        const gradientInner = themeStyle.isGradient ? `margin:3px;background:#fff;` : '';
+
+        return `<section style="display:inline-block;vertical-align:top;width:${colWidth};min-width:0;flex:1 1 0;padding:0;margin:0;border-radius:${themeStyle.borderRadius};overflow:hidden;box-shadow:${themeStyle.boxShadow};${borderStyle}${paddingStyle}${bgStyle}${transformStyle}box-sizing:border-box;">
+  <section style="margin:0;line-height:0;${gradientInner}">
+    <img data-src="${img.src}" class="rich_pages wxw-img" style="${imgFillStyle}max-width:100%;display:block;" src="${img.src}">
+  </section>
+</section>`;
+      }).join('\n');
+
+      return `<section style="width:100%;text-align:center;margin:${gap}px 0;">
+  <section style="max-width:100%;width:${imgWidth}%;margin:0 auto;padding:0;display:flex;flex-flow:row wrap;justify-content:center;gap:${gap}px;">
+    ${imgSections}
+  </section>
+</section>`;
+    }
+
+    function renderTextBlock(text, index) {
+      const theme = textThemes[state.themes.textTheme];
+      return theme.render(text, index, state.text.alignMode, state.user);
+    }
+
+    function wrapInArticle(innerHtml) {
+      if (!innerHtml) return '';
+      return `<article class="wechat-article" style="max-width:100%;margin:0 auto;">
+  <section style="width:100%;text-align:center;">
+    ${innerHtml}
+  </section>
+</article>`;
+    }
+
+    // ============================================
+    // PREVIEW
+    // ============================================
+    let previewDebounce = null;
+    function updatePreview() {
+      clearTimeout(previewDebounce);
+      previewDebounce = setTimeout(() => {
+        const html = renderInterleavedLayout();
+        document.getElementById('preview').innerHTML = html;
+      }, 150);
+    }
+
+    function refreshPreview() {
+      clearTimeout(previewDebounce);
+      const html = renderInterleavedLayout();
+      document.getElementById('preview').innerHTML = html;
+      showToast('已刷新预览');
+    }
+
+    // ============================================
+    // COPY
+    // ============================================
+    function copyWechatHTML() {
+      const preview = document.getElementById('preview');
+      if (!preview.innerHTML.trim()) {
+        showToast('预览区域无内容，请先添加图片或配文', true);
+        return;
+      }
+
+      const range = document.createRange();
+      range.selectNodeContents(preview);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.write) {
+          const html = preview.innerHTML;
+          const text = preview.innerText;
+          const blob = new Blob([html], { type: 'text/html' });
+          const textBlob = new Blob([text], { type: 'text/plain' });
+          const item = new ClipboardItem({
+            'text/html': blob,
+            'text/plain': textBlob
+          });
+          navigator.clipboard.write([item]).then(() => {
+            showToast('复制成功！粘贴到公众号编辑器即可');
+          }).catch(() => {
+            document.execCommand('copy');
+            showToast('复制成功！');
+          });
+        } else {
+          document.execCommand('copy');
+          showToast('复制成功！');
+        }
+      } catch(e) {
+        document.execCommand('copy');
+        showToast('复制成功！（如粘贴无效请手动选择复制）');
+      }
+      selection.removeAllRanges();
+    }
+
+    // ============================================
+    // TEXT PROCESSING
+    // ============================================
+    function textShuffle() {
+      const ta = document.getElementById('captionInput');
+      let text = ta.value;
+      let lines = text.split('\n');
+      let shuffled = lines.sort(() => Math.random() - 0.5);
+      ta.value = shuffled.join('\n');
+      state.captionText = ta.value;
+      updatePreview();
+      saveState();
+      showToast('文本已乱序');
+    }
+
+    function textClearEnter() {
+      const ta = document.getElementById('captionInput');
+      let text = ta.value;
+      text = text.replace(/\r\n/g, '').replace(/\r/g, '').replace(/\n{2,}/g, '\n').replace(/\n\s*\n/g, '\n').trim();
+      ta.value = text;
+      state.captionText = text;
+      updatePreview();
+      saveState();
+      showToast('已删除空行');
+    }
+
+    function textPeriodLine() {
+      const ta = document.getElementById('captionInput');
+      let text = ta.value;
+      text = text.replace(/([。！？])/g, '$1\n');
+      text = text.replace(/\n{3,}/g, '\n\n').trim();
+      ta.value = text;
+      state.captionText = text;
+      updatePreview();
+      saveState();
+      showToast('已按句号换行');
+    }
+
+    // ============================================
+    // UI HELPERS
+    // ============================================
+    function showToast(msg, isError) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = isError ? 'show error' : 'show';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.className = '';
+      }, 2500);
+    }
+
+    function toggleRandom() {
+      state.preview.randomOrder = !state.preview.randomOrder;
+      document.getElementById('randomToggle').classList.toggle('active', state.preview.randomOrder);
+      updatePreview();
+      saveState();
+    }
+
+    function toggleMobile() {
+      state.mobilePreview = !state.mobilePreview;
+      document.getElementById('previewWrap').classList.toggle('mobile', state.mobilePreview);
+    }
+
+    function resetAll() {
+      if (!confirm('确定要重置所有内容吗？图片库和配文将被清空。')) return;
+      state.imageSrcList = [];
+      state.captionText = '';
+      document.getElementById('captionInput').value = '';
+      document.getElementById('urlInput').value = '';
+      document.getElementById('parseResult').classList.remove('show');
+      renderGallery();
+      updatePreview();
+      saveState();
+      showToast('已重置');
+    }
+
+    function updateSetting(key, value) {
+      state.preview[key] = parseInt(value) || value;
+      const valEl = document.getElementById(key + 'Val');
+      if (valEl) {
+        if (key === 'imgWidth') valEl.textContent = value + '%';
+        else if (key === 'imgGap') valEl.textContent = value + 'px';
+        else valEl.textContent = value + 'px';
+      }
+      updatePreview();
+      saveState();
+    }
+
+    // ============================================
+    // THEME CARDS
+    // ============================================
+    function renderThemeCards() {
+      // Image themes
+      const imgGrid = document.getElementById('imageThemeGrid');
+      imgGrid.innerHTML = Object.entries(imageThemes).map(([key, theme]) => `
+        <div class="theme-card ${state.themes.imageTheme === key ? 'active' : ''}" onclick="selectImageTheme('${key}')">
+          <div class="theme-preview">${theme.icon}</div>
+          <div class="theme-name">${theme.name}</div>
+        </div>
+      `).join('');
+
+      // Text themes
+      const txtGrid = document.getElementById('textThemeGrid');
+      txtGrid.innerHTML = Object.entries(textThemes).map(([key, theme]) => `
+        <div class="theme-card ${state.themes.textTheme === key ? 'active' : ''}" onclick="selectTextTheme('${key}')">
+          <div class="theme-preview">${theme.icon}</div>
+          <div class="theme-name">${theme.name}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectImageTheme(key) {
+      state.themes.imageTheme = key;
+      renderThemeCards();
+      updatePreview();
+      saveState();
+    }
+
+    function selectTextTheme(key) {
+      state.themes.textTheme = key;
+      renderThemeCards();
+      updatePreview();
+      saveState();
+    }
+
+    // ============================================
+    // INIT & EVENT LISTENERS
+    // ============================================
+    function init() {
+      loadState();
+
+      // Restore UI state
+      document.querySelector(`input[name="columns"][value="${state.preview.columns}"]`).checked = true;
+      document.querySelector(`input[name="shadow"][value="${state.preview.shadow}"]`).checked = true;
+      document.querySelector(`input[name="fillMode"][value="${state.preview.fillMode}"]`).checked = true;
+      document.querySelector(`input[name="align"][value="${state.text.alignMode}"]`).checked = true;
+      document.querySelector(`input[name="blockMode"][value="${state.text.blockMode}"]`).checked = true;
+      document.getElementById('borderRadius').value = state.preview.borderRadius;
+      document.getElementById('borderRadiusVal').textContent = state.preview.borderRadius + 'px';
+      document.getElementById('imgWidth').value = state.preview.imgWidth;
+      document.getElementById('imgWidthVal').textContent = state.preview.imgWidth + '%';
+      document.getElementById('imgGap').value = state.preview.imgGap;
+      document.getElementById('imgGapVal').textContent = state.preview.imgGap + 'px';
+      document.getElementById('oddStrategy').value = state.preview.oddStrategy;
+      document.getElementById('randomToggle').classList.toggle('active', state.preview.randomOrder);
+      document.getElementById('userName').value = state.user.name;
+      document.getElementById('avatarUrl').value = state.user.avatar || '';
+
+      // Render theme cards
+      renderThemeCards();
+
+      // Render gallery
+      renderGallery();
+
+      // Column radio
+      document.querySelectorAll('input[name="columns"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+          state.preview.columns = parseInt(e.target.value);
+          updatePreview();
+          saveState();
+        });
+      });
+
+      // Shadow radio
+      document.querySelectorAll('input[name="shadow"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+          state.preview.shadow = e.target.value;
+          updatePreview();
+          saveState();
+        });
+      });
+
+      // Fill mode radio
+      document.querySelectorAll('input[name="fillMode"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+          state.preview.fillMode = e.target.value;
+          updatePreview();
+          saveState();
+        });
+      });
+
+      // Align radio
+      document.querySelectorAll('input[name="align"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+          state.text.alignMode = e.target.value;
+          updatePreview();
+          saveState();
+        });
+      });
+
+      // Block mode radio
+      document.querySelectorAll('input[name="blockMode"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+          state.text.blockMode = e.target.value;
+          updatePreview();
+          saveState();
+        });
+      });
+
+      // Caption input with debounce
+      let captionDebounce = null;
+      document.getElementById('captionInput').addEventListener('input', e => {
+        state.captionText = e.target.value;
+        clearTimeout(captionDebounce);
+        captionDebounce = setTimeout(() => {
+          updatePreview();
+          saveState();
+        }, 300);
+      });
+
+      // User info inputs
+      document.getElementById('userName').addEventListener('input', e => {
+        state.user.name = e.target.value;
+        updatePreview();
+        saveState();
+      });
+      document.getElementById('avatarUrl').addEventListener('input', e => {
+        state.user.avatar = e.target.value;
+        updatePreview();
+        saveState();
+      });
+
+      // URL input: Ctrl+Enter to parse
+      document.getElementById('urlInput').addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          parseAndAddImages();
+        }
+      });
+
+      // Initial preview
+      updatePreview();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

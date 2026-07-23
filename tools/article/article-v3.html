@@ -1,0 +1,4655 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  AI文章写作工具 - 纯HTML单文件版
+  ============================================================
+  本文件为自包含版本，无需任何外部依赖，可直接部署到github.io
+  
+  特性：
+  - 默认使用DeepSeek API（免代理，浏览器直连）
+  - 支持火山引擎ARK（Cloudflare Worker直连）
+  - 内置editor-v1.html排版工具（通过iframe srcdoc嵌入）
+  - 内置poster-v6.html海报工具（通过iframe srcdoc嵌入）
+  - 支持轻狐AI发布助手插件一键发布到9个平台
+  
+  使用方法：
+  1. 直接用浏览器打开本文件即可使用
+  2. 或部署到github.io：将本文件重命名为index.html上传到仓库
+  3. 默认API Key已预填，可在配置面板中修改
+  
+  注意：由于使用srcdoc嵌入iframe，部分浏览器可能需要https环境
+  才能完整使用所有功能（如剪贴板、图片导出等）
+  ============================================================
+-->
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI文章写作工具 V3 - 火山ARK · 配置驱动</title>
+<style>
+/* main.css - AI文章写作工具主UI样式 */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #232733;
+  --border: #2d3142;
+  --text: #e4e6eb;
+  --text2: #9ca3af;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --radius: 12px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* V3: 平台选择卡片 */
+.platform-cards { display: flex; gap: 12px; margin-bottom: 16px; }
+.platform-card {
+  flex: 1; padding: 16px; border-radius: 12px; cursor: pointer;
+  border: 2px solid var(--border); background: var(--surface2);
+  transition: all 0.3s ease; text-align: center; position: relative;
+}
+.platform-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+.platform-card.active { border-color: var(--primary); background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05)); box-shadow: 0 4px 20px rgba(124,58,237,0.25); }
+.platform-card .p-icon { font-size: 32px; margin-bottom: 8px; display: block; }
+.platform-card .p-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.platform-card .p-desc { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.platform-card .p-badge {
+  position: absolute; top: -6px; right: -6px; padding: 2px 8px;
+  border-radius: 8px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+}
+.platform-card .p-badge.direct { background: #065f46; color: #6ee7b7; }
+.platform-card .p-badge.proxy { background: #78350f; color: #fcd34d; }
+.platform-card .p-status { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.platform-card .p-status.online { background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+.platform-card .p-status.offline { background: #6b7280; }
+
+/* V3: 配置面板美化 */
+.config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.config-group { background: var(--surface2); border-radius: 8px; padding: 12px; border: 1px solid var(--border); }
+.config-group .g-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.config-group .g-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.config-group .g-row:last-child { margin-bottom: 0; }
+.config-group .g-row label { font-size: 12px; color: var(--text2); min-width: 56px; flex-shrink: 0; }
+.config-group .g-row input,.config-group .g-row select,.config-group .g-row textarea { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 12px; outline: none; }
+.config-group .g-row input:focus,.config-group .g-row select:focus,.config-group .g-row textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(124,58,237,0.2); }
+.config-group .eye-toggle { cursor: pointer; font-size: 16px; padding: 4px 6px; user-select: none; opacity: .6; transition: opacity .15s; line-height: 1; }
+.config-group .eye-toggle:hover { opacity: 1; }
+.config-group.span2 { grid-column: span 2; }
+
+/* V3: 视觉效果 */
+.glow-text { background: linear-gradient(135deg, #7c3aed, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+.stat-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); }
+.stat-bar .stat-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text2); }
+.stat-bar .stat-item strong { color: var(--text); }
+@keyframes pulse-glow { 0%,100% { box-shadow: 0 0 5px rgba(124,58,237,0.3); } 50% { box-shadow: 0 0 20px rgba(124,58,237,0.6); } }
+.pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* V3: 平台指示器 */
+.platform-indicator {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px;
+  border-radius: 8px; font-size: 13px; font-weight: 700; white-space: nowrap;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+}
+.platform-indicator.deepseek { border-color: #10b981; color: #6ee7b7; background: rgba(16,185,129,0.1); }
+.platform-indicator.ark { border-color: #f59e0b; color: #fcd34d; background: rgba(245,158,11,0.1); }
+.platform-indicator .pi-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+}
+.platform-indicator .pi-dot.deepseek-dot { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+.platform-indicator .pi-dot.ark-dot { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+}
+.header h1 {
+  font-size: 24px; font-weight: 700;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.header .subtitle { color: var(--text2); font-size: 13px; margin-top: 4px; }
+.header-actions { display: flex; gap: 10px; align-items: center; }
+.config-toggle {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  transition: all 0.2s;
+}
+.config-toggle:hover { border-color: var(--primary); }
+.connection-status {
+  padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;
+}
+.connection-status.online { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid var(--success); }
+.connection-status.offline { background: rgba(239,68,68,0.15); color: var(--error); border: 1px solid var(--error); }
+
+/* Config Panel */
+.config-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  display: none;
+}
+.config-panel.active { display: block; }
+.config-section { margin-bottom: 20px; }
+.config-section-title { font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.config-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+.config-field label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.config-field input, .config-field select, .config-field textarea {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 12px; border-radius: 8px; font-size: 14px;
+  font-family: inherit;
+}
+.config-field textarea { resize: vertical; min-height: 60px; }
+.config-field input:focus, .config-field select:focus, .config-field textarea:focus { outline: none; border-color: var(--primary); }
+.config-field .hint-text { font-size: 11px; color: var(--warning); margin-top: 4px; }
+
+/* Steps Navigation */
+.steps-container {
+  display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px;
+}
+.step-tab {
+  flex: 1; min-width: 110px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: all 0.2s;
+  position: relative; user-select: none;
+}
+.step-tab:hover:not(.locked) { border-color: var(--primary); }
+.step-tab.active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(236,72,153,0.05));
+}
+.step-tab.completed { border-color: var(--success); }
+.step-tab.locked { opacity: 0.4; cursor: not-allowed; }
+.step-tab.locked:hover { border-color: var(--border); }
+.step-tab .step-num {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--surface2);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+  font-weight: 600; margin-right: 6px; vertical-align: middle;
+}
+.step-tab.active .step-num { background: var(--primary); color: white; }
+.step-tab.completed .step-num { background: var(--success); color: white; }
+.step-tab.locked .step-num { background: var(--surface2); color: var(--text2); }
+.step-tab .step-title { font-size: 12px; font-weight: 600; display: inline-block; vertical-align: middle; }
+.step-tab .step-desc { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.step-tab .lock-icon { position: absolute; top: 6px; right: 6px; font-size: 10px; }
+
+/* Panels */
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px; margin-bottom: 20px; display: none;
+}
+.panel.active { display: block; }
+.panel h2 { font-size: 18px; margin-bottom: 8px; }
+.panel .hint { color: var(--text2); font-size: 13px; margin-bottom: 16px; }
+
+/* Content Area */
+.content-area {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px; margin-bottom: 16px; min-height: 80px;
+}
+.content-area:empty::before { content: '等待执行...'; color: var(--text2); font-size: 14px; }
+
+/* Supplement Keywords Input */
+.supplement-box {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; margin-bottom: 12px;
+}
+.supplement-box label {
+  display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px;
+}
+.supplement-box input {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); padding: 8px 10px; border-radius: 6px; font-size: 13px;
+  font-family: inherit;
+}
+.supplement-box input:focus { outline: none; border-color: var(--primary); }
+
+/* Input Group */
+.input-group { margin-bottom: 12px; }
+.input-group label {
+  display: block; font-size: 14px; color: var(--text); margin-bottom: 6px; font-weight: 500;
+}
+.input-group textarea {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 12px; border-radius: 8px; font-size: 14px;
+  font-family: inherit; resize: vertical; min-height: 80px;
+}
+.input-group input[type="text"], .input-group input[type="url"] {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 12px; border-radius: 8px; font-size: 14px;
+  font-family: inherit;
+}
+.input-group textarea:focus, .input-group input:focus { outline: none; border-color: var(--primary); }
+
+/* Action Bar - directly below content */
+.action-bar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 12px 0; border-top: 1px solid var(--border); margin-top: 8px;
+}
+.action-bar .spacer { flex: 1; }
+
+/* Buttons */
+.btn {
+  padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px;
+  font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex;
+  align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover:not(:disabled) { border-color: var(--primary); }
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #059669; }
+.btn-warning { background: var(--warning); color: white; }
+.btn-warning:hover { background: #d97706; }
+.btn-error { background: var(--error); color: white; }
+.btn-error:hover { background: #dc2626; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-exec { min-width: 140px; justify-content: center; }
+.btn-stop { display: none; min-width: 100px; justify-content: center; }
+
+/* Copy Dropdown */
+.copy-dropdown { position: relative; display: inline-block; }
+.copy-menu {
+  position: absolute; top: 100%; left: 0; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px;
+  min-width: 200px; z-index: 100; display: none; margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.copy-menu.show { display: block; }
+.copy-menu-item {
+  display: block; width: 100%; padding: 8px 12px; background: transparent;
+  border: none; color: var(--text); text-align: left; cursor: pointer;
+  border-radius: 6px; font-size: 13px;
+}
+.copy-menu-item:hover { background: var(--surface2); }
+.copy-menu-item .desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+/* Results */
+.result-box {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px; margin-top: 12px; max-height: 400px;
+  overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+}
+.result-box.loading { display: flex; align-items: center; gap: 10px; color: var(--text2); }
+
+/* Loading Spinner */
+.spinner {
+  width: 18px; height: 18px; border: 2px solid var(--border);
+  border-top-color: var(--primary); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,50,50,.4); } 50% { box-shadow: 0 0 0 8px rgba(255,50,50,0); } }
+
+/* Tags */
+.tags-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tag {
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 20px; font-size: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+
+/* Search Results */
+.search-result {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; margin-bottom: 8px;
+}
+.search-result .title { font-weight: 600; color: var(--primary); margin-bottom: 4px; font-size: 14px; }
+.search-result .snippet { font-size: 12px; color: var(--text2); }
+.search-result .url { font-size: 11px; color: var(--text2); margin-top: 4px; word-break: break-all; }
+
+/* Preview Section */
+.preview-section {
+  margin-top: 16px; border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Version Tabs - 公众号文章多版本页签 */
+.version-tabs {
+  display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border); padding-bottom: 8px;
+}
+.version-tab {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px 6px 0 0; padding: 8px 14px; cursor: pointer;
+  font-size: 13px; color: var(--text2); transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.version-tab:hover { border-color: var(--primary); color: var(--text); }
+.version-tab.active {
+  background: var(--primary); color: white; border-color: var(--primary);
+}
+.version-tab .close-btn {
+  background: rgba(255,255,255,0.2); border: none; color: inherit;
+  width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+  font-size: 11px; display: flex; align-items: center; justify-content: center;
+  padding: 0; line-height: 1;
+}
+.version-tab .close-btn:hover { background: rgba(255,255,255,0.4); }
+.version-tab .timestamp { font-size: 10px; opacity: 0.7; }
+.preview-header {
+  background: var(--surface2); padding: 10px 14px; display: flex;
+  justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);
+}
+.preview-header .title { font-size: 13px; font-weight: 600; color: var(--text2); }
+.preview-header .actions { display: flex; gap: 8px; align-items: center; }
+.preview-theme-select {
+  background: var(--surface); border: 2px solid var(--primary); color: var(--text);
+  padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;
+  cursor: pointer; min-width: 120px; outline: none;
+}
+.preview-theme-select:hover { background: var(--surface2); }
+.preview-theme-select option { background: var(--surface); color: var(--text); padding: 4px; }
+
+/* Image Text Format */
+.image-text-format {
+  background: var(--surface2); border-radius: 8px; padding: 16px;
+  display: grid; grid-template-columns: 200px 1fr; gap: 16px;
+}
+.image-text-format .image-placeholder {
+  width: 200px; height: 267px; background: var(--surface);
+  border: 2px dashed var(--border); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); font-size: 13px; text-align: center;
+  background-size: cover; background-position: center; cursor: pointer;
+}
+.image-text-format .content-area-flex { display: flex; flex-direction: column; gap: 10px; }
+.image-text-format .page-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; font-size: 13px; min-height: 60px;
+  white-space: pre-wrap;
+}
+
+/* Status Bar */
+.status-bar {
+  position: fixed; bottom: 20px; right: 20px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px;
+  font-size: 13px; display: none; z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.status-bar.show { display: block; }
+.status-bar.success { border-color: var(--success); color: var(--success); }
+.status-bar.error { border-color: var(--error); color: var(--error); }
+.status-bar.info { border-color: var(--primary); color: var(--primary); }
+.status-bar.warning { border-color: var(--warning); color: var(--warning); }
+
+/* Preview Modal */
+.preview-modal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8); z-index: 2000; display: none;
+  justify-content: center; align-items: center; padding: 20px;
+}
+.preview-modal.show { display: flex; }
+.preview-modal-content {
+  background: var(--surface); border-radius: var(--radius); padding: 20px;
+  max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;
+}
+.preview-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.preview-modal-header h3 { font-size: 16px; }
+.preview-modal-close {
+  background: var(--surface2); border: none; color: var(--text);
+  width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 16px;
+}
+.preview-modal-body {
+  background: white; border-radius: 8px; padding: 24px;
+  max-height: 60vh; overflow-y: auto; color: #333;
+}
+.preview-url-box {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; margin-top: 12px; font-size: 12px; color: var(--text2);
+  word-break: break-all; display: flex; align-items: center; gap: 8px;
+}
+
+/* Poster Tool Iframe */
+.poster-toolbar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 10px 0; margin-bottom: 8px;
+}
+.poster-iframe-wrapper {
+  width: 100%; border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden; background: #f0f2f5;
+}
+.poster-iframe {
+  width: 100%; height: 800px; border: none; display: block;
+}
+
+/* Step 4 Editor Iframe & Publish Section */
+.step4-toolbar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 8px; }
+.step4-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.editor-iframe-wrapper {
+  width: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  background: #eef2f7; margin-bottom: 12px;
+}
+.editor-iframe-toolbar {
+  display: flex; gap: 6px; align-items: center; padding: 8px 12px;
+  background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.editor-iframe-scroll {
+  width: 100%; overflow-x: auto; overflow-y: hidden;
+}
+.editor-iframe {
+  width: 100%; min-width: 1100px; height: 800px; border: none; display: block;
+}
+.publish-section {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; margin-bottom: 12px;
+}
+.publish-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.publish-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.plugin-status { font-size: 12px; padding: 3px 10px; border-radius: 10px; }
+.plugin-status.checking { background: var(--surface2); color: var(--text2); }
+.plugin-status.ready { background: #d4edda; color: #155724; }
+.plugin-status.notready { background: #fff3cd; color: #856404; }
+.publish-buttons {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.btn-publish {
+  background: var(--surface2); border: 1px solid var(--primary); color: var(--primary);
+  padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;
+}
+.btn-publish:hover {
+  background: var(--primary); color: white; transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+/* Article Complete Preview (Step 6) */
+.article-complete-preview { display: flex; flex-direction: column; gap: 16px; }
+.article-meta-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px;
+}
+.article-meta-row { display: flex; align-items: flex-start; gap: 12px; }
+.article-meta-row .meta-label {
+  min-width: 80px; color: var(--text2); font-size: 13px; font-weight: 600;
+  padding-top: 2px; flex-shrink: 0;
+}
+.article-meta-row .meta-value { color: var(--text); font-size: 14px; flex: 1; line-height: 1.6; }
+.article-meta-row .meta-value.title { font-size: 18px; font-weight: 700; color: var(--primary); }
+.article-meta-row .meta-value.summary { color: var(--text2); font-style: italic; }
+.article-meta-row .meta-value.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.article-meta-row .meta-value.stats { color: var(--text2); font-size: 13px; }
+.article-tag {
+  display: inline-block; background: var(--surface2); color: var(--primary);
+  border: 1px solid var(--primary); border-radius: 12px; padding: 2px 10px;
+  font-size: 12px; font-weight: 500;
+}
+.article-cover-img {
+  max-width: 200px; max-height: 150px; border-radius: 8px; border: 1px solid var(--border);
+  object-fit: cover;
+}
+.article-body-preview { background: var(--surface); border-radius: 10px; overflow: hidden; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .config-row { grid-template-columns: 1fr; }
+  .image-text-format { grid-template-columns: 1fr; }
+  .image-text-format .image-placeholder { width: 100%; height: 200px; }
+  .steps-container { flex-wrap: wrap; }
+  .step-tab { min-width: 45%; }
+  .action-bar { flex-wrap: wrap; }
+}
+
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>AI文章创作助手 V3 <span class="square-badge">配置驱动</span></h1>
+      <div class="subtitle">支持 DeepSeek / 火山引擎ARK · 一键生成抖音/公众号/小红书图文</div>
+    </div>
+    <div class="header-actions">
+      <span class="connection-status offline" id="connStatus">未连接</span>
+	      <span class="platform-indicator" id="platformIndicator">✨ 未选择</span>
+      <button class="config-toggle" onclick="AppConfig.toggleConfig()">&#9881;&#65039; 配置</button>
+    </div>
+  </div>
+
+  <!-- Config Panel -->
+  <div class="config-panel" id="configPanel">
+    <div class="config-section">
+      <div class="config-section-title">API 配置</div>
+      <div class="config-row">
+        <div class="config-field">
+          <label>API 平台</label>
+          <select id="apiPlatform" onchange="AppConfig.switchPlatform()">
+            <option value="deepseek">DeepSeek（免代理直连）</option>
+            <option value="ark" selected>火山云（Cloudflare Worker版）</option>
+            <option value="ark">火山云（Cloudflare Worker版）</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <label>API Key</label>
+          <input type="password" id="apiKey" value="" placeholder="请输入API Key（首次使用必填）" onchange="AppConfig.saveApiKey()" />
+        </div>
+        <div class="config-field">
+          <label>模型</label>
+          <select id="modelSelect" onchange="AppConfig.saveAllConfig()">
+            <option value="deepseek-chat">deepseek-chat (V4，快速)</option>
+            <option value="deepseek-reasoner">deepseek-reasoner (R1，深度思考)</option>
+          </select>
+        </div>
+      </div>
+      <div class="config-row">
+        <div class="config-field">
+          <label>Base URL</label>
+          <input type="text" id="baseUrl" value="https://api.deepseek.com/v1" onchange="AppConfig.saveAllConfig()" />
+          <div class="hint-text" id="baseUrlHint">DeepSeek支持CORS，浏览器直连，无需启动代理</div>
+        </div>
+        <div class="config-field">
+          <label>文章字数</label>
+          <select id="wordCount" onchange="AppConfig.saveAllConfig()">
+            <option value="800">短文 (800字)</option>
+            <option value="1500" selected>中篇 (1500字)</option>
+            <option value="2500">长文 (2500字)</option>
+            <option value="4000">深度长文 (4000字)</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <label>联网搜索</label>
+          <select id="searchEnabled" onchange="AppConfig.saveAllConfig()">
+            <option value="true" selected>开启</option>
+            <option value="false">关闭</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <label>参考文章数量</label>
+          <select id="searchCount" onchange="AppConfig.saveAllConfig()">
+            <option value="0" selected>不搜索（省token）</option>
+            <option value="1">1篇</option>
+            <option value="3">3篇</option>
+            <option value="5">5篇</option>
+          </select>
+          <div class="hint-text">搜索国内高浏览量平台（知乎/公众号等）</div>
+        </div>
+      </div>
+      <div class="config-row">
+        <div class="config-field">
+          <label>默认图片URL</label>
+          <input type="text" id="defaultImageUrl" value="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&q=80" onchange="AppConfig.saveAllConfig()" />
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="API.testConnection()">🔌 测试连接</button>
+      </div>
+
+      <!-- 火山云部署教程（可折叠） -->
+      <div class="ark-tutorial" id="arkTutorial" style="display:none;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="AppConfig.toggleArkTutorial()">
+          <strong style="color:var(--primary);">📖 火山云（Cloudflare Worker）部署教程</strong>
+          <span id="arkTutorialIcon" style="font-size:12px;color:var(--text2);">展开 ▾</span>
+        </div>
+        <div id="arkTutorialContent" style="display:none;margin-top:12px;font-size:13px;line-height:1.7;color:var(--text);">
+          <div style="background:#fff7ed;border-left:3px solid #f59e0b;padding:8px 12px;margin-bottom:12px;border-radius:4px;color:#92400e;">
+            <strong>⚠️ 为什么需要这个？</strong><br>
+            浏览器有 CORS 安全限制，HTML 页面无法直接调用火山引擎 API。GitHub Pages 是纯静态托管，不能运行后端。所以需要部署一个免费的 Cloudflare Worker 作为云端代理。
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <strong style="color:var(--primary);">🎯 方案特点</strong><br>
+            • 完全免费（每天 10 万次请求）<br>
+            • API Key 存在 Worker 环境变量里，不暴露给前端<br>
+            • 全球 CDN 加速<br>
+            • 一次部署，GitHub Pages 永久可用<br>
+            • 简单直接，有 API Key 就能用，无需登录
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <strong style="color:var(--primary);">📋 部署步骤（3分钟）</strong><br>
+            <strong>1.</strong> 注册 Cloudflare 账号（免费）：<a href="https://dash.cloudflare.com/sign-up" target="_blank" style="color:var(--primary);">https://dash.cloudflare.com/sign-up</a><br>
+            <strong>2.</strong> 进入 Workers & Pages → Create application → Create Worker<br>
+            <strong>3.</strong> 命名（如 ark-proxy），点击 Deploy<br>
+            <strong>4.</strong> 点击 Edit code，粘贴下方代理代码，Save and deploy<br>
+            <strong>5.</strong> Settings → Variables → 添加环境变量：<br>
+            　　变量名：<code style="background:var(--surface2);color:var(--text);padding:2px 6px;border-radius:3px;">ARK_API_KEY</code><br>
+            　　值：你的火山引擎 API Key（如 <code style="background:var(--surface2);color:var(--text);padding:2px 6px;border-radius:3px;">ark-xxxxxxxx</code>）<br>
+            　　类型：选 Secret（加密）<br>
+            <strong>6.</strong> Save and Deploy，获取 Worker 网址（如 https://ark-proxy.xxx.workers.dev）
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <strong style="color:var(--primary);">📝 代理代码（复制粘贴到 Worker 编辑器）</strong>
+            <pre style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;overflow-x:auto;font-size:12px;line-height:1.4;margin-top:6px;border:1px solid #334155;"><code>// 火山引擎 ARK API 代理（Agent Token 套餐版，纯 API Key 验证）
+const ARK_BASE = 'https://ark.cn-beijing.volces.com/api/plan/v3';
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+export default {
+  async fetch(request, env) {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: CORS_HEADERS });
+    }
+    if (request.method !== 'POST') {
+      return new Response(JSON.stringify({error:'Only POST is supported'}), {
+        status: 405, headers: {'Content-Type':'application/json', ...CORS_HEADERS}
+      });
+    }
+    try {
+      const body = await request.json();
+      const authHeader = request.headers.get('Authorization');
+      let apiKey = '';
+      if (env.ARK_API_KEY) {
+        apiKey = env.ARK_API_KEY;
+      } else if (authHeader &amp;&amp; authHeader.startsWith('Bearer ')) {
+        apiKey = authHeader.slice(7);
+      } else {
+        return new Response(JSON.stringify({error:'未提供 API Key'}), {
+          status: 401, headers: {'Content-Type':'application/json', ...CORS_HEADERS}
+        });
+      }
+      const arkResponse = await fetch(ARK_BASE + '/chat/completions', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+        body: JSON.stringify(body),
+      });
+      if (body.stream &amp;&amp; arkResponse.body) {
+        return new Response(arkResponse.body, {
+          status: arkResponse.status,
+          headers: {'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive', ...CORS_HEADERS}
+        });
+      }
+      const responseData = await arkResponse.text();
+      return new Response(responseData, {
+        status: arkResponse.status,
+        headers: {'Content-Type':'application/json', ...CORS_HEADERS}
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({error:'代理请求失败: '+error.message}), {
+        status: 500, headers: {'Content-Type':'application/json', ...CORS_HEADERS}
+      });
+    }
+  },
+};</code></pre>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <strong style="color:var(--primary);">⚙️ 本工具配置说明</strong><br>
+            部署完成后，在本配置面板中：<br>
+            • <strong>Base URL</strong>：填你的 Worker 网址（如 <code style="background:var(--surface2);color:var(--text);padding:2px 6px;border-radius:3px;">https://ark-proxy.xxx.workers.dev</code>）<br>
+            • <strong>API Key</strong>：留空即可（Key 已存在 Worker 里），也可填上<br>
+            • <strong>模型</strong>：默认 <code style="background:var(--surface2);color:var(--text);padding:2px 6px;border-radius:3px;">ark-code-latest</code>（Auto 模式，自动选模型）
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <strong style="color:var(--primary);">🔑 火山引擎 Key 获取</strong><br>
+            • 购买 Agent Token 套餐后获得，格式：<code style="background:var(--surface2);color:var(--text);padding:2px 6px;border-radius:3px;">ark-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-xxxxxx</code><br>
+            • 火山引擎控制台 → 右上角头像 → API 访问密钥<br>
+            • Base URL 必须用 <code style="background:var(--surface2);color:var(--text);padding:2px 6px;border-radius:3px;">/api/plan/v3</code>（套餐专用），不是 <code style="background:var(--surface2);color:var(--text);padding:2px 6px;border-radius:3px;">/api/v3</code>
+          </div>
+
+          <div style="background:#ecfdf5;border-left:3px solid #10b981;padding:8px 12px;border-radius:4px;color:#065f46;">
+            <strong>✅ 验证部署</strong><br>
+            填好 Base URL 后点击"测试连接"，显示"已连接 · 火山云"即成功。有 API Key 就能用，无需登录。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">公共引用区域（应用于所有文章预览）</div>
+      <div class="config-row">
+        <div class="config-field">
+          <label>作者/品牌名称</label>
+          <input type="text" id="publicAuthor" value="LGQ" onchange="AppConfig.saveAllConfig()" />
+        </div>
+        <div class="config-field">
+          <label>页眉内容（Markdown）</label>
+          <textarea id="publicHeader" placeholder="如：关注我，获取更多干货"></textarea>
+        </div>
+        <div class="config-field">
+          <label>页脚内容（Markdown）</label>
+          <textarea id="publicFooter" placeholder="如：**点赞+收藏**，下期更精彩"></textarea>
+        </div>
+      </div>
+      <div class="config-row">
+        <div class="config-field">
+          <label>默认预览主题</label>
+          <select id="defaultTheme" onchange="AppConfig.saveAllConfig()">
+            <option value="xhs-thin" selected>小红书（细）</option>
+            <option value="xhs">小红书</option>
+            <option value="orange">橙心</option>
+            <option value="purple">姹紫</option>
+            <option value="tender">嫩青</option>
+            <option value="greenery">绿意</option>
+            <option value="crimson">红绯</option>
+            <option value="blue">蓝莹</option>
+            <option value="indigo">兰青</option>
+            <option value="lemon">柠檬黄</option>
+            <option value="techblue">科技蓝</option>
+            <option value="fullstack">全栈蓝</option>
+            <option value="yanqi">雁栖湖</option>
+            <option value="singularity">奇点</option>
+            <option value="cupid">丘比特</option>
+            <option value="shadow">重影</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <label>预览宽度</label>
+          <select id="previewWidth" onchange="AppConfig.saveAllConfig()">
+            <option value="100%">100%</option>
+            <option value="640px" selected>640px (公众号宽度)</option>
+            <option value="480px">480px (手机宽度)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Steps Navigation -->
+  <div class="steps-container" id="stepsContainer">
+    <div class="step-tab active" data-step="1" onclick="StepsUI.jumpToStep(1)">
+      <div class="step-num">1</div><div class="step-title">输入主题</div><div class="step-desc">关键词/方向</div>
+    </div>
+    <div class="step-tab locked" data-step="2" onclick="StepsUI.jumpToStep(2)">
+      <span class="lock-icon">🔒</span><div class="step-num">2</div><div class="step-title">AI拆解搜索</div><div class="step-desc">提取价值点</div>
+    </div>
+    <div class="step-tab locked" data-step="3" onclick="StepsUI.jumpToStep(3)">
+      <span class="lock-icon">🔒</span><div class="step-num">3</div><div class="step-title">抖音长文</div><div class="step-desc">口播文案</div>
+    </div>
+    <div class="step-tab locked" data-step="4" onclick="StepsUI.jumpToStep(4)">
+      <span class="lock-icon">🔒</span><div class="step-num">4</div><div class="step-title">公众号文章</div><div class="step-desc">深度长文</div>
+    </div>
+    <div class="step-tab locked" data-step="5" onclick="StepsUI.jumpToStep(5)">
+      <span class="lock-icon">🔒</span><div class="step-num">5</div><div class="step-title">小红书图文</div><div class="step-desc">笔记海报</div>
+    </div>
+    <div class="step-tab locked" data-step="6" onclick="StepsUI.jumpToStep(6)">
+      <span class="lock-icon">🔒</span><div class="step-num">6</div><div class="step-title">完成</div><div class="step-desc">创作总结</div>
+    </div>
+  </div>
+
+  <!-- Step 1: Input -->
+  <div class="panel active" id="panel1">
+    <h2>第一步：输入主题信息</h2>
+    <div class="hint">提供关键词、创作方向或标题，系统将整合这些信息作为创作基础</div>
+    
+    <!-- 历史关键词标签区域（由keyword-cache.js动态渲染） -->
+    <div id="keywordTagsContainer"></div>
+    
+    <div class="input-group">
+      <label>关键词 / 主题方向 <span style="color:var(--text2);font-size:12px;">（用逗号或换行分隔，点击上方标签快速添加）</span></label>
+      <textarea id="step1Keywords" placeholder="例如：&#10;认知觉醒, 个人成长, 深度学习&#10;或者输入一个完整的标题方向..."></textarea>
+    </div>
+    <div class="input-group">
+      <label>补充说明 <span style="color:var(--text2);font-size:12px;">（选填）</span></label>
+      <textarea id="step1Description" placeholder="例如：面向职场新人的成长指南，语气轻松接地气，要有实操方法...&#10;点击右侧「智能构建」按钮可快速生成补充说明"></textarea>
+    </div>
+    <div class="supplement-box">
+      <label>📝 补充词条 <span style="color:var(--text2);">（选填，作为AI参考）</span></label>
+      <input type="text" id="step1Supplement" placeholder="补充关键词，如：元认知、刻意练习、心流..." />
+    </div>
+    <div id="step1Result"></div>
+    <div class="action-bar">
+      <button class="btn btn-secondary" disabled>← 上一步</button>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-exec" onclick="executeStep1()">整合并进入下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: AI Analysis & Search -->
+  <div class="panel" id="panel2">
+    <h2>第二步：AI拆解关键词 + 联网搜索</h2>
+    <div class="hint">AI将理解关键词意图，提取核心概念，并在互联网上搜索相关有价值内容</div>
+    <div class="supplement-box">
+      <label>📝 补充词条 <span style="color:var(--text2);">（选填，作为AI参考）</span></label>
+      <input type="text" id="step2Supplement" placeholder="补充关键词，引导AI拆解方向..." />
+    </div>
+    <div id="step2Analysis" class="content-area"></div>
+    <div id="step2SearchResults"></div>
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="StepsUI.jumpToStep(1)">← 上一步</button>
+      <button class="btn btn-warning btn-exec" onclick="executeStep2()">🔄 重新执行</button>
+      <button class="btn btn-error btn-stop" onclick="StepsUI.stopExecution(2)">⏹ 终止</button>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="step2NextBtn" onclick="StepsUI.goNextStep(2)" disabled>完成，下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Douyin Long Article -->
+  <div class="panel" id="panel3">
+    <h2>第三步：生成抖音口播长文</h2>
+    <div class="hint">基于价值点生成高质量口播长文，包含小段落标题和关键词加粗</div>
+    <div class="supplement-box">
+      <label>📝 补充词条 <span style="color:var(--text2);">（选填，作为AI参考）</span></label>
+      <input type="text" id="step3Supplement" placeholder="补充关键词，如：金句、案例方向..." />
+    </div>
+    <div id="step3Result" class="content-area"></div>
+    <!-- editor-v1 排版工具iframe（抖音长文） -->
+    <div class="editor-iframe-wrapper">
+      <div class="editor-iframe-toolbar">
+        <button class="btn btn-primary btn-sm" onclick="fillEditorFromStep3()">📥 填入抖音长文</button>
+        <button class="btn btn-secondary btn-sm" onclick="insertCoverImageToStep3()">🖼 插入封面图片</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearStep3Editor()">🗑 清空编辑器</button>
+        <span id="step3EditorStatus" style="color:var(--text2);font-size:12px;margin-left:8px;"></span>
+      </div>
+      <iframe id="step3EditorFrame" src="tools/editor-v1.html" class="editor-iframe" frameborder="0"></iframe>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="StepsUI.jumpToStep(2)">← 上一步</button>
+      <button class="btn btn-warning btn-exec" onclick="executeStep3()">🔄 重新生成</button>
+      <button class="btn btn-error btn-stop" onclick="StepsUI.stopExecution(3)">⏹ 终止</button>
+      <div class="spacer"></div>
+      <div class="copy-dropdown">
+        <button class="btn btn-success" id="step3CopyBtn" onclick="StepsUI.toggleCopyMenu('step3CopyMenu')" disabled>📋 复制 ▾</button>
+        <div class="copy-menu" id="step3CopyMenu">
+          <button class="copy-menu-item" onclick="copyAsMarkdown('step3')">复制MD标签文本<div class="desc">包含**加粗**和###标题的原始文本</div></button>
+          <button class="copy-menu-item" onclick="copyAsStyledHtml('step3')">复制排版样式<div class="desc">可粘贴到公众号/编辑器的完整样式</div></button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="step3NextBtn" onclick="StepsUI.goNextStep(3)" disabled>下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 4: 公众号文章（嵌入editor排版工具 + 发布功能） -->
+  <div class="panel" id="panel4">
+    <h2>第四步：生成公众号文章</h2>
+    <div class="hint">基于抖音长文，生成适合公众号的深度文章，使用专业排版工具预览，支持一键发布到各平台</div>
+    <div class="step4-toolbar" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">
+      <div class="supplement-box" style="flex:1;min-width:200px;margin-bottom:0">
+        <label>📝 补充词条 <span style="color:var(--text2);">（选填，作为AI参考）</span></label>
+        <input type="text" id="step4Supplement" placeholder="补充关键词，如：深度分析、数据支撑..." />
+      </div>
+      <button class="btn btn-error btn-stop" onclick="StepsUI.stopExecution(4)">⏹ 终止</button>
+    </div>
+    <!-- 版本Tab页签（由renderStep4Versions渲染） -->
+    <div id="step4Result" class="content-area"></div>
+    <!-- editor-v1 排版工具iframe -->
+    <div class="editor-iframe-wrapper">
+      <div class="editor-iframe-toolbar">
+        <button class="btn btn-primary btn-sm" onclick="fillEditorFromStep4()">📥 填入公众号文章</button>
+        <button class="btn btn-secondary btn-sm" onclick="insertCoverImage()">🖼 插入封面图片</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearEditorContent()">🗑 清空编辑器</button>
+        <span id="editorStatus" style="color:var(--text2);font-size:12px;margin-left:8px;"></span>
+      </div>
+      <iframe id="editorFrame" src="tools/editor-v1.html" class="editor-iframe" frameborder="0"></iframe>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="StepsUI.jumpToStep(3)">← 上一步</button>
+      <button class="btn btn-warning btn-exec" onclick="executeStep4()">🔄 重新生成</button>
+      <button class="btn btn-error btn-stop" onclick="StepsUI.stopExecution(4)">⏹ 终止</button>
+      <div class="spacer"></div>
+      <button class="btn btn-success" id="step4CopyBtn" onclick="copyAsStyledHtml('step4')" disabled>📋 复制排版</button>
+      <button class="btn btn-primary" id="step4NextBtn" onclick="StepsUI.goNextStep(4)" disabled>下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 5: 小红书图文成图 -->
+  <div class="panel" id="panel5">
+    <h2>第五步：小红书笔记</h2>
+    <div class="hint">AI精炼公众号内容为小红书风格短文 · 简洁有干货 · 自动填入海报工具</div>
+    <div class="step4-toolbar" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;">
+      <div class="supplement-box" style="flex:1;min-width:200px;margin-bottom:0;">
+        <label>📝 补充要求 <span style="color:var(--text2);">（选填，如：突出案例、加上数据...）</span></label>
+        <input type="text" id="step5Supplement" placeholder="如：多用emoji，口语化一些..." />
+      </div>
+      <button class="btn btn-warning btn-exec" onclick="executeStep5()">🤖 AI 精炼为小红书风格</button>
+    </div>
+    <div id="step5Result" class="content-area">
+      <div style="color:var(--text2);font-size:13px;padding:8px;">点击「AI 精炼为小红书风格」自动生成短文，或直接在下方向海报工具填入内容</div>
+    </div>
+    <div class="poster-toolbar" style="margin-top:8px;">
+      <button class="btn btn-primary btn-sm" onclick="fillPosterFromStep5()">📥 填入精炼内容</button>
+      <button class="btn btn-outline btn-sm" onclick="fillPosterFromStep4()">📥 公众号原文</button>
+      <button class="btn btn-outline btn-sm" onclick="fillPosterFromStep3()">📥 抖音长文</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearPosterContent()">🗑️ 清空</button>
+      <button class="btn btn-success btn-sm" onclick="reloadPoster()">🔄 重载</button>
+      <span style="color:var(--text2);font-size:12px;margin-left:8px;">模板切换 · 图片上传 · 一键下载ZIP</span>
+    </div>
+    <div class="poster-iframe-wrapper">
+      <iframe id="posterFrame" src="tools/poster-v6.html" class="poster-iframe" frameborder="0"></iframe>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="StepsUI.jumpToStep(3)">← 上一步</button>
+      <button class="btn btn-primary" id="step5NextBtn" onclick="StepsUI.goNextStep(5)" disabled>完成，下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 6: 完成 -->
+  <div class="panel" id="panel6">
+    <h2>第六步：创作完成</h2>
+    <div class="hint">您的图文内容已全部生成，点击下方按钮一键复制或发布到各平台</div>
+    <div id="step6Summary" class="content-area"></div>
+
+    <!-- 一键下载按钮区 -->
+    <div class="action-bar" style="margin-top:16px;flex-wrap:wrap;">
+      <span style="font-size:13px;font-weight:600;color:var(--text2);margin-right:8px;">⬇ 下载 MD 文件</span>
+      <button class="btn btn-primary btn-sm" onclick="downloadArticle('step3')" id="dlStep3Btn" disabled>📄 抖音长文</button>
+      <button class="btn btn-success btn-sm" onclick="downloadArticle('step4')" id="dlStep4Btn" disabled>📄 公众号文章</button>
+      <button class="btn btn-accent btn-sm" onclick="downloadArticle('step5')" id="dlStep5Btn" disabled>📄 小红书笔记</button>
+    </div>
+
+    <!-- 一键复制按钮区 -->
+    <div class="action-bar" style="margin-top:8px;">
+      <button class="btn btn-success" onclick="copyAllAsMarkdown()">📋 一键复制（Markdown）</button>
+      <button class="btn btn-success" onclick="copyAllAsStyledHtml()">📋 一键复制（排版样式）</button>
+      <button class="btn btn-success" onclick="copyAllAsPlainText()">📋 一键复制（纯文本）</button>
+    </div>
+    
+    <!-- 一键发布按钮区 -->
+    <div class="publish-section">
+      <div class="publish-header">
+        <span class="publish-title">🚀 一键发布到各平台</span>
+        <span id="pluginStatus" class="plugin-status checking">检测插件中...</span>
+      </div>
+      <div class="publish-buttons" id="publishButtons">
+        <button class="btn btn-publish" data-platform="wechat" onclick="publishToPlatform('wechat')">💬 微信公众号</button>
+        <button class="btn btn-publish" data-platform="xiaohongshu" onclick="publishToPlatform('xiaohongshu')">📕 小红书</button>
+        <button class="btn btn-publish" data-platform="douyin" onclick="publishToPlatform('douyin')">🎵 抖音</button>
+        <button class="btn btn-publish" data-platform="bilibili" onclick="publishToPlatform('bilibili')">📺 B站专栏</button>
+        <button class="btn btn-publish" data-platform="toutiao" onclick="publishToPlatform('toutiao')">📰 今日头条</button>
+        <button class="btn btn-publish" data-platform="zhihu" onclick="publishToPlatform('zhihu')">📘 知乎</button>
+        <button class="btn btn-publish" data-platform="aliyun" onclick="publishToPlatform('aliyun')">☁️ 阿里云</button>
+        <button class="btn btn-publish" data-platform="csdn" onclick="publishToPlatform('csdn')">💻 CSDN</button>
+        <button class="btn btn-publish" data-platform="baijiahao" onclick="publishToPlatform('baijiahao')">🔍 百家号</button>
+      </div>
+    </div>
+    
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="StepsUI.jumpToStep(5)">← 上一步</button>
+      <button class="btn btn-primary" onclick="StepsUI.jumpToStep(1)">🔄 开始新创作</button>
+    </div>
+  </div>
+</div>
+
+<!-- Status Bar -->
+<div class="status-bar" id="statusBar"></div>
+
+<!-- Preview Modal -->
+<div class="preview-modal" id="previewModal">
+  <div class="preview-modal-content">
+    <div class="preview-modal-header">
+      <h3 id="previewModalTitle">文章预览</h3>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select class="preview-theme-select" id="modalThemeSelect" onchange="updateModalTheme()"></select>
+        <button class="btn btn-secondary btn-sm" onclick="generatePreviewUrl()">🔗 生成网址</button>
+        <button class="preview-modal-close" onclick="closePreviewModal()">✕</button>
+      </div>
+    </div>
+    <div class="preview-modal-body" id="previewModalBody"></div>
+    <div class="preview-url-box" id="previewUrlBox" style="display:none;">
+      <span id="previewUrlText"></span>
+      <button class="btn btn-secondary btn-sm" onclick="copyPreviewUrl()">复制</button>
+      <button class="btn btn-secondary btn-sm" onclick="openPreviewUrl()">打开</button>
+    </div>
+  </div>
+</div>
+
+<!-- JS Modules (load order matters) -->
+<script>
+/**
+ * config.js - 应用配置和状态管理
+ */
+
+// API平台配置：每个平台的默认设置
+const API_PLATFORMS = {
+  deepseek: {
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com/v1',
+    apiKey: '',  // 不再硬编码，从 localStorage 读取
+    models: [
+      { value: 'deepseek-chat', label: 'deepseek-chat (V4，快速)' },
+      { value: 'deepseek-reasoner', label: 'deepseek-reasoner (R1，深度思考)' }
+    ],
+    needsProxy: false,
+    hint: 'DeepSeek支持CORS，浏览器直连，无需启动代理'
+  },
+  ark: {
+    name: '火山引擎ARK',
+    // 默认使用 Cloudflare Workers 代理（用户部署后填入自己的Workers URL）
+    // 部署方法见 cloudflare-worker/worker.js 顶部注释
+    baseUrl: 'https://worker-ark-huoshan-proxy.liguiqiang.workers.dev',
+    apiKey: '',  // 不再硬编码，从 localStorage 读取
+    models: [
+      { value: 'ark-code-latest', label: 'ark-code-latest (Agent Token套餐，Auto模式)' },
+      { value: 'doubao-seed-2.0-pro', label: 'doubao-seed-2.0-pro (需开通权限)' },
+      { value: 'doubao-seed-2.0-mini', label: 'doubao-seed-2.0-mini (需开通权限)' },
+      { value: 'deepseek-v4-pro', label: 'deepseek-v4-pro (需开通权限)' },
+      { value: 'kimi-k3', label: 'kimi-k3 (需开通权限)' }
+    ],
+    needsProxy: true,
+    hint: '需Cloudflare Workers云端代理。Agent Token套餐用 /api/plan/v3，model用ark-code-latest'
+  }
+};
+
+const AppConfig = {
+  /**
+   * 获取当前平台名
+   */
+  getCurrentPlatform() {
+    return document.getElementById('apiPlatform')?.value || 'ark';
+  },
+
+  /**
+   * 从 localStorage 读取指定平台的 API Key
+   */
+  getSavedApiKey(platform) {
+    platform = platform || this.getCurrentPlatform();
+    try {
+      return localStorage.getItem('apiKey_' + platform) || '';
+    } catch (e) {
+      return '';
+    }
+  },
+
+  /**
+   * 保存当前 API Key 到 localStorage（按平台分别保存）
+   */
+  saveApiKey() {
+    const platform = this.getCurrentPlatform();
+    const key = document.getElementById('apiKey')?.value || '';
+    try {
+      localStorage.setItem('apiKey_' + platform, key);
+    } catch (e) { /* 静默失败 */ }
+    // 同时保存所有配置
+    this.saveAllConfig();
+  },
+
+  /**
+   * 校验 API Key 是否已填写，未填写则弹出提示并打开配置面板
+   * @returns {boolean} 是否通过校验
+   */
+  validateApiKey() {
+    const key = document.getElementById('apiKey')?.value || '';
+    if (!key || !key.trim()) {
+      StepsUI.showStatus('请先填写 API Key（点击右上角⚙️配置）', 'error');
+      const panel = document.getElementById('configPanel');
+      if (panel && !panel.classList.contains('active')) panel.classList.add('active');
+      setTimeout(() => { const input = document.getElementById('apiKey'); if (input) input.focus(); }, 100);
+      return false;
+    }
+    return true;
+  },
+
+  /** 保存所有配置到 localStorage（用户自定义，永久保留） */
+  saveAllConfig() {
+    try {
+      var fields = {
+        apiPlatform: 'apiPlatform',
+        model: 'modelSelect',
+        baseUrl: 'baseUrl',
+        wordCount: 'wordCount',
+        searchEnabled: 'searchEnabled',
+        searchCount: 'searchCount',
+        defaultImage: 'defaultImageUrl',
+        publicAuthor: 'publicAuthor',
+        publicHeader: 'publicHeader',
+        publicFooter: 'publicFooter',
+        defaultTheme: 'defaultTheme',
+        previewWidth: 'previewWidth'
+      };
+      var obj = {};
+      for (var key in fields) {
+        var el = document.getElementById(fields[key]);
+        obj[key] = el ? el.value : '';
+      }
+      localStorage.setItem('article_config_v3', JSON.stringify(obj));
+    } catch(e) { /* localStorage 不可用时静默失败 */ }
+  },
+
+  /** 从 localStorage 恢复所有配置 */
+  loadAllConfig() {
+    try {
+      var saved = localStorage.getItem('article_config_v3');
+      if (!saved) return;
+      var obj = JSON.parse(saved);
+      for (var key in obj) {
+        var fieldMap = {
+          apiPlatform: 'apiPlatform', model: 'modelSelect', baseUrl: 'baseUrl',
+          wordCount: 'wordCount', searchEnabled: 'searchEnabled',
+          searchCount: 'searchCount', defaultImage: 'defaultImageUrl',
+          publicAuthor: 'publicAuthor', publicHeader: 'publicHeader',
+          publicFooter: 'publicFooter', defaultTheme: 'defaultTheme',
+          previewWidth: 'previewWidth'
+        };
+        var elId = fieldMap[key];
+        if (elId) { var el = document.getElementById(elId); if (el) el.value = obj[key]; }
+      }
+    } catch(e) {}
+  },
+
+  getConfig() {
+    const platform = document.getElementById('apiPlatform')?.value || 'ark';
+    return {
+      platform: platform,
+      apiKey: document.getElementById('apiKey')?.value || '',
+      model: document.getElementById('modelSelect')?.value || 'deepseek-chat',
+      baseUrl: (document.getElementById('baseUrl')?.value || 'https://api.deepseek.com/v1').replace(/\/$/, ''),
+      defaultImage: document.getElementById('defaultImageUrl')?.value || '',
+      wordCount: parseInt(document.getElementById('wordCount')?.value || '1500'),
+      searchEnabled: document.getElementById('searchEnabled')?.value === 'true',
+      searchCount: parseInt(document.getElementById('searchCount')?.value || '0'),
+      publicAuthor: document.getElementById('publicAuthor')?.value || '',
+      publicHeader: document.getElementById('publicHeader')?.value || '',
+      publicFooter: document.getElementById('publicFooter')?.value || '',
+      defaultTheme: document.getElementById('defaultTheme')?.value || 'xhs-thin',
+      previewWidth: document.getElementById('previewWidth')?.value || '640px'
+    };
+  },
+
+  /**
+   * 切换API平台时，自动填充该平台的默认配置
+   */
+  switchPlatform() {
+    const platform = document.getElementById('apiPlatform').value;
+    const config = API_PLATFORMS[platform];
+    if (!config) return;
+
+    // 更新API Key（优先从 localStorage 读取，其次用配置默认值）
+    const savedKey = this.getSavedApiKey(platform);
+    document.getElementById('apiKey').value = savedKey || config.apiKey;
+
+    // 更新Base URL
+    document.getElementById('baseUrl').value = config.baseUrl;
+
+    // 更新提示
+    const hint = document.getElementById('baseUrlHint');
+    if (hint) hint.textContent = config.hint;
+
+    // 更新模型选项
+    const modelSelect = document.getElementById('modelSelect');
+    modelSelect.innerHTML = config.models.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+
+    // 重置连接状态
+    const statusEl = document.getElementById('connStatus');
+    statusEl.className = 'connection-status offline';
+    statusEl.textContent = '未连接';
+
+    // 控制火山云教程显示（只在使用火山云时显示）
+    const tutorial = document.getElementById('arkTutorial');
+    if (tutorial) {
+      tutorial.style.display = (platform === 'ark') ? 'block' : 'none';
+    }
+
+    // 保存平台选择到配置
+    this.saveAllConfig();
+
+    const platformName = config.name === '火山引擎ARK' ? '火山云' : config.name;
+    StepsUI.showStatus(`已切换到${platformName}`, 'info');
+  },
+
+  /**
+   * 折叠/展开火山云部署教程
+   */
+  toggleArkTutorial() {
+    const content = document.getElementById('arkTutorialContent');
+    const icon = document.getElementById('arkTutorialIcon');
+    if (content.style.display === 'none') {
+      content.style.display = 'block';
+      icon.textContent = '收起 ▴';
+    } else {
+      content.style.display = 'none';
+      icon.textContent = '展开 ▾';
+    }
+  },
+
+  /**
+   * 页面初始化时加载保存的 API Key
+   */
+  initApiKey() {
+    const platform = this.getCurrentPlatform();
+    const savedKey = this.getSavedApiKey(platform);
+    if (savedKey) {
+      const input = document.getElementById('apiKey');
+      if (input) input.value = savedKey;
+    }
+  },
+
+  toggleConfig() {
+    document.getElementById('configPanel').classList.toggle('active');
+  }
+};
+
+const AppState = {
+  step1Output: null,
+  step2Keywords: null,
+  step2SearchResults: null,
+  step2ValuePoints: null,
+  step3Article: null,
+  step3Metadata: null,
+  step4Article: null,
+  step4Versions: [],
+  step4CurrentVersion: 0,
+  step4Metadata: null,
+  step5ImageText: null,
+  step5XHSContent: null,
+  step6Completed: false,
+  currentStep: 1,
+  completedSteps: [],
+  currentPreviewTarget: null,
+  abortControllers: {},
+
+  markCompleted(step) {
+    if (!this.completedSteps.includes(step)) {
+      this.completedSteps.push(step);
+    }
+  },
+
+  isCompleted(step) {
+    return this.completedSteps.includes(step);
+  },
+
+  canAccessStep(step) {
+    if (step === 1) return true;
+    if ((step === 4 || step === 5) && this.isCompleted(3)) return true;
+    return this.isCompleted(step - 1);
+  }
+};
+
+</script>
+<script>
+/**
+ * themes.js - 14种文章排版主题模板
+ * 来源: shengmingzhishu.github.io/tools/wechat/editor-v1.html
+ * 每个主题包含完整的元素样式，用于预览和复制
+ */
+const TEMPLATES = [
+  { id:'xhs-thin', name:'小红书（细）', accent:'#fe2c55', hSizes:{h1:22,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#333333;background:#ffffff;line-height:2.0;font-size:16px;font-weight:300;letter-spacing:0.5px;',
+      'h1':'color:#fe2c55;font-weight:400;text-align:center;margin:28px 0 14px;border-bottom:1px solid #fe2c55;padding-bottom:8px;letter-spacing:2px;line-height:2.0;',
+      'h2':'color:#fe2c55;font-weight:400;margin:24px 0 12px;border-left:3px solid #fe2c55;padding:2px 0 2px 10px;line-height:1.8;',
+      'h3':'color:#fe2c55;font-weight:400;margin:20px 0 8px;border-bottom:1px solid #ffd6de;padding-bottom:4px;line-height:1.8;',
+      'blockquote':'border-left:4px solid #fe2c55;color:#555;background:#fff5f7;margin:14px 0;padding:8px 14px;border-radius:0 6px 6px 0;font-size:15px;font-weight:300;line-height:2.0;',
+      'hr':'border:none;border-top:1px dashed #ffb3c1;margin:20px 0;',
+      'a':'color:#fe2c55;text-decoration:none;border-bottom:1px solid #fe2c55;',
+      'code':'background:#fff0f2;color:#fe2c55;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#fff5f7;padding:12px;border-radius:8px;overflow:auto;border:1px solid #ffe0e6;font-size:15px;'
+    }
+  },
+  { id:'xhs', name:'小红书', accent:'#fe2c55', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#333333;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#fe2c55;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #fe2c55;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#fe2c55;padding:6px 16px;border-radius:20px;display:inline-block;',
+      'h3':'color:#fe2c55;font-weight:bold;margin:20px 0 8px;border-left:4px solid #fe2c55;padding:3px 0 3px 10px;',
+      'blockquote':'border-left:4px solid #fe2c55;color:#555;background:#fff5f7;margin:14px 0;padding:8px 14px;border-radius:0 8px 8px 0;',
+      'hr':'border:none;border-top:1px dashed #ffb3c1;margin:20px 0;',
+      'a':'color:#fe2c55;text-decoration:none;border-bottom:1px solid #fe2c55;',
+      'code':'background:#fff0f2;color:#fe2c55;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#fff5f7;padding:12px;border-radius:8px;overflow:auto;border:1px solid #ffe0e6;'
+    }
+  },
+  { id:'orange', name:'橙心', accent:'#f27979', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#f27979;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #f27979;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#f27979;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#f27979;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #f27979;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #f27979;color:#595959;background:#f8f8f8;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #f27979;margin:20px 0;',
+      'a':'color:#f27979;text-decoration:none;border-bottom:1px solid #f27979;',
+      'code':'background:#fff5f5;color:#f27979;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#fff5f5;padding:12px;border-radius:6px;overflow:auto;border:1px solid #ffe0e0;'
+    }
+  },
+  { id:'purple', name:'姹紫', accent:'#6f42c1', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#6f42c1;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #6f42c1;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#6f42c1;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#6f42c1;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #6f42c1;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #6f42c1;color:#595959;background:#f8f6fb;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #6f42c1;margin:20px 0;',
+      'a':'color:#6f42c1;text-decoration:none;border-bottom:1px solid #6f42c1;',
+      'code':'background:#f5f0fb;color:#6f42c1;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#f5f0fb;padding:12px;border-radius:6px;overflow:auto;border:1px solid #e3d5f5;'
+    }
+  },
+  { id:'tender', name:'嫩青', accent:'#42b983', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#42b983;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #42b983;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#42b983;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#42b983;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #42b983;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #42b983;color:#595959;background:#f6fbf8;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #42b983;margin:20px 0;',
+      'a':'color:#42b983;text-decoration:none;border-bottom:1px solid #42b983;',
+      'code':'background:#f0faf5;color:#2c8d65;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#f0faf5;padding:12px;border-radius:6px;overflow:auto;border:1px solid #d5f0e3;'
+    }
+  },
+  { id:'greenery', name:'绿意', accent:'#009a61', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#009a61;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #009a61;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#009a61;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#009a61;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #009a61;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #009a61;color:#595959;background:#f5fbf8;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #009a61;margin:20px 0;',
+      'a':'color:#009a61;text-decoration:none;border-bottom:1px solid #009a61;',
+      'code':'background:#eef9f3;color:#006640;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#eef9f3;padding:12px;border-radius:6px;overflow:auto;border:1px solid #cdeedd;'
+    }
+  },
+  { id:'crimson', name:'红绯', accent:'#d93535', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#d93535;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #d93535;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#d93535;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#d93535;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #d93535;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #d93535;color:#595959;background:#fdf6f6;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #d93535;margin:20px 0;',
+      'a':'color:#d93535;text-decoration:none;border-bottom:1px solid #d93535;',
+      'code':'background:#fdecec;color:#a02020;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#fdecec;padding:12px;border-radius:6px;overflow:auto;border:1px solid #f7d4d4;'
+    }
+  },
+  { id:'blue', name:'蓝莹', accent:'#3eb0e0', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#3eb0e0;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #3eb0e0;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#3eb0e0;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#3eb0e0;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #3eb0e0;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #3eb0e0;color:#595959;background:#f4fbfd;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #3eb0e0;margin:20px 0;',
+      'a':'color:#3eb0e0;text-decoration:none;border-bottom:1px solid #3eb0e0;',
+      'code':'background:#eef9fd;color:#1f7fa8;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#eef9fd;padding:12px;border-radius:6px;overflow:auto;border:1px solid #d2eef9;'
+    }
+  },
+  { id:'indigo', name:'兰青', accent:'#3f51b5', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#3f51b5;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #3f51b5;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#3f51b5;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#3f51b5;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #3f51b5;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #3f51b5;color:#595959;background:#f5f6fc;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #3f51b5;margin:20px 0;',
+      'a':'color:#3f51b5;text-decoration:none;border-bottom:1px solid #3f51b5;',
+      'code':'background:#eef0fb;color:#2a3a9a;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#eef0fb;padding:12px;border-radius:6px;overflow:auto;border:1px solid #d2d6f4;'
+    }
+  },
+  { id:'lemon', name:'柠檬黄', accent:'#d9a300', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#b8860b;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #d9a300;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#d9a300;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#b8860b;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #d9a300;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #d9a300;color:#595959;background:#fffdf2;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #d9a300;margin:20px 0;',
+      'a':'color:#b8860b;text-decoration:none;border-bottom:1px solid #d9a300;',
+      'code':'background:#fdf6e3;color:#8a6300;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#fdf6e3;padding:12px;border-radius:6px;overflow:auto;border:1px solid #f0e0a8;'
+    }
+  },
+  { id:'techblue', name:'科技蓝', accent:'#2782f5', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#3f3f3f;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:0.5px;',
+      'h1':'color:#2782f5;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #2782f5;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#2782f5;font-weight:bold;margin:24px 0 12px;border-bottom:1px solid #2782f5;padding-bottom:6px;',
+      'h3':'color:#2782f5;font-weight:bold;margin:20px 0 8px;border-left:4px solid #2782f5;padding:3px 0 3px 10px;',
+      'blockquote':'border-left:4px solid #2782f5;color:#3f3f3f;background:#f5f9fe;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px solid #2782f5;margin:20px 0;',
+      'a':'color:#2782f5;text-decoration:none;',
+      'code':'background:#eef5fe;color:#1858b8;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#1f2937;color:#e5e7eb;padding:14px;border-radius:6px;overflow:auto;'
+    }
+  },
+  { id:'fullstack', name:'全栈蓝', accent:'#1e80ff', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#3f3f3f;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:0.5px;',
+      'h1':'color:#1e80ff;font-weight:bold;text-align:center;margin:28px 0 14px;letter-spacing:2px;',
+      'h2':'color:#1e80ff;font-weight:bold;margin:24px 0 12px;border-left:5px solid #1e80ff;padding:4px 0 4px 12px;',
+      'h3':'color:#1e80ff;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #b3d4ff;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #1e80ff;color:#3f3f3f;background:#f5f9ff;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #1e80ff;margin:20px 0;',
+      'a':'color:#1e80ff;text-decoration:none;',
+      'code':'background:#eef5ff;color:#1459b3;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#eef5ff;padding:12px;border-radius:6px;overflow:auto;border:1px solid #cfe4ff;'
+    }
+  },
+  { id:'yanqi', name:'雁栖湖', accent:'#13adad', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#13adad;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #13adad;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#13adad;padding:5px 14px;border-radius:4px;display:inline-block;',
+      'h3':'color:#13adad;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #13adad;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #13adad;color:#595959;background:#f2fbfb;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #13adad;margin:20px 0;',
+      'a':'color:#13adad;text-decoration:none;border-bottom:1px solid #13adad;',
+      'code':'background:#e9fafa;color:#0a7a7a;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#e9fafa;padding:12px;border-radius:6px;overflow:auto;border:1px solid #c4f0f0;'
+    }
+  },
+  { id:'singularity', name:'奇点', accent:'#2b2b2b', hSizes:{h1:24,h2:19,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#3f3f3f;background:#ffffff;line-height:1.8;font-size:16px;letter-spacing:0.5px;',
+      'h1':'color:#2b2b2b;font-weight:bold;text-align:center;margin:30px 0 14px;letter-spacing:3px;',
+      'h2':'color:#2b2b2b;font-weight:bold;margin:26px 0 12px;border-left:5px solid #2b2b2b;padding:4px 0 4px 12px;letter-spacing:1px;',
+      'h3':'color:#2b2b2b;font-weight:bold;margin:22px 0 8px;border-bottom:1px solid #2b2b2b;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #2b2b2b;color:#595959;background:#f7f7f7;margin:14px 0;padding:8px 14px;border-radius:0;',
+      'hr':'border:none;border-top:2px solid #2b2b2b;margin:22px 0;',
+      'a':'color:#2b2b2b;text-decoration:underline;',
+      'code':'background:#f0f0f0;color:#2b2b2b;padding:2px 6px;border-radius:0;font-size:90%;',
+      'pre':'background:#2b2b2b;color:#e5e5e5;padding:14px;border-radius:0;overflow:auto;'
+    }
+  },
+  { id:'cupid', name:'丘比特', accent:'#eb5055', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#595959;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#eb5055;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #eb5055;padding-bottom:8px;letter-spacing:2px;',
+      'h2':'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#eb5055;padding:5px 14px;border-radius:20px;display:inline-block;',
+      'h3':'color:#eb5055;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #eb5055;padding-bottom:4px;',
+      'blockquote':'border-left:4px solid #eb5055;color:#595959;background:#fdf5f5;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px dashed #eb5055;margin:20px 0;',
+      'a':'color:#eb5055;text-decoration:none;border-bottom:1px solid #eb5055;',
+      'code':'background:#fdeeee;color:#b83035;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#fdeeee;padding:12px;border-radius:6px;overflow:auto;border:1px solid #f7d4d5;'
+    }
+  },
+  { id:'shadow', name:'重影', accent:'#4a5568', hSizes:{h1:23,h2:18,h3:16}, defaultBodySize:16, defaultHeadingScale:1,
+    styles:{
+      '':'color:#4a5568;background:#ffffff;line-height:1.8;font-size:16px;letter-spacing:1px;',
+      'h1':'color:#2d3748;font-weight:bold;text-align:center;margin:30px 0 14px;text-shadow:1px 1px 0 #cbd5e0;letter-spacing:2px;',
+      'h2':'color:#2d3748;font-weight:bold;margin:26px 0 12px;border-bottom:2px solid #cbd5e0;padding-bottom:6px;text-shadow:1px 1px 0 #e2e8f0;',
+      'h3':'color:#4a5568;font-weight:bold;margin:22px 0 8px;border-left:4px solid #a0aec0;padding:3px 0 3px 10px;',
+      'blockquote':'border-left:4px solid #a0aec0;color:#4a5568;background:#f7fafc;margin:14px 0;padding:8px 14px;border-radius:0 4px 4px 0;',
+      'hr':'border:none;border-top:1px solid #cbd5e0;margin:20px 0;',
+      'a':'color:#2b6cb0;text-decoration:none;',
+      'code':'background:#edf2f7;color:#2d3748;padding:2px 6px;border-radius:3px;font-size:90%;',
+      'pre':'background:#edf2f7;padding:12px;border-radius:6px;overflow:auto;border:1px solid #e2e8f0;'
+    }
+  }
+];
+
+// 辅助函数：合并内联样式
+function mergeStyle(existing, additional) {
+  if (!existing) return additional || '';
+  if (!additional) return existing;
+  const existingProps = {};
+  existing.split(';').forEach(p => {
+    const [k, v] = p.split(':').map(s => s && s.trim());
+    if (k) existingProps[k] = v;
+  });
+  additional.split(';').forEach(p => {
+    const [k, v] = p.split(':').map(s => s && s.trim());
+    if (k) existingProps[k] = v;
+  });
+  return Object.entries(existingProps).map(([k, v]) => `${k}:${v}`).join(';') + ';';
+}
+
+// 获取当前选中主题
+function getTemplate(id) {
+  return TEMPLATES.find(t => t.id === id) || TEMPLATES[0];
+}
+
+// 获取所有主题选项（用于下拉框）
+function getTemplateOptions() {
+  return TEMPLATES.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+</script>
+<script>
+/**
+ * markdown.js - Markdown转HTML
+ * 来源: shengmingzhishu.github.io/tools/wechat/editor-v1.html
+ * 支持标题、加粗、斜体、引用、列表、代码块、图片、链接、分割线、表格
+ */
+
+function normalizeMarkdownInput(src) {
+  if (!src) return '';
+  let s = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  s = s.replace(/\u00a0/g, ' ');
+  s = s.replace(/\t/g, '  ');
+  return s;
+}
+
+function mdToHtml(src) {
+  if (!src || !src.trim()) return '';
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const BR_TOKEN = '__BR__';
+  const normalizeBr = s => s.replace(/<br\s*\/?>/gi, BR_TOKEN);
+
+  const inline = s => {
+    let t = normalizeBr(s).replace(/\n/g, BR_TOKEN);
+    t = esc(t);
+    t = t.replace(new RegExp(BR_TOKEN, 'g'), '<br>');
+    t = t.replace(/!\[([^\]]*)\]\(([^)\s]+)\s*"([^"]*)"\)/g, '<img alt="$1" src="$2" title="$3" style="max-width:100%;border-radius:6px;">');
+    t = t.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" style="max-width:100%;border-radius:6px;">');
+    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    t = t.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+    t = t.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    t = t.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+    t = t.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    return t;
+  };
+
+  const lines = normalizeMarkdownInput(src).split('\n');
+  let html = '', i = 0;
+  let inUl = false, inOl = false;
+
+  const closeLists = () => {
+    if (inUl) { html += '</ul>'; inUl = false; }
+    if (inOl) { html += '</ol>'; inOl = false; }
+  };
+
+  while (i < lines.length) {
+    let line = lines[i];
+
+    // 代码块
+    if (/^```/.test(line.trim())) {
+      closeLists();
+      const code = [];
+      i++;
+      while (i < lines.length && !/^```/.test(lines[i].trim())) { code.push(lines[i]); i++; }
+      i++;
+      html += '<pre><code>' + esc(code.join('\n')) + '</code></pre>';
+      continue;
+    }
+
+    // HTML标签直接输出
+    if (/^\s*<[^>]+>.*<\/[^>]+>\s*$/.test(line) || /^\s*<(hr|br|img)\b/i.test(line)) {
+      closeLists();
+      html += line + '\n'; i++; continue;
+    }
+
+    // 分割线
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+      closeLists();
+      html += '<hr>'; i++; continue;
+    }
+
+    // 空行
+    if (/^\s*$/.test(line)) {
+      closeLists();
+      i++; continue;
+    }
+
+    // 标题
+    const hMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (hMatch) {
+      closeLists();
+      const level = hMatch[1].length;
+      html += `<h${level}>${inline(hMatch[2])}</h${level}>`;
+      i++; continue;
+    }
+
+    // 引用
+    if (/^>\s?/.test(line)) {
+      closeLists();
+      const quoteLines = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) {
+        quoteLines.push(lines[i].replace(/^>\s?/, ''));
+        i++;
+      }
+      html += '<blockquote>' + inline(quoteLines.join('\n')) + '</blockquote>';
+      continue;
+    }
+
+    // 无序列表
+    if (/^[-*+]\s+/.test(line)) {
+      if (inOl) { html += '</ol>'; inOl = false; }
+      if (!inUl) { html += '<ul>'; inUl = true; }
+      html += '<li>' + inline(line.replace(/^[-*+]\s+/, '')) + '</li>';
+      i++; continue;
+    }
+
+    // 有序列表
+    if (/^\d+\.\s+/.test(line)) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (!inOl) { html += '<ol>'; inOl = true; }
+      html += '<li>' + inline(line.replace(/^\d+\.\s+/, '')) + '</li>';
+      i++; continue;
+    }
+
+    // 普通段落
+    closeLists();
+    const paraLines = [];
+    while (i < lines.length && !/^\s*$/.test(lines[i]) &&
+           !/^```/.test(lines[i].trim()) && !/^#{1,6}\s/.test(lines[i]) &&
+           !/^>\s?/.test(lines[i]) && !/^[-*+]\s+/.test(lines[i]) && !/^\d+\.\s+/.test(lines[i]) &&
+           !/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(lines[i])) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length > 0) {
+      html += '<p>' + inline(paraLines.join('\n')) + '</p>';
+    }
+  }
+  closeLists();
+  return html;
+}
+
+</script>
+<script>
+/**
+ * preview.js - 文章预览和复制功能
+ * 来源: shengmingzhishu.github.io/tools/wechat/editor-v1.html
+ * 功能: 应用主题样式、生成带内联样式的HTML、双模式复制
+ */
+
+/**
+ * 生成带内联样式的文章HTML（可粘贴到公众号编辑器）
+ * @param {string} markdown - Markdown原文
+ * @param {string} templateId - 主题ID
+ * @param {object} options - {bodySize, headingScale, author, header, footer}
+ * @returns {string} 带样式的HTML字符串
+ */
+function getCleanArticleHTML(markdown, templateId, options = {}) {
+  const t = getTemplate(templateId);
+  const hs = t.hSizes || { h1: 22, h2: 18, h3: 16 };
+  const bodySize = options.bodySize || t.defaultBodySize || 16;
+  const headingScale = options.headingScale || 1;
+  // 自动将裸URL图片转为Markdown图片语法
+  var processedMd = markdown;
+  if (options.coverImage && !processedMd.includes('![]('+options.coverImage) && !processedMd.includes('![')) {
+    processedMd = '![]('+options.coverImage+')\n\n' + processedMd;
+  }
+  // 将行首裸图片URL转为Markdown图片（匹配http开头、图片扩展名的行）
+  processedMd = processedMd.replace(/^(https?:\/\/[^\s]+?\.(?:jpg|jpeg|png|gif|webp|bmp)(?:\?[^\s]*)?)\s*$/gim, '![img]($1)');
+  const contentHtml = mdToHtml(processedMd);
+
+  // 创建临时容器应用样式
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = contentHtml;
+
+  // 应用各元素样式
+  for (const sel in t.styles) {
+    if (sel === '') continue;
+    tempDiv.querySelectorAll(sel).forEach(el => {
+      el.setAttribute('style', mergeStyle(el.getAttribute('style'), t.styles[sel]));
+    });
+  }
+
+  // 烘焙标题字号
+  tempDiv.querySelectorAll('h1').forEach(el => el.style.fontSize = (hs.h1 * headingScale).toFixed(1) + 'px');
+  tempDiv.querySelectorAll('h2').forEach(el => el.style.fontSize = (hs.h2 * headingScale).toFixed(1) + 'px');
+  tempDiv.querySelectorAll('h3').forEach(el => el.style.fontSize = (hs.h3 * headingScale).toFixed(1) + 'px');
+
+  // 图片样式
+  tempDiv.querySelectorAll('img').forEach(img => {
+    img.setAttribute('style', mergeStyle(img.getAttribute('style'), 'max-width:100%;height:auto;border-radius:6px;display:block;margin:8px auto;'));
+  });
+
+  // 正文样式
+  let bodyStyle = t.styles[''] || '';
+  bodyStyle = bodyStyle.replace(/font-size:[^;]+;?/g, '') + 'font-size:' + bodySize + 'px;';
+
+  // 公共引用区
+  let headerHtml = '';
+  let footerHtml = '';
+  if (options.author) {
+    headerHtml += `<div style="text-align:center;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:16px;font-size:13px;color:#888;">作者：<strong>${options.author}</strong></div>`;
+  }
+  if (options.header) {
+    headerHtml += mdToHtml(options.header);
+  }
+  if (options.footer) {
+    footerHtml += mdToHtml(options.footer);
+  }
+
+  return '<section style="' + bodyStyle + '">' + headerHtml + tempDiv.innerHTML + footerHtml + '</section>';
+}
+
+/**
+ * 渲染预览到指定容器
+ * @param {string} containerId - 容器ID
+ * @param {string} markdown - Markdown原文
+ * @param {string} templateId - 主题ID
+ * @param {object} options - 预览选项
+ */
+function renderPreview(containerId, markdown, templateId, options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const config = AppConfig.getConfig();
+  const allOptions = {
+    ...options,
+    author: options.author ?? config.publicAuthor,
+    header: options.header ?? config.publicHeader,
+    footer: options.footer ?? config.publicFooter,
+    coverImage: options.coverImage || config.defaultImage
+  };
+
+  const wordCount = markdown ? markdown.length : 0;
+  const html = getCleanArticleHTML(markdown, templateId, allOptions);
+
+  // 支持折叠状态
+  var collapsed = localStorage.getItem('previewCollapsed_'+containerId) === 'true';
+
+  container.innerHTML = `
+    <div class="preview-section">
+      <div class="preview-header" onclick="togglePreview('${containerId}')" style="cursor:pointer;user-select:none;">
+        <span class="title">预览（约${wordCount}字）${collapsed ? '（已折叠）' : ''}</span>
+        <div class="actions">
+          <span style="font-size:11px;color:var(--text2);margin-right:8px;">${collapsed ? '展开 ▾' : '收起 ▴'}</span>
+          <select class="preview-theme-select" onclick="event.stopPropagation()" onchange="changePreviewTheme('${containerId}', this.value)">
+            ${getTemplateOptions()}
+          </select>
+        </div>
+      </div>
+      <div class="preview-content-wrapper" id="${containerId}_wrapper" style="background:#fff;padding:16px;border-radius:0 0 8px 8px;${collapsed ? 'display:none;' : ''}">
+        <div id="${containerId}_inner" style="max-width:${config.previewWidth};margin:0 auto;">
+          ${html}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 设置当前选中主题
+  const select = container.querySelector('.preview-theme-select');
+  if (select) select.value = templateId;
+}
+
+/**
+ * 切换预览主题（实时更新）
+ */
+function changePreviewTheme(containerId, templateId) {
+  const config = AppConfig.getConfig();
+  // 找到对应的markdown源文本
+  let markdown = '';
+  if (containerId.startsWith('step3')) markdown = AppState.step3Article || '';
+  else if (containerId.startsWith('step4')) {
+    // step4 支持多版本：从当前选中版本获取内容，并保存主题设置到该版本
+    if (AppState.step4Versions && AppState.step4Versions.length > 0) {
+      const currentVersion = AppState.step4Versions[AppState.step4CurrentVersion];
+      if (currentVersion) {
+        // 切换主题时只更新当前版本的主题设置
+        currentVersion.theme = templateId;
+        markdown = currentVersion.markdown || '';
+      }
+    }
+    // step4 重新渲染版本区域（保持Tab页签结构）
+    renderStep4Versions();
+    return;
+  }
+  else if (containerId.startsWith('step5')) {
+    if (AppState.step5ImageText) {
+      markdown = AppState.step5ImageText.map((p, i) => `### 第${i+1}页：${p.title || ''}\n\n${p.content || ''}`).join('\n\n');
+    }
+  }
+  renderPreview(containerId, markdown, templateId);
+}
+
+/**
+ * 复制MD标签文本
+ */
+async function copyAsMarkdown(stepId) {
+  let text = '';
+  if (stepId === 'step3') text = AppState.step3Article || '';
+  else if (stepId === 'step4') text = AppState.step4Article || '';
+  else if (stepId === 'step5') {
+    if (AppState.step5ImageText) {
+      text = AppState.step5ImageText.map((p, i) => `## 第${i+1}页\n\n### ${p.title || ''}\n\n${p.subtitle ? p.subtitle + '\n\n' : ''}${p.content || ''}`).join('\n\n---\n\n');
+    }
+  }
+
+  const config = AppConfig.getConfig();
+  let fullText = '';
+  if (config.publicAuthor) fullText += `> 作者：${config.publicAuthor}\n\n`;
+  if (config.publicHeader) fullText += config.publicHeader + '\n\n';
+  fullText += text;
+  if (config.publicFooter) fullText += '\n\n' + config.publicFooter;
+
+  try {
+    await navigator.clipboard.writeText(fullText);
+    StepsUI.showStatus('MD文本已复制到剪贴板', 'success');
+    StepsUI.closeAllCopyMenus();
+  } catch (e) {
+    // 降级方案
+    const ta = document.createElement('textarea');
+    ta.value = fullText;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    StepsUI.showStatus('MD文本已复制', 'success');
+    StepsUI.closeAllCopyMenus();
+  }
+}
+
+/**
+ * 复制排版样式HTML（可粘贴到公众号编辑器）
+ */
+async function copyAsStyledHtml(stepId) {
+  let markdown = '';
+  if (stepId === 'step3') markdown = AppState.step3Article || '';
+  else if (stepId === 'step4') markdown = AppState.step4Article || '';
+  else if (stepId === 'step5') {
+    if (AppState.step5ImageText) {
+      markdown = AppState.step5ImageText.map((p, i) => `### 第${i+1}页：${p.title || ''}\n\n${p.content || ''}`).join('\n\n---\n\n');
+    }
+  }
+
+  const config = AppConfig.getConfig();
+  const styledHtml = getCleanArticleHTML(markdown, config.defaultTheme, {
+    author: config.publicAuthor,
+    header: config.publicHeader,
+    footer: config.publicFooter
+  });
+
+  try {
+    const blob = new Blob([styledHtml], { type: 'text/html' });
+    const clipboardItem = new ClipboardItem({
+      'text/html': blob,
+      'text/plain': new Blob([markdown], { type: 'text/plain' })
+    });
+    await navigator.clipboard.write([clipboardItem]);
+    StepsUI.showStatus('排版样式已复制，可粘贴到公众号编辑器', 'success');
+    StepsUI.closeAllCopyMenus();
+  } catch (e) {
+    // 降级方案：用 Selection API 复制
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = styledHtml;
+    tempDiv.style.position = 'fixed';
+    tempDiv.style.left = '-9999px';
+    document.body.appendChild(tempDiv);
+    const range = document.createRange();
+    range.selectNodeContents(tempDiv);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand('copy');
+    document.body.removeChild(tempDiv);
+    StepsUI.showStatus('排版样式已复制（降级模式）', 'success');
+    StepsUI.closeAllCopyMenus();
+  }
+}
+
+/**
+ * 打开预览模态框
+ */
+function openPreviewModal(stepId) {
+  AppState.currentPreviewTarget = stepId;
+  const config = AppConfig.getConfig();
+  let markdown = '';
+  if (stepId === 'step3') markdown = AppState.step3Article || '';
+  else if (stepId === 'step4') markdown = AppState.step4Article || '';
+  else if (stepId === 'step5') {
+    if (AppState.step5ImageText) {
+      markdown = AppState.step5ImageText.map((p, i) => `### 第${i+1}页：${p.title || ''}\n\n${p.content || ''}`).join('\n\n');
+    }
+  }
+
+  const html = getCleanArticleHTML(markdown, config.defaultTheme, {
+    author: config.publicAuthor,
+    header: config.publicHeader,
+    footer: config.publicFooter
+  });
+
+  document.getElementById('previewModalTitle').textContent = '文章预览 - ' + stepId;
+  document.getElementById('modalThemeSelect').value = config.defaultTheme;
+  document.getElementById('previewModalBody').innerHTML = html;
+  document.getElementById('previewModalBody').style.maxWidth = config.previewWidth;
+  document.getElementById('previewModalBody').style.margin = '0 auto';
+  document.getElementById('previewUrlBox').style.display = 'none';
+  document.getElementById('previewModal').classList.add('show');
+}
+
+function closePreviewModal() {
+  document.getElementById('previewModal').classList.remove('show');
+}
+
+function updateModalTheme() {
+  const theme = document.getElementById('modalThemeSelect').value;
+  const config = AppConfig.getConfig();
+  const stepId = AppState.currentPreviewTarget;
+  let markdown = '';
+  if (stepId === 'step3') markdown = AppState.step3Article || '';
+  else if (stepId === 'step4') markdown = AppState.step4Article || '';
+  else if (stepId === 'step5') {
+    if (AppState.step5ImageText) {
+      markdown = AppState.step5ImageText.map((p, i) => `### 第${i+1}页：${p.title || ''}\n\n${p.content || ''}`).join('\n\n');
+    }
+  }
+  const html = getCleanArticleHTML(markdown, theme, {
+    author: config.publicAuthor,
+    header: config.publicHeader,
+    footer: config.publicFooter
+  });
+  document.getElementById('previewModalBody').innerHTML = html;
+}
+
+function generatePreviewUrl() {
+  const body = document.getElementById('previewModalBody');
+  const html = body.innerHTML;
+  const config = AppConfig.getConfig();
+  const theme = document.getElementById('modalThemeSelect').value;
+  const t = getTemplate(theme);
+
+  // 构建完整HTML
+  const fullHtml = `<!DOCTYPE html>
+<!--
+  ============================================================
+  AI文章写作工具 - 纯HTML单文件版
+  ============================================================
+  本文件为自包含版本，无需任何外部依赖，可直接部署到github.io
+  
+  特性：
+  - 默认使用DeepSeek API（免代理，浏览器直连）
+  - 支持火山引擎ARK（Cloudflare Worker直连）
+  - 内置editor-v1.html排版工具（通过iframe srcdoc嵌入）
+  - 内置poster-v6.html海报工具（通过iframe srcdoc嵌入）
+  - 支持轻狐AI发布助手插件一键发布到9个平台
+  
+  使用方法：
+  1. 直接用浏览器打开本文件即可使用
+  2. 或部署到github.io：将本文件重命名为index.html上传到仓库
+  3. 默认API Key已预填，可在配置面板中修改
+  
+  注意：由于使用srcdoc嵌入iframe，部分浏览器可能需要https环境
+  才能完整使用所有功能（如剪贴板、图片导出等）
+  ============================================================
+-->
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>文章预览</title></head><body style="margin:0;padding:20px;background:#f5f5f5;"><div style="max-width:${config.previewWidth};margin:0 auto;background:#fff;padding:24px;border-radius:8px;${t.styles['']}}">${html}</div></body></html>`;
+
+  const blob = new Blob([fullHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  document.getElementById('previewUrlText').textContent = url;
+  document.getElementById('previewUrlBox').style.display = 'flex';
+  StepsUI.showStatus('预览网址已生成', 'success');
+}
+
+function copyPreviewUrl() {
+  const url = document.getElementById('previewUrlText').textContent;
+  navigator.clipboard.writeText(url).then(() => StepsUI.showStatus('网址已复制', 'success'));
+}
+
+function openPreviewUrl() {
+  const url = document.getElementById('previewUrlText').textContent;
+  window.open(url, '_blank');
+}
+
+</script>
+<script>
+/**
+ * api.js - ARK API调用、联网搜索
+ */
+
+const API = {
+  async callArkAPI(messages, stream = false, stepId = null) {
+    const config = AppConfig.getConfig();
+    const url = config.baseUrl + '/chat/completions';
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + config.apiKey
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: messages,
+        stream: stream,
+        temperature: 0.7,
+        max_tokens: 4096
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API错误 (${response.status}): ${errorText.substring(0, 200)}`);
+    }
+
+    if (stream) return response;
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  },
+
+  async callArkAPIStream(messages, onChunk, stepId = null) {
+    const config = AppConfig.getConfig();
+    const url = config.baseUrl + '/chat/completions';
+
+    const controller = new AbortController();
+    if (stepId) AppState.abortControllers[stepId] = controller;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + config.apiKey
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: messages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 4096
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API错误 (${response.status}): ${errorText.substring(0, 200)}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices[0]?.delta?.content || '';
+            if (content) {
+              fullText += content;
+              onChunk(fullText);
+            }
+          } catch (e) { /* skip */ }
+        }
+      }
+    }
+
+    if (stepId) delete AppState.abortControllers[stepId];
+    return fullText;
+  },
+
+  abortStep(stepId) {
+    if (AppState.abortControllers[stepId]) {
+      AppState.abortControllers[stepId].abort();
+      delete AppState.abortControllers[stepId];
+    }
+  },
+
+  /**
+   * 搜索国内高浏览量平台文章（知乎、CSDN、简书、微信公众号、掘金等）
+   * 优先使用本地搜索代理(18893)，避免依赖不稳定的CORS代理
+   * @param {string} query - 搜索关键词
+   * @param {number} maxResults - 最大结果数（默认5）
+   * @returns {Promise<Array>} 搜索结果数组
+   */
+  async searchWeb(query, maxResults = 5) {
+    // 方案1：优先使用本地搜索代理（最稳定，由search_proxy.py提供）
+    try {
+      const proxyUrl = `http://127.0.0.1:18893/search?q=${encodeURIComponent(query)}&max=${maxResults}`;
+      const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.results && data.results.length > 0) {
+          console.log(`本地搜索代理成功，获取${data.results.length}条结果`);
+          return data.results;
+        }
+      }
+    } catch (e) {
+      console.log('本地搜索代理不可用，尝试CORS代理:', e.message);
+    }
+
+    // 方案2：使用公共CORS代理（备用，不稳定）
+    const results = [];
+    const domesticSites = [
+      'zhihu.com', 'mp.weixin.qq.com', 'csdn.net', 'jianshu.com',
+      'juejin.cn', '36kr.com', 'toutiao.com', 'bilibili.com'
+    ];
+    const siteFilter = domesticSites.map(s => `site:${s}`).join(' OR ');
+    const searchQuery = `(${siteFilter}) ${query}`;
+    const bingUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(searchQuery) + '&ensearch=0&mkt=zh-CN';
+
+    const proxies = [
+      'https://api.allorigins.win/raw?url=',
+      'https://corsproxy.io/?url=',
+      'https://api.codetabs.com/v1/proxy/?quest='
+    ];
+
+    for (const proxy of proxies) {
+      if (results.length >= maxResults) break;
+      try {
+        const proxyUrl = proxy + encodeURIComponent(bingUrl);
+        const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) continue;
+        const html = await resp.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const items = doc.querySelectorAll('.b_algo');
+
+        items.forEach((item) => {
+          if (results.length >= maxResults) return;
+          const titleEl = item.querySelector('h2 a');
+          const snippetEl = item.querySelector('.b_caption p, .b_lineclamp');
+          if (titleEl) {
+            const url = titleEl.href || '';
+            const host = this._extractHost(url);
+            const platform = this._getPlatformName(host);
+            if (platform === '其他') return; // 只保留国内平台
+            results.push({
+              title: titleEl.textContent.trim(),
+              snippet: snippetEl ? snippetEl.textContent.trim() : '',
+              url: url,
+              platform: platform,
+              host: host
+            });
+          }
+        });
+
+        if (results.length > 0) break;
+      } catch (e) {
+        console.log(`CORS代理 ${proxy} 失败:`, e.message);
+      }
+    }
+
+    // 按平台优先级排序
+    const platformPriority = { '知乎': 1, '微信公众号': 2, 'CSDN': 3, '简书': 4, '掘金': 5, '36氪': 6, '今日头条': 7, 'B站': 8 };
+    results.sort((a, b) => (platformPriority[a.platform] || 99) - (platformPriority[b.platform] || 99));
+
+    return results.slice(0, maxResults);
+  },
+
+  /**
+   * 从URL提取主机名
+   */
+  _extractHost(url) {
+    try {
+      if (!url) return '';
+      if (url.startsWith('/')) return '';
+      const u = new URL(url);
+      return u.hostname.toLowerCase();
+    } catch (e) {
+      return '';
+    }
+  },
+
+  /**
+   * 根据主机名获取平台名称
+   */
+  _getPlatformName(host) {
+    if (!host) return '未知';
+    if (host.includes('zhihu.com')) return '知乎';
+    if (host.includes('mp.weixin.qq.com')) return '微信公众号';
+    if (host.includes('csdn.net') || host.includes('blog.csdn.net')) return 'CSDN';
+    if (host.includes('jianshu.com')) return '简书';
+    if (host.includes('juejin.cn')) return '掘金';
+    if (host.includes('36kr.com')) return '36氪';
+    if (host.includes('toutiao.com')) return '今日头条';
+    if (host.includes('bilibili.com')) return 'B站';
+    if (host.includes('segmentfault.com')) return '思否';
+    if (host.includes('cnblogs.com')) return '博客园';
+    return '其他';
+  },
+
+  async testConnection() {
+    const config = AppConfig.getConfig();
+    const statusEl = document.getElementById('connStatus');
+    statusEl.className = 'connection-status offline';
+    statusEl.textContent = '测试中...';
+
+    try {
+      const response = await fetch(config.baseUrl + '/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + config.apiKey
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{ role: 'user', content: '回复"OK"' }],
+          max_tokens: 10
+        })
+      });
+
+      if (response.ok) {
+        const platformName = config.platform === 'deepseek' ? 'DeepSeek' : '火山引擎ARK';
+        statusEl.className = 'connection-status online';
+        statusEl.textContent = '已连接 · ' + platformName;
+        StepsUI.showStatus(`连接成功！平台: ${platformName}，模型: ${config.model}`, 'success');
+      } else {
+        const errorText = await response.text();
+        statusEl.className = 'connection-status offline';
+        statusEl.textContent = '连接失败';
+        StepsUI.showStatus('连接失败: ' + response.status + ' ' + errorText.substring(0, 100), 'error');
+      }
+    } catch (error) {
+      statusEl.className = 'connection-status offline';
+      statusEl.textContent = '未连接';
+      // 根据平台给出不同的错误提示
+      if (config.platform === 'ark') {
+        StepsUI.showStatus('连接失败: ' + error.message + '。请检查 API Key 和 Worker 地址是否正确，或 Worker 是否已部署。', 'error');
+      } else {
+        StepsUI.showStatus('连接失败: ' + error.message + '。请检查网络连接和API Key是否正确。', 'error');
+      }
+    }
+  }
+};
+
+</script>
+<script>
+/**
+ * steps.js - 步骤导航、执行、自动触发、终止
+ */
+
+const StepsUI = {
+  showStatus(message, type = 'info') {
+    const bar = document.getElementById('statusBar');
+    bar.textContent = message;
+    bar.className = 'status-bar show ' + type;
+    setTimeout(() => bar.classList.remove('show'), 3000);
+  },
+
+  closeAllCopyMenus() {
+    document.querySelectorAll('.copy-menu').forEach(m => m.classList.remove('show'));
+  },
+
+  toggleCopyMenu(menuId) {
+    document.querySelectorAll('.copy-menu').forEach(m => { if (m.id !== menuId) m.classList.remove('show'); });
+    document.getElementById(menuId).classList.toggle('show');
+  },
+
+  switchStep(step) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('panel' + step).classList.add('active');
+    document.querySelector(`.step-tab[data-step="${step}"]`).classList.add('active');
+    AppState.currentStep = step;
+    this.updateStepStates();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // 第六步首次展开时，自动触发完成创作事件
+    if (step === 6 && !AppState.step6Completed) {
+      AppState.step6Completed = true;
+      setTimeout(() => {
+        finishWorkflow();
+        // 重新初始化插件检测（因为发布按钮已移到第六步）
+        if (typeof initPluginDetection === 'function') {
+          initPluginDetection();
+        }
+      }, 300);
+    }
+  },
+
+  jumpToStep(step) {
+    if (step > 1 && !AppState.canAccessStep(step)) {
+      this.showStatus('请先完成前面的步骤', 'error');
+      return;
+    }
+    this.switchStep(step);
+  },
+
+  updateStepStates() {
+    const tabs = document.querySelectorAll('.step-tab');
+    tabs.forEach((tab, index) => {
+      const stepNum = index + 1;
+      tab.classList.remove('locked', 'completed');
+      if (AppState.isCompleted(stepNum)) {
+        tab.classList.add('completed');
+        const lockIcon = tab.querySelector('.lock-icon');
+        if (lockIcon) lockIcon.remove();
+      } else if (stepNum > AppState.currentStep && !AppState.canAccessStep(stepNum)) {
+        tab.classList.add('locked');
+        if (!tab.querySelector('.lock-icon')) {
+          const lock = document.createElement('span');
+          lock.className = 'lock-icon';
+          lock.textContent = '🔒';
+          tab.appendChild(lock);
+        }
+      } else {
+        const lockIcon = tab.querySelector('.lock-icon');
+        if (lockIcon) lockIcon.remove();
+      }
+    });
+
+    // 更新下一步按钮状态：当前步骤完成后才能点击下一步
+    for (let i = 2; i <= 6; i++) {
+      const nextBtn = document.getElementById(`step${i}NextBtn`);
+      if (nextBtn) nextBtn.disabled = !AppState.isCompleted(i - 1);
+    }
+  },
+
+  /**
+   * 设置执行按钮状态
+   * @param {number} step - 步骤号
+   * @param {boolean} executing - 是否正在执行
+   */
+  setExecuting(step, executing) {
+    const execBtn = document.querySelector(`#panel${step} .btn-exec`);
+    const stopBtn = document.querySelector(`#panel${step} .btn-stop`);
+    const nextBtn = document.getElementById(`step${step}NextBtn`);
+
+    if (executing) {
+      if (execBtn) { execBtn.disabled = true; execBtn.textContent = '执行中...'; }
+      if (stopBtn) stopBtn.style.display = 'inline-flex';
+      if (nextBtn) nextBtn.disabled = true;
+    } else {
+      if (execBtn) { execBtn.disabled = false; execBtn.textContent = this.getExecBtnText(step); }
+      if (stopBtn) stopBtn.style.display = 'none';
+      if (nextBtn) nextBtn.disabled = !AppState.isCompleted(step);
+    }
+  },
+
+  getExecBtnText(step) {
+    const texts = { 1: '整合并进入下一步 →', 2: '🔄 重新执行', 3: '🔄 重新生成', 4: '🔄 重新生成', 5: '🔄 重新转换' };
+    return texts[step] || '🔄 执行';
+  },
+
+  /**
+   * 终止当前步骤执行
+   */
+  stopExecution(step) {
+    API.abortStep('step' + step);
+    this.setExecuting(step, false);
+    this.showStatus('已终止执行', 'warning');
+  },
+
+  /**
+   * 点击下一步时自动触发下一页执行
+   */
+  async goNextStep(currentStep) {
+    if (!AppState.isCompleted(currentStep)) {
+      this.showStatus('请先完成当前步骤', 'error');
+      return;
+    }
+    const nextStep = currentStep + 1;
+    if (nextStep > 6) return;
+    this.switchStep(nextStep);
+    // 自动触发下一页执行（第2-4步自动执行AI生成，第5步自动填入MD内容）
+    if (nextStep >= 2 && nextStep <= 4) {
+      await this.autoExecute(nextStep);
+    } else if (nextStep === 5) {
+      // 第5步自动填入公众号文章到poster工具
+      setTimeout(() => fillPosterFromStep4(), 500);
+    }
+  },
+
+  async autoExecute(step) {
+    const handlers = { 2: executeStep2, 3: executeStep3, 4: executeStep4 };
+    if (handlers[step]) {
+      await handlers[step]();
+    }
+  },
+
+  getSupplementKeywords(step) {
+    const el = document.getElementById(`step${step}Supplement`);
+    return el ? el.value.trim() : '';
+  }
+};
+
+// ============ 步骤执行函数 ============
+
+async function executeStep1() {
+  const keywords = document.getElementById('step1Keywords').value.trim();
+  const description = document.getElementById('step1Description').value.trim();
+  const supplement = StepsUI.getSupplementKeywords(1);
+
+  // 检查 API Key
+  const key = document.getElementById('apiKey')?.value?.trim();
+  if (!key) {
+    StepsUI.showStatus('⚠️ 请先在设置面板中填写 API Key', 'error');
+    // 闪烁提醒设置按钮
+    const cfgBtn = document.querySelector('[onclick*="toggleConfig"]') || document.querySelector('.config-toggle');
+    if(cfgBtn) cfgBtn.style.animation = 'pulse 0.6s ease 3';
+    setTimeout(() => { if(cfgBtn) cfgBtn.style.animation = ''; }, 2000);
+    return;
+  }
+
+  if (!keywords) {
+    StepsUI.showStatus('请输入关键词或主题方向', 'error');
+    return;
+  }
+
+  AppState.step1Output = {
+    keywords: keywords,
+    description: description,
+    supplement: supplement,
+    combined: [keywords, description ? '补充说明：' + description : '', supplement ? '参考词条：' + supplement : ''].filter(Boolean).join('\n\n')
+  };
+
+  const resultDiv = document.getElementById('step1Result');
+  resultDiv.innerHTML = `
+    <div class="result-box">
+      <div style="color:var(--success);margin-bottom:8px;">✓ 主题信息已整合</div>
+      <div style="color:var(--text2);font-size:13px;margin-bottom:8px;">关键词/方向：</div>
+      <div>${keywords.replace(/\n/g, '<br>')}</div>
+      ${description ? `<div style="color:var(--text2);font-size:13px;margin-top:10px;margin-bottom:4px;">补充说明：</div><div>${description}</div>` : ''}
+      ${supplement ? `<div style="color:var(--text2);font-size:13px;margin-top:10px;margin-bottom:4px;">参考词条：</div><div>${supplement}</div>` : ''}
+    </div>
+  `;
+
+  AppState.markCompleted(1);
+  StepsUI.showStatus('主题整合完成，进入下一步', 'success');
+  StepsUI.updateStepStates();
+  // 自动进入下一步并执行
+  await StepsUI.goNextStep(1);
+}
+
+async function executeStep2() {
+  if (!AppState.step1Output) {
+    StepsUI.showStatus('请先完成第一步', 'error');
+    StepsUI.switchStep(1);
+    return;
+  }
+
+  StepsUI.setExecuting(2, true);
+  const analysisDiv = document.getElementById('step2Analysis');
+  const searchDiv = document.getElementById('step2SearchResults');
+  analysisDiv.innerHTML = '<div class="result-box loading"><div class="spinner"></div><span>AI正在拆解关键词...</span></div>';
+  searchDiv.innerHTML = '';
+
+  try {
+    const config = AppConfig.getConfig();
+    const supplement = StepsUI.getSupplementKeywords(2);
+    const analysisMessages = [
+      { role: 'system', content: '你是一个内容策划专家。请分析用户提供的主题，提取核心关键词和价值点。输出JSON格式。' },
+      { role: 'user', content: `主题信息：${AppState.step1Output.combined}${supplement ? '\n参考词条：' + supplement : ''}\n\n请分析并提取：\n1. 核心关键词（5-8个）\n2. 价值点（3-5个）\n3. 建议标题（3个）\n4. 搜索关键词（3-5个）\n\nJSON格式：{"keywords":["关键词1"],"valuePoints":["价值点1"],"titles":["标题1"],"searchQueries":["搜索词1"]}` }
+    ];
+
+    const analysisResult = await API.callArkAPI(analysisMessages, false, 'step2');
+    let analysis;
+    try {
+      const jsonMatch = analysisResult.match(/\{[\s\S]*\}/);
+      analysis = JSON.parse(jsonMatch ? jsonMatch[0] : analysisResult);
+    } catch (e) {
+      analysis = {
+        keywords: [AppState.step1Output.keywords.split(/[,，\n]/)[0]],
+        valuePoints: ['核心观点分析'],
+        titles: [AppState.step1Output.keywords.split(/[,，\n]/)[0]],
+        searchQueries: [AppState.step1Output.keywords.split(/[,，\n]/)[0]]
+      };
+    }
+
+    AppState.step2Keywords = analysis.keywords || [];
+    AppState.step2ValuePoints = analysis.valuePoints || [];
+
+    analysisDiv.innerHTML = `
+      <div class="result-box">
+        <div style="color:var(--success);margin-bottom:12px;">✓ AI拆解完成</div>
+        <div style="margin-bottom:14px;"><strong>核心关键词：</strong><div class="tags-container">${(analysis.keywords || []).map(k => `<span class="tag">${k}</span>`).join('')}</div></div>
+        <div style="margin-bottom:14px;"><strong>价值点：</strong><ul style="margin-left:20px;margin-top:6px;">${(analysis.valuePoints || []).map(v => `<li>${v}</li>`).join('')}</ul></div>
+        <div style="margin-bottom:14px;"><strong>建议标题：</strong><ul style="margin-left:20px;margin-top:6px;">${(analysis.titles || []).map(t => `<li>${t}</li>`).join('')}</ul></div>
+        <div><strong>搜索关键词：</strong><div class="tags-container">${(analysis.searchQueries || []).map(q => `<span class="tag">${q}</span>`).join('')}</div></div>
+      </div>
+    `;
+
+    // 根据 searchCount 配置决定是否搜索及搜索数量
+    const searchCount = config.searchCount || 0;
+    if (searchCount > 0 && config.searchEnabled && analysis.searchQueries && analysis.searchQueries.length > 0) {
+      searchDiv.innerHTML = `<div class="result-box loading" style="margin-top:12px;"><div class="spinner"></div><span>正在搜索国内高质量参考文章（目标${searchCount}篇）...</span></div>`;
+      const allResults = [];
+      // 只搜索1个关键词（避免消耗过多token），但目标获取searchCount篇结果
+      const primaryQuery = analysis.searchQueries[0];
+      const results = await API.searchWeb(primaryQuery, searchCount);
+      allResults.push(...results);
+
+      // 如果结果不足，再用第二个关键词补充
+      if (allResults.length < searchCount && analysis.searchQueries.length > 1) {
+        const补充 = await API.searchWeb(analysis.searchQueries[1], searchCount - allResults.length);
+        allResults.push(...补充);
+      }
+
+      const seen = new Set();
+      const uniqueResults = allResults.filter(r => { if (seen.has(r.url)) return false; seen.add(r.url); return true; });
+      // 限制到配置的数量
+      const finalResults = uniqueResults.slice(0, searchCount);
+      AppState.step2SearchResults = finalResults;
+
+      if (finalResults.length > 0) {
+        searchDiv.innerHTML = `<div style="margin-top:12px;"><strong>参考文章（${finalResults.length}篇，来自国内高浏览量平台）：</strong>${finalResults.map((r, i) => `<div class="search-result"><div class="title">${i+1}. [${r.platform || '其他'}] ${r.title}</div><div class="snippet">${r.snippet}</div><div class="url">${r.url}</div></div>`).join('')}</div>`;
+      } else {
+        searchDiv.innerHTML = '<div class="result-box" style="margin-top:12px;color:var(--warning);">未搜索到国内平台结果，将使用AI知识库</div>';
+      }
+    } else if (searchCount === 0) {
+      searchDiv.innerHTML = '<div class="result-box" style="margin-top:12px;color:var(--text2);">已跳过联网搜索（参考文章数量设为0），直接使用AI知识库生成</div>';
+      AppState.step2SearchResults = [];
+    }
+
+    AppState.markCompleted(2);
+    StepsUI.showStatus('AI拆解和搜索完成', 'success');
+    StepsUI.updateStepStates();
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    analysisDiv.innerHTML = `<div class="result-box" style="color:var(--error);">错误：${error.message}</div>`;
+    StepsUI.showStatus('执行失败: ' + error.message, 'error');
+  } finally {
+    StepsUI.setExecuting(2, false);
+  }
+}
+
+async function executeStep3() {
+  if (!AppState.step2Keywords) {
+    StepsUI.showStatus('请先完成第二步', 'error');
+    StepsUI.switchStep(2);
+    return;
+  }
+
+  StepsUI.setExecuting(3, true);
+  const resultDiv = document.getElementById('step3Result');
+  const config = AppConfig.getConfig();
+  const supplement = StepsUI.getSupplementKeywords(3);
+
+  let searchContext = '';
+  if (AppState.step2SearchResults && AppState.step2SearchResults.length > 0) {
+    searchContext = '\n\n参考搜索结果：\n' + AppState.step2SearchResults.slice(0, 5).map((r, i) => `${i+1}. ${r.title}\n   ${r.snippet}`).join('\n');
+  }
+
+  const messages = [
+    { role: 'system', content: `你是一位顶级的抖音内容创作者，拥有千万粉丝的爆款制造者。你的文案以"高质量、高价值、高共鸣"著称，每一条都能引发观众深度思考和强烈互动。
+
+【核心要求 - 必须严格遵守】
+1. **开头第一句必须用加粗**，3秒内抓住注意力，可以是反常识、提问或痛点直击
+2. 文章必须有3-5个小段落标题（使用### 标记），每个标题都要有吸引力
+3. 每个段落内的重点关键词、金句必须用**加粗**，方便观众抓重点
+4. 语言口语化，像和朋友聊天一样自然，但不能低质水文
+
+【文章结构 - 严格遵守】
+5. **第一行必须是标题**（用**加粗**，15字以内，吸引眼球）
+6. **第二行必须是副标题**（普通文字，补充说明，20字以内）
+7. 正文中在适当位置插入图片占位标记：![主图](cover_url)
+8. **文章最后一行**必须包含：---分隔线后加标签，格式为 **#标签1 #标签2 #标签3 #标签4 #标签5**
+
+【内容质量 - 价值至上】
+9. 每个观点必须配具体的真实案例、数据或故事（禁止空泛说教）
+10. 必须提供可落地的实操方法或独到见解，让观众觉得"学到了"
+11. 内容要有深度，避免老生常谈，要有独特的视角或认知增量
+12. 逻辑清晰，层层递进，有"发现问题-分析原因-给出方案"的结构
+
+【情感共鸣 - 引发互动】
+13. 要戳中目标人群的真实痛点，让观众有"这就是我"的共鸣
+14. 结尾必须有金句总结或行动号召，激发点赞、收藏、评论欲望
+15. 字数约${config.wordCount}字，宁可少写也不灌水
+
+【严禁】禁止水文、禁止无意义凑字数、禁止假大空、禁止抄袭模板化表达` },
+    { role: 'user', content: `主题：${AppState.step1Output.combined}\n\n核心关键词：${AppState.step2Keywords.join('、')}\n\n价值点：\n${AppState.step2ValuePoints.map((v, i) => `${i+1}. ${v}`).join('\n')}${searchContext}${supplement ? '\n\n参考词条：' + supplement : ''}\n\n请生成一条高质量的抖音口播长文，要求内容有真实价值，能让观众看完后有所收获并愿意互动。` }
+  ];
+
+  let articleText = '';
+  let lastUpdateTime = 0;
+  resultDiv.innerHTML = `<div class="preview-section"><div class="preview-content-wrapper" style="background:#fff;padding:16px;border-radius:8px;"><div id="step3Preview" style="min-height:200px;"><div class="spinner" style="margin:20px auto;"></div></div></div></div>`;
+
+  try {
+    try {
+      articleText = await API.callArkAPIStream(messages, (text) => {
+        const now = Date.now();
+        // 节流：每500ms更新一次预览，避免频繁渲染导致卡顿
+        if (now - lastUpdateTime < 500) return;
+        lastUpdateTime = now;
+        const el = document.getElementById('step3Preview');
+        if (el) {
+          // 流式过程中只显示纯文本预览，不应用完整样式
+          el.innerHTML = `<div style="color:#333;white-space:pre-wrap;font-size:14px;line-height:1.75;">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
+        }
+      }, 'step3');
+    } catch (streamError) {
+      if (streamError.name === 'AbortError') return;
+      articleText = await API.callArkAPI(messages, false, 'step3');
+    }
+
+    if (!articleText) {
+      const el = document.getElementById('step3Preview');
+      articleText = el ? (el.textContent || el.innerText) : '';
+    }
+
+    AppState.step3Article = articleText;
+    // 异步生成文章元数据（不阻塞流程）
+    generateArticleMetadata(articleText, 'step3').then(meta => {
+      AppState.step3Metadata = meta;
+    }).catch(() => {});
+    // 流式完成后才应用完整主题样式
+    renderPreview('step3Result', articleText, config.defaultTheme);
+    document.getElementById('step3CopyBtn').disabled = false;
+    // 自动填入editor排版工具
+    setTimeout(() => fillEditorFromStep3(), 500);
+    AppState.markCompleted(3);
+    StepsUI.showStatus('抖音口播长文生成完成', 'success');
+    StepsUI.updateStepStates();
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    resultDiv.innerHTML = `<div class="result-box" style="color:var(--error);">错误：${error.message}</div>`;
+    StepsUI.showStatus('生成失败: ' + error.message, 'error');
+  } finally {
+    StepsUI.setExecuting(3, false);
+  }
+}
+
+async function executeStep4() {
+  if (!AppState.step3Article) {
+    StepsUI.showStatus('请先完成第三步', 'error');
+    StepsUI.switchStep(3);
+    return;
+  }
+
+  StepsUI.setExecuting(4, true);
+  const resultDiv = document.getElementById('step4Result');
+  const config = AppConfig.getConfig();
+  const supplement = StepsUI.getSupplementKeywords(4);
+
+  // 判断是否已有版本：首次生成基于口播长文；重新生成时基于当前版本，使用补充词条作为修改方向
+  const hasExistingVersion = AppState.step4Versions && AppState.step4Versions.length > 0;
+  let userContent = '';
+  if (hasExistingVersion) {
+    // 重新生成：基于当前选中版本，使用补充词条作为修改方向
+    const currentVersion = AppState.step4Versions[AppState.step4CurrentVersion];
+    userContent = `请基于以下公众号文章进行优化重写${supplement ? '，修改方向：' + supplement : ''}：\n\n${currentVersion.markdown}`;
+  } else {
+    // 首次生成：基于抖音口播长文
+    userContent = `请基于以下抖音口播长文，重新创作一篇高质量的公众号文章：\n\n${AppState.step3Article}${supplement ? '\n\n参考词条：' + supplement : ''}`;
+  }
+
+  const messages = [
+    { role: 'system', content: `你是一个公众号爆款文章创作者。基于抖音口播长文，重新创作一篇适合公众号的深度文章。要求：\n1. 开头第一句话必须用**加粗**格式，有吸引力\n2. 文章必须有4-6个小段落标题（使用### 标记）\n3. 每个段落内的重点关键词必须用**加粗**\n4. 内容比口播版更深入、更详细\n5. 适当使用引用（> 标记）来突出金句\n6. 使用列表（- 标记）来组织要点\n7. 结尾有总结和互动引导\n8. 总字数约' + config.wordCount + '字，严格按此字数执行
+9. 结尾有总结和互动引导` },
+    { role: 'user', content: userContent }
+  ];
+
+  let articleText = '';
+  let lastUpdateTime = 0;
+  resultDiv.innerHTML = `<div class="preview-section"><div class="preview-content-wrapper" style="background:#fff;padding:16px;border-radius:8px;"><div id="step4Preview" style="min-height:200px;"><div class="spinner" style="margin:20px auto;"></div></div></div></div>`;
+
+  try {
+    try {
+      articleText = await API.callArkAPIStream(messages, (text) => {
+        const now = Date.now();
+        // 节流：每500ms更新一次预览，避免频繁渲染导致卡顿
+        if (now - lastUpdateTime < 500) return;
+        lastUpdateTime = now;
+        const el = document.getElementById('step4Preview');
+        if (el) {
+          // 流式过程中只显示纯文本预览，不应用完整样式
+          el.innerHTML = `<div style="color:#333;white-space:pre-wrap;font-size:14px;line-height:1.75;">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
+        }
+      }, 'step4');
+    } catch (streamError) {
+      if (streamError.name === 'AbortError') return;
+      articleText = await API.callArkAPI(messages, false, 'step4');
+    }
+
+    if (!articleText) {
+      const el = document.getElementById('step4Preview');
+      articleText = el ? (el.textContent || el.innerText) : '';
+    }
+
+    // 创建新版本并添加到版本数组（不覆盖已有版本）
+    const newVersion = {
+      id: Date.now(),
+      markdown: articleText,
+      supplement: supplement,
+      timestamp: new Date().toLocaleTimeString(),
+      theme: config.defaultTheme
+    };
+    if (!AppState.step4Versions) AppState.step4Versions = [];
+    AppState.step4Versions.push(newVersion);
+    // 自动选中新版本
+    AppState.step4CurrentVersion = AppState.step4Versions.length - 1;
+    // 同时更新 step4Article 保持向后兼容
+    AppState.step4Article = articleText;
+    
+    // 异步生成文章元数据（不阻塞流程）
+    generateArticleMetadata(articleText, 'step4').then(meta => {
+      AppState.step4Metadata = meta;
+      // 也保存到当前版本对象
+      if (AppState.step4Versions[AppState.step4CurrentVersion]) {
+        AppState.step4Versions[AppState.step4CurrentVersion].metadata = meta;
+      }
+    }).catch(() => {});
+
+    // 流式完成后渲染版本TAB（而不是直接渲染预览）
+    renderStep4Versions();
+    // 自动填入editor排版工具
+    setTimeout(() => fillEditorFromStep4(), 500);
+    const copyBtn = document.getElementById('step4CopyBtn');
+    if (copyBtn) copyBtn.disabled = false;
+    AppState.markCompleted(4);
+    StepsUI.showStatus(`公众号文章生成完成（版本${AppState.step4Versions.length}）`, 'success');
+    StepsUI.updateStepStates();
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    resultDiv.innerHTML = `<div class="result-box" style="color:var(--error);">错误：${error.message}</div>`;
+    StepsUI.showStatus('生成失败: ' + error.message, 'error');
+  } finally {
+    StepsUI.setExecuting(4, false);
+  }
+}
+
+/**
+ * 渲染第4步的版本Tab页签和当前版本的文章预览
+ */
+function renderStep4Versions() {
+  const resultDiv = document.getElementById('step4Result');
+  if (!resultDiv) return;
+
+  const versions = AppState.step4Versions;
+  if (!versions || versions.length === 0) {
+    resultDiv.innerHTML = '<div class="result-box">暂无版本，请点击"重新生成"创建</div>';
+    return;
+  }
+
+  const currentIdx = AppState.step4CurrentVersion;
+  const currentVersion = versions[currentIdx];
+  if (!currentVersion) return;
+
+  // 构建版本Tab页签HTML（预览在iframe中，这里只渲染Tab）
+  const tabsHtml = versions.map((v, i) => `
+    <div class="version-tab ${i === currentIdx ? 'active' : ''}" onclick="switchStep4Version(${i})" title="版本${i + 1} · ${v.timestamp}">
+      <span>版本${i + 1}</span>
+      <span class="timestamp">${v.timestamp}</span>
+      ${versions.length > 1 ? `<button class="close-btn" onclick="event.stopPropagation(); deleteStep4Version(${i})" title="删除该版本">&times;</button>` : ''}
+    </div>
+  `).join('');
+
+  // 构建文章预览（可折叠）
+  const previewId = 'step4Preview_' + currentIdx;
+  const previewCollapsed = localStorage.getItem('step4PreviewCollapsed') === 'true';
+  const previewContent = currentVersion.markdown ? `
+    <div class="preview-section" style="margin-top:8px;">
+      <div class="preview-header" onclick="togglePreviewCollapse()" style="cursor:pointer;user-select:none;">
+        <span class="title">文章预览${previewCollapsed ? '（已折叠）' : ''} · 约${currentVersion.markdown.length}字</span>
+        <span style="font-size:11px;color:var(--text2);">${previewCollapsed ? '展开 ▾' : '收起 ▴'}</span>
+      </div>
+      <div class="preview-content-wrapper" id="step4PreviewWrapper" style="background:#fff;padding:16px;border-radius:0 0 8px 8px;${previewCollapsed ? 'display:none;' : ''}">
+        <div style="max-width:640px;margin:0 auto;font-family:'PingFang SC','Microsoft YaHei',sans-serif;line-height:1.75;color:#333;font-size:15px;">
+          ${renderMarkdownPreview(currentVersion.markdown)}
+        </div>
+      </div>
+    </div>
+  ` : '';
+
+  resultDiv.innerHTML = `<div class="version-tabs">${tabsHtml}</div>${previewContent}`;
+
+  // 自动将当前版本内容填入iframe编辑器
+  setTimeout(() => fillEditorFromStep4(), 100);
+}
+
+// 通用预览折叠切换
+function togglePreview(containerId) {
+  var wrapper = document.getElementById(containerId + '_wrapper');
+  if(!wrapper) return;
+  var collapsed = wrapper.style.display === 'none';
+  wrapper.style.display = collapsed ? 'block' : 'none';
+  localStorage.setItem('previewCollapsed_'+containerId, !collapsed);
+  // 重新渲染以更新折叠图标
+  if(containerId.startsWith('step3')) {
+    renderPreview(containerId, AppState.step3Article, AppConfig.getConfig().defaultTheme);
+  } else if(containerId.startsWith('step4')) {
+    renderStep4Versions();
+  }
+}
+
+// 切换Step4文章预览折叠
+function togglePreviewCollapse() {
+  var w = document.getElementById('step4PreviewWrapper');
+  if(!w) return;
+  var collapsed = w.style.display === 'none';
+  w.style.display = collapsed ? 'block' : 'none';
+  localStorage.setItem('step4PreviewCollapsed', !collapsed);
+  // 重新渲染以更新折叠图标
+  renderStep4Versions();
+}
+
+// 简易Markdown渲染（仅用于预览面板，显示标题/文字/标签结构）
+function renderMarkdownPreview(md) {
+  if(!md) return '<div style="color:#999;padding:20px;text-align:center;">暂无内容</div>';
+  var lines = md.split('\n');
+  var html = '';
+  var inCode = false;
+  lines.forEach(function(line, i) {
+    if(!inCode && line.trim().startsWith('```')) { inCode = !inCode; html += '<pre style="background:#f5f5f5;padding:10px;border-radius:6px;overflow:auto;font-size:13px;"><code>'; return; }
+    if(inCode) { if(line.trim().startsWith('```')) { inCode = false; html += '</code></pre>'; } else { html += escapeHtml(line) + '\n'; } return; }
+    if(!line.trim()) { html += '<br>'; return; }
+    // 标题行（第一行加粗标记为主标题）
+    if(i === 0 && line.startsWith('**') && line.endsWith('**')) { html += '<h1 style="font-size:22px;font-weight:700;text-align:center;margin:8px 0 4px;">' + line.replace(/^\*\*|\*\*$/g,'') + '</h1>'; return; }
+    // 副标题（第二行，普通文字前面）
+    if(i === 1 && !line.startsWith('**') && !line.startsWith('#')) { html += '<p style="font-size:14px;color:#888;text-align:center;margin:0 0 14px;">' + escapeHtml(line) + '</p>'; return; }
+    if(i === 1 && line.startsWith('**')) { html += '<h1 style="font-size:22px;font-weight:700;text-align:center;margin:8px 0 4px;">' + line.replace(/^\*\*|\*\*$/g,'') + '</h1>'; return; }
+    // 普通markdown渲染
+    if(line.startsWith('### ')) { html += '<h3 style="font-size:17px;font-weight:600;margin:18px 0 6px;color:#2c3e50;">' + escapeHtml(line.replace('### ','')) + '</h3>'; return; }
+    if(line.startsWith('## ')) { html += '<h2 style="font-size:19px;font-weight:600;margin:20px 0 8px;color:#2c3e50;">' + escapeHtml(line.replace('## ','')) + '</h2>'; return; }
+    if(line.startsWith('# ')) { html += '<h2 style="font-size:20px;font-weight:700;margin:20px 0 8px;color:#2c3e50;">' + escapeHtml(line.replace('# ','')) + '</h2>'; return; }
+    if(line.startsWith('> ')) { html += '<blockquote style="border-left:4px solid #7c3aed;color:#555;background:#f8f6ff;margin:10px 0;padding:8px 14px;border-radius:0 6px 6px 0;">' + escapeHtml(line.replace('> ','')) + '</blockquote>'; return; }
+    if(line.startsWith('- ')) { html += '<li style="margin:2px 0 2px 18px;">' + escapeHtml(line.replace('- ','')) + '</li>'; return; }
+    if(line.startsWith('---')) { html += '<hr style="margin:14px 0;border:none;border-top:1px solid #eee;">'; return; }
+    if(line.startsWith('![')) { var m = line.match(/!\[.*?\]\((.*?)\)/); if(m) { html += '<div style="text-align:center;margin:10px 0;"><img src="'+m[1]+'" style="max-width:100%;border-radius:6px;" onerror="this.style.display=\'none\'" /></div>'; } return; }
+    // 普通段落 - 处理加粗
+    var text = escapeHtml(line);
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    // 检测是否为标签行
+    if(line.includes('#') && line.match(/#\w+/g) && line.trim().startsWith('#')) {
+      html += '<div style="margin:12px 0;display:flex;flex-wrap:wrap;gap:6px;">' + line.trim().split(/\s+/).map(function(tag){ return '<span style="display:inline-block;background:#7c3aed;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;">' + escapeHtml(tag) + '</span>'; }).join('') + '</div>';
+      return;
+    }
+    html += '<p style="margin:4px 0;line-height:1.75;">' + text + '</p>';
+  });
+  return html;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/**
+ * 切换到指定版本的公众号文章
+ * @param {number} index - 版本索引
+ */
+function switchStep4Version(index) {
+  if (!AppState.step4Versions || index < 0 || index >= AppState.step4Versions.length) return;
+  AppState.step4CurrentVersion = index;
+  // 同步更新 step4Article 保持向后兼容（复制功能等依赖此字段）
+  AppState.step4Article = AppState.step4Versions[index].markdown;
+  // 同步更新元数据
+  AppState.step4Metadata = AppState.step4Versions[index].metadata || extractArticleMetadata(AppState.step4Article);
+  renderStep4Versions();
+}
+
+/**
+ * 删除指定版本的公众号文章（至少保留1个）
+ * @param {number} index - 要删除的版本索引
+ */
+function deleteStep4Version(index) {
+  if (!AppState.step4Versions || AppState.step4Versions.length <= 1) {
+    StepsUI.showStatus('至少保留一个版本', 'warning');
+    return;
+  }
+  // 删除指定版本
+  AppState.step4Versions.splice(index, 1);
+  // 调整当前选中索引
+  if (index < AppState.step4CurrentVersion) {
+    // 删除的是当前版本之前的版本，当前索引前移
+    AppState.step4CurrentVersion--;
+  } else if (index === AppState.step4CurrentVersion) {
+    // 删除的是当前版本，选中前一个（若已是第一个则保持第一个）
+    AppState.step4CurrentVersion = Math.max(0, index - 1);
+  }
+  // 防止索引越界
+  if (AppState.step4CurrentVersion >= AppState.step4Versions.length) {
+    AppState.step4CurrentVersion = AppState.step4Versions.length - 1;
+  }
+  // 同步更新 step4Article 保持向后兼容
+  AppState.step4Article = AppState.step4Versions[AppState.step4CurrentVersion].markdown;
+  renderStep4Versions();
+  StepsUI.showStatus('版本已删除', 'info');
+}
+
+// ==================== 第四步：editor-v1 排版工具 + 发布功能 ====================
+
+/** 插件是否就绪标志 */
+let _pluginReady = false;
+
+/** 初始化插件检测（页面加载时调用） */
+function initPluginDetection() {
+  // 监听插件的postMessage响应
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return;
+    if (event.data.type === 'CONTENTAI_EXTENSION_READY') {
+      _pluginReady = true;
+      updatePluginStatus(true);
+    }
+    if (event.data.type === 'CONTENTAI_PUBLISH_RESULT') {
+      const result = event.data;
+      if (result.success) {
+        StepsUI.showStatus(`发布已启动：${result.msg || '正在打开平台...'}`, 'success');
+      } else {
+        StepsUI.showStatus(`发布失败：${result.error || '未知错误'}`, 'error');
+      }
+    }
+    if (event.data.type === 'CONTENTAI_FILL_COMPLETE') {
+      const d = event.data;
+      if (d.success) {
+        StepsUI.showStatus(`${d.platform} 填充完成`, 'success');
+      } else {
+        StepsUI.showStatus(`${d.platform} 填充失败：${d.error}`, 'error');
+      }
+    }
+  });
+
+  // 延迟探测插件（等待content script注入）
+  setTimeout(() => checkPluginStatus(), 1500);
+}
+
+/** 检测插件是否安装并就绪 */
+function checkPluginStatus() {
+  _pluginReady = false;
+  window.postMessage({ type: 'CONTENTAI_CHECK_EXTENSION' }, '*');
+  // 3秒内未收到响应则认为插件未安装
+  setTimeout(() => {
+    if (!_pluginReady) updatePluginStatus(false);
+  }, 3000);
+}
+
+/** 更新插件状态UI */
+function updatePluginStatus(ready) {
+  const el = document.getElementById('pluginStatus');
+  if (!el) return;
+  if (ready) {
+    el.textContent = '✅ 插件已就绪（轻狐AI发布助手）';
+    el.className = 'plugin-status ready';
+  } else {
+    el.textContent = '⚠️ 插件未检测到，点击发布将直接打开平台页面';
+    el.className = 'plugin-status notready';
+  }
+}
+
+/**
+ * 将公众号文章MD内容填入editor-v1 iframe编辑器
+ */
+function fillEditorFromStep4() {
+  const md = AppState.step4Article;
+  if (!md) {
+    StepsUI.showStatus('请先生成公众号文章', 'error');
+    return;
+  }
+  fillEditorContent('editorFrame', md, 'editorStatus');
+}
+
+/**
+ * 将抖音长文MD内容填入第三步的editor-v1 iframe编辑器
+ */
+function fillEditorFromStep3() {
+  const md = AppState.step3Article;
+  if (!md) {
+    StepsUI.showStatus('请先生成抖音长文', 'error');
+    return;
+  }
+  fillEditorContent('step3EditorFrame', md, 'step3EditorStatus');
+}
+
+/**
+ * 通用：将MD内容填入指定iframe编辑器
+ * @param {string} frameId - iframe元素ID
+ * @param {string} md - Markdown内容
+ * @param {string} statusId - 状态显示元素ID
+ */
+// ============ postMessage 通信（代替直接的 iframe.contentDocument 访问） ============
+function postToEditor(frameId, action, data){
+  var frame = document.getElementById(frameId);
+  if(!frame||!frame.contentWindow){ StepsUI.showStatus('编辑器未加载', 'error'); return false; }
+  try { frame.contentWindow.postMessage({target:'editor-v1', action:action, data:data||{}}, '*'); return true; }
+  catch(e){ StepsUI.showStatus('通信失败：'+e.message, 'error'); return false; }
+}
+
+function fillEditorContent(frameId, md, statusId) {
+  var ok = postToEditor(frameId, 'fillContent', {md:md, coverImage: AppConfig.getConfig().defaultImage||''});
+  if(ok){
+    var el = document.getElementById(statusId);
+    if(el) el.textContent = '已填入 '+md.length+' 字文章';
+    StepsUI.showStatus('文章已填入排版编辑器', 'success');
+  }
+}
+
+function insertCoverImage(url) { postToEditor('editorFrame', 'insertCoverImage', {url:url}); }
+function insertCoverImageToStep3(url) { postToEditor('step3EditorFrame', 'insertCoverImage', {url:url}); }
+function insertCoverImageToFrame(frameId, url) { postToEditor(frameId, 'insertCoverImage', {url:url}); }
+function clearEditorContent() { postToEditor('editorFrame', 'clearContent'); var el=document.getElementById('editorStatus'); if(el)el.textContent='编辑器已清空'; StepsUI.showStatus('编辑器已清空','info'); }
+function clearStep3Editor() { postToEditor('step3EditorFrame', 'clearContent'); var el=document.getElementById('step3EditorStatus'); if(el)el.textContent='编辑器已清空'; StepsUI.showStatus('编辑器已清空','info'); }
+
+/**
+ * 从editor iframe中获取文章数据（用于发布）
+ * @returns {Object|null} article对象 {title, content, content_html, tags, cover_image}
+ */
+// postMessage 回调管理
+var _pmCallbacks = {};
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if(d && d.target === 'article-v2' && d.action === 'contentResult'){
+    var cb = _pmCallbacks[d.id];
+    if(cb){ delete _pmCallbacks[d.id]; cb(d.data); }
+  }
+});
+
+function getArticleFromEditor(callback) {
+  var frame = document.getElementById('editorFrame');
+  if(!frame||!frame.contentWindow){ StepsUI.showStatus('编辑器未加载','error'); callback(null); return; }
+  var reqId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  _pmCallbacks[reqId] = function(data){
+    if(!data){ callback(null); return; }
+    var tags = AppState.step2Keywords ? AppState.step2Keywords.join(', ') : '';
+    var coverImage = AppConfig.getConfig().defaultImage || (data.html ? (data.html.match(/<img[^>]+src=["']([^"']+)/)||[])[1] : '') || '';
+    callback({
+      id: 'article_' + Date.now(),
+      title: data.title || '未命名文章',
+      content: data.text || '',
+      content_html: data.html || '',
+      content_html_themed: data.html || '',
+      content_text: '',
+      tags: tags,
+      cover_image: coverImage,
+      gallery_images: []
+    });
+  };
+  // 超时处理
+  setTimeout(function(){
+    if(_pmCallbacks[reqId]){ delete _pmCallbacks[reqId]; StepsUI.showStatus('获取文章超时，请重试','error'); callback(null); }
+  }, 5000);
+  try { frame.contentWindow.postMessage({target:'editor-v1', action:'getContent', id:reqId}, '*'); }
+  catch(e){ delete _pmCallbacks[reqId]; callback(null); }
+}
+
+// 平台发布URL配置（插件未安装时的降级方案）
+const PUBLISH_URLS = {
+  wechat: 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit&action=edit&type=10&isMul=0&isNew=1&lang=zh_CN',
+  xiaohongshu: 'https://creator.xiaohongshu.com/publish/publish?from=tab_switch&target=image',
+  douyin: 'https://creator.douyin.com/creator-micro/content/post/article?enter_from=publish_page&media_type=article&type=new',
+  bilibili: 'https://member.bilibili.com/york/read-editor',
+  toutiao: 'https://mp.toutiao.com/profile_v4/graphic/publish',
+  zhihu: 'https://zhuanlan.zhihu.com/write',
+  aliyun: 'https://developer.aliyun.com/article/new',
+  csdn: 'https://editor.csdn.net/md',
+  baijiahao: 'https://baijiahao.baidu.com/builder/rc/edit?type=news&is_from_cms=1'
+};
+
+// 平台中文名
+const PLATFORM_NAMES = {
+  wechat: '微信公众号', xiaohongshu: '小红书', douyin: '抖音',
+  bilibili: 'B站专栏', toutiao: '今日头条', zhihu: '知乎',
+  aliyun: '阿里云社区', csdn: 'CSDN', baijiahao: '百家号'
+};
+
+/**
+ * 发布文章到指定平台
+ * @param {string} platform - 平台标识
+ */
+function publishToPlatform(platform) {
+  getArticleFromEditor(function(article){
+  if (!article) {
+    StepsUI.showStatus('无法获取文章内容，请先填入文章', 'error');
+    return;
+  }
+  if (!article.title || article.title === '未命名文章') {
+    StepsUI.showStatus('文章标题为空，请先输入标题', 'error');
+    return;
+  }
+
+  const platformName = PLATFORM_NAMES[platform] || platform;
+
+  if (_pluginReady) {
+    // 插件就绪：通过postMessage触发插件发布
+    window.postMessage({
+      type: 'CONTENTAI_PUBLISH',
+      platform: platform,
+      article: article
+    }, '*');
+    StepsUI.showStatus(`正在发布到${platformName}...`, 'info');
+  } else {
+    // 插件未就绪：直接打开平台页面（降级方案）
+    // 先复制内容到剪贴板
+    const html = article.content_html_themed || article.content_html || '';
+    const text = article.content_text || article.content || '';
+    copyToClipboardForPublish(html, text);
+    // 打开平台页面
+    const url = PUBLISH_URLS[platform];
+    if (url) {
+      window.open(url, '_blank');
+      StepsUI.showStatus(`已复制文章内容并打开${platformName}页面，请手动粘贴`, 'info');
+    }
+  }
+  });
+}
+
+/**
+ * 复制内容到剪贴板（用于降级发布）
+ */
+async function copyToClipboardForPublish(html, text) {
+  try {
+    if (navigator.clipboard && window.ClipboardItem && html) {
+      const item = new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([text || html], { type: 'text/plain' })
+      });
+      await navigator.clipboard.write([item]);
+      return true;
+    }
+  } catch (e) { /* 降级 */ }
+  // 降级方案
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text || html;
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    return true;
+  } catch (e) { return false; }
+}
+
+/**
+ * 执行第五步：AI精炼为小红书风格短文
+ */
+async function executeStep5() {
+  var source = AppState.step4Article || AppState.step3Article;
+  if (!source) {
+    StepsUI.showStatus('请先生成抖音长文或公众号文章', 'error');
+    StepsUI.switchStep(3);
+    return;
+  }
+  var supplement = document.getElementById('step5Supplement')?.value?.trim() || '';
+  StepsUI.setExecuting(5, true);
+  var resultDiv = document.getElementById('step5Result');
+  resultDiv.innerHTML = '<div class="preview-section"><div class="preview-content-wrapper" style="background:#fff;padding:16px;border-radius:8px;"><div id="step5Preview" style="min-height:100px;"><div class="spinner" style="margin:20px auto;"></div></div></div></div>';
+
+  var messages = [
+    { role: 'system', content: '你是一位小红书爆款笔记创作者。将用户提供的长文精炼为小红书笔记风格，要求：\n1. **第一行**是吸引眼球的标题（带emoji，20字以内）\n2. **第二行**是简短的副标题/一句话总结\n3. 正文用3-5个要点精炼核心价值，每个要点前加emoji\n4. 语言简洁口语化，多用换行和emoji，适合小红书阅读习惯\n5. **最后一行**是标签行：---分隔线后加 **#标签1 #标签2 #标签3 #标签4 #标签5**\n6. 字数控制在约 ' + Math.round(source.length/3) + ' 字左右，保留最有价值的信息，结构清晰有干货' },
+    { role: 'user', content: '请将以下内容精炼为小红书笔记风格：\n\n' + source + (supplement ? '\n\n补充要求：' + supplement : '') }
+  ];
+
+  var articleText = '';
+  var lastUpdateTime = 0;
+  try {
+    try {
+      articleText = await API.callArkAPIStream(messages, function(text) {
+        var now = Date.now();
+        if (now - lastUpdateTime < 400) return;
+        lastUpdateTime = now;
+        var el = document.getElementById('step5Preview');
+        if (el) el.innerHTML = '<div style="color:#333;white-space:pre-wrap;font-size:14px;line-height:1.75;">' + text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</div>';
+      }, 'step5');
+    } catch (streamError) {
+      if (streamError.name === 'AbortError') return;
+      articleText = await API.callArkAPI(messages, false, 'step5');
+    }
+    if (!articleText) {
+      var el = document.getElementById('step5Preview');
+      articleText = el ? (el.textContent || el.innerText) : '';
+    }
+  } catch(e) {
+    resultDiv.innerHTML = '<div class="result-box" style="color:var(--error);">错误：' + e.message + '</div>';
+    StepsUI.setExecuting(5, false);
+    return;
+  }
+
+  AppState.step5XHSContent = articleText;
+  resultDiv.innerHTML = '';
+  // 用主题渲染效果
+  var config = AppConfig.getConfig();
+  renderPreview('step5Result', articleText, config.defaultTheme);
+  AppState.markCompleted(5);
+  StepsUI.updateStepStates();
+  var nextBtn = document.getElementById('step5NextBtn');
+  if (nextBtn) nextBtn.disabled = false;
+  StepsUI.showStatus('小红书风格精炼完成，可在下面海报工具中预览', 'success');
+  StepsUI.setExecuting(5, false);
+}
+
+/**
+ * 将精炼后的小红书内容填入海报编辑
+ */
+function fillPosterFromStep5() {
+  var md = AppState.step5XHSContent || AppState.step4Article || AppState.step3Article;
+  if (!md) {
+    StepsUI.showStatus('没有可填入的内容', 'error');
+    return;
+  }
+  var frame = document.getElementById('posterFrame');
+  if (!frame || !frame.contentWindow) {
+    StepsUI.showStatus('海报工具未加载，请重载', 'error');
+    return;
+  }
+  try {
+    frame.contentWindow.postMessage({target:'poster-v6', action:'fillContent', data:{md:md}}, '*');
+  } catch(e2) {
+    StepsUI.showStatus('填入失败：' + e2.message, 'error');
+    return;
+  }
+  StepsUI.showStatus('已填入内容到海报工具', 'success');
+  AppState.markCompleted(5);
+  StepsUI.updateStepStates();
+  var nextBtn = document.getElementById('step5NextBtn');
+  if (nextBtn) nextBtn.disabled = false;
+}
+
+/**
+ * 将抖音长文填入海报
+ */
+function fillPosterFromStep3() {
+  var md = AppState.step3Article;
+  if (!md) { StepsUI.showStatus('请先生成抖音长文', 'error'); StepsUI.switchStep(3); return; }
+  var frame = document.getElementById('posterFrame');
+  if (!frame || !frame.contentWindow) { StepsUI.showStatus('海报工具未加载', 'error'); return; }
+  try { frame.contentWindow.postMessage({target:'poster-v6', action:'fillContent', data:{md:md}}, '*');
+  } catch(e2) { StepsUI.showStatus('填入失败：' + e2.message, 'error'); return; }
+  StepsUI.showStatus('已填入抖音长文到海报工具', 'success');
+  AppState.markCompleted(5); StepsUI.updateStepStates();
+  var nextBtn = document.getElementById('step5NextBtn'); if (nextBtn) nextBtn.disabled = false;
+}
+
+/**
+ * 将公众号文章MD内容填入poster-v6编辑器
+ */
+function fillPosterFromStep4() {
+  var md = AppState.step4Article;
+  if (!md) {
+    StepsUI.showStatus('请先完成第四步生成公众号文章', 'error');
+    StepsUI.switchStep(4);
+    return;
+  }
+  var frame = document.getElementById('posterFrame');
+  if (!frame || !frame.contentWindow) {
+    StepsUI.showStatus('海报工具未加载，请重载', 'error');
+    return;
+  }
+  try {
+    frame.contentWindow.postMessage({target:'poster-v6', action:'fillContent', data:{md:md}}, '*');
+  } catch(e2) {
+    StepsUI.showStatus('填入失败：' + e2.message, 'error');
+    return;
+  }
+  StepsUI.showStatus('已填入公众号文章内容到海报工具', 'success');
+  AppState.markCompleted(5);
+  StepsUI.updateStepStates();
+  var nextBtn = document.getElementById('step5NextBtn');
+  if (nextBtn) nextBtn.disabled = false;
+}
+
+/**
+ * 清空海报编辑器内容
+ */
+function clearPosterContent() {
+  var frame = document.getElementById('posterFrame');
+  if (!frame || !frame.contentWindow) return;
+  try { frame.contentWindow.postMessage({target:'poster-v6', action:'clearContent', data:{}}, '*'); StepsUI.showStatus('已清空海报内容','info'); }
+  catch(e) { StepsUI.showStatus('清空失败', 'error'); }
+}
+
+/**
+ * 重载海报工具iframe
+ */
+function reloadPoster() {
+  const frame = document.getElementById('posterFrame');
+  if (frame) {
+    frame.src = frame.src;
+    StepsUI.showStatus('海报工具已重载', 'info');
+  }
+}
+
+function finishWorkflow() {
+  StepsUI.showStatus('🎉 创作完成！', 'success');
+  const versionCount = AppState.step4Versions ? AppState.step4Versions.length : 0;
+  
+  // 获取当前公众号文章的元数据
+  const metadata = AppState.step4Metadata || extractArticleMetadata(AppState.step4Article || '');
+  const config = AppConfig.getConfig();
+  const articleHtml = getCleanArticleHTML(AppState.step4Article || '', config.defaultTheme, {
+    author: config.publicAuthor,
+    header: config.publicHeader,
+    footer: config.publicFooter
+  });
+  
+  // 渲染完整的文章预览页面
+  const summaryDiv = document.getElementById('step6Summary');
+  if (summaryDiv) {
+    summaryDiv.innerHTML = `
+      <div class="article-complete-preview">
+        <!-- 文章头部信息卡片 -->
+        <div class="article-meta-card">
+          <div class="article-meta-row">
+            <span class="meta-label">文章标题</span>
+            <span class="meta-value title">${metadata.title || '未设置'}</span>
+          </div>
+          ${metadata.subtitle ? `
+          <div class="article-meta-row">
+            <span class="meta-label">副标题</span>
+            <span class="meta-value">${metadata.subtitle}</span>
+          </div>` : ''}
+          <div class="article-meta-row">
+            <span class="meta-label">作者</span>
+            <span class="meta-value">${config.publicAuthor || '未设置'}</span>
+          </div>
+          ${metadata.summary ? `
+          <div class="article-meta-row">
+            <span class="meta-label">摘要</span>
+            <span class="meta-value summary">${metadata.summary}</span>
+          </div>` : ''}
+          ${metadata.tags && metadata.tags.length > 0 ? `
+          <div class="article-meta-row">
+            <span class="meta-label">标签</span>
+            <span class="meta-value tags">
+              ${metadata.tags.map(t => `<span class="article-tag">#${t}</span>`).join('')}
+            </span>
+          </div>` : ''}
+          ${metadata.coverUrl ? `
+          <div class="article-meta-row">
+            <span class="meta-label">封面</span>
+            <span class="meta-value"><img src="${metadata.coverUrl}" class="article-cover-img" onerror="this.style.display='none'" /></span>
+          </div>` : ''}
+          <div class="article-meta-row">
+            <span class="meta-label">创作统计</span>
+            <span class="meta-value stats">
+              抖音长文：${AppState.step3Article ? AppState.step3Article.length + '字' : '未生成'} · 
+              公众号文章：${AppState.step4Article ? AppState.step4Article.length + '字' : '未生成'} · 
+              ${versionCount}个版本
+            </span>
+          </div>
+        </div>
+        
+        <!-- 文章正文预览 -->
+        <div class="article-body-preview">
+          <div class="preview-header">
+            <span class="title">文章正文预览</span>
+            <div class="actions">
+              <select class="preview-theme-select" onchange="changeStep6Theme(this.value)">
+                ${getTemplateOptions()}
+              </select>
+            </div>
+          </div>
+          <div class="preview-content-wrapper" id="step6ArticleBody" style="background:#fff;padding:16px;border-radius:0 0 8px 8px;">
+            ${articleHtml}
+          </div>
+        </div>
+      </div>
+    `;
+    // 设置当前主题
+    const select = summaryDiv.querySelector('.preview-theme-select');
+    if (select) select.value = config.defaultTheme;
+  }
+
+  // 启用已生成内容的下载按钮
+  var dl3 = document.getElementById("dlStep3Btn");
+  if (dl3) dl3.disabled = !AppState.step3Article;
+  var dl4 = document.getElementById("dlStep4Btn");
+  if (dl4) dl4.disabled = !AppState.step4Article;
+  var dl5 = document.getElementById("dlStep5Btn");
+  if (dl5) dl5.disabled = !AppState.step5XHSContent;
+}
+
+/**
+ * 切换Step 6文章预览的主题
+ */
+function changeStep6Theme(themeId) {
+  const config = AppConfig.getConfig();
+  const articleHtml = getCleanArticleHTML(AppState.step4Article || '', themeId, {
+    author: config.publicAuthor,
+    header: config.publicHeader,
+    footer: config.publicFooter
+  });
+  const body = document.getElementById('step6ArticleBody');
+  if (body) body.innerHTML = articleHtml;
+}
+
+/**
+ * 一键复制（Markdown格式）- 复制公众号文章的原始Markdown
+ */
+async function copyAllAsMarkdown() {
+  const article = AppState.step4Article || AppState.step3Article || '';
+  if (!article) {
+    StepsUI.showStatus('没有可复制的内容', 'error');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(article);
+    StepsUI.showStatus(`✅ 已复制Markdown内容（${article.length}字）`, 'success');
+  } catch (e) {
+    // 降级方案
+    const ta = document.createElement('textarea');
+    ta.value = article;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    StepsUI.showStatus(`✅ 已复制Markdown内容（${article.length}字）`, 'success');
+  }
+}
+
+/**
+ * 一键复制（排版样式）- 复制带样式的HTML，可直接粘贴到公众号/编辑器
+ */
+async function copyAllAsStyledHtml() {
+  const config = AppConfig.getConfig();
+  const article = AppState.step4Article || AppState.step3Article || '';
+  if (!article) {
+    StepsUI.showStatus('没有可复制的内容', 'error');
+    return;
+  }
+  
+  const articleHtml = getCleanArticleHTML(article, config.defaultTheme, {
+    author: config.publicAuthor,
+    header: config.publicHeader,
+    footer: config.publicFooter
+  });
+  
+  try {
+    // 创建一个临时div存放HTML，然后用Clipboard API的ClipboardItem复制富文本
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = articleHtml;
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    document.body.appendChild(tempDiv);
+    
+    // 选中内容
+    const range = document.createRange();
+    range.selectNodeContents(tempDiv);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    
+    // 复制
+    document.execCommand('copy');
+    sel.removeAllRanges();
+    document.body.removeChild(tempDiv);
+    
+    StepsUI.showStatus(`✅ 已复制排版样式（可直接粘贴到公众号/编辑器）`, 'success');
+  } catch (e) {
+    StepsUI.showStatus('复制失败：' + e.message, 'error');
+  }
+}
+
+/**
+ * 一键复制（纯文本）- 复制去除所有格式的纯文本
+ */
+async function copyAllAsPlainText() {
+  const article = AppState.step4Article || AppState.step3Article || '';
+  if (!article) {
+    StepsUI.showStatus('没有可复制的内容', 'error');
+    return;
+  }
+  
+  // 将Markdown转为纯文本
+  let plainText = article
+    .replace(/^###\s+/gm, '')      // 去除三级标题标记
+    .replace(/^##\s+/gm, '')       // 去除二级标题标记
+    .replace(/^#\s+/gm, '')        // 去除一级标题标记
+    .replace(/\*\*(.+?)\*\*/g, '$1') // 去除加粗
+    .replace(/\*(.+?)\*/g, '$1')   // 去除斜体
+    .replace(/!\[.*?\]\(.*?\)/g, '') // 去除图片
+    .replace(/\[(.+?)\]\(.*?\)/g, '$1') // 链接只保留文字
+    .replace(/^>\s+/gm, '')        // 去除引用标记
+    .replace(/^[-*]\s+/gm, '')     // 去除列表标记
+    .replace(/`(.+?)`/g, '$1')     // 去除行内代码标记
+    .replace(/\n{3,}/g, '\n\n');   // 压缩多余空行
+  
+  try {
+    await navigator.clipboard.writeText(plainText);
+    StepsUI.showStatus(`✅ 已复制纯文本（${plainText.length}字）`, 'success');
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = plainText;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    StepsUI.showStatus(`✅ 已复制纯文本（${plainText.length}字）`, 'success');
+  }
+}
+
+/**
+ * 下载单个平台的 MD 文件（含结构化信息）
+ */
+function downloadArticle(step) {
+  var content = null, filename = '', label = '';
+  if (step === 'step3' && AppState.step3Article) {
+    content = AppState.step3Article;
+    filename = '抖音长文.md';
+    label = '抖音长文';
+  } else if (step === 'step4' && AppState.step4Article) {
+    content = AppState.step4Article;
+    filename = '公众号文章.md';
+    label = '公众号文章';
+  } else if (step === 'step5' && AppState.step5XHSContent) {
+    content = AppState.step5XHSContent;
+    filename = '小红书笔记.md';
+    label = '小红书笔记';
+  }
+  if (!content) {
+    StepsUI.showStatus(label + '未生成，请先完成对应步骤', 'error');
+    return;
+  }
+  var blob = new Blob([content], {type: 'text/markdown;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  StepsUI.showStatus('✅ ' + label + ' 已下载', 'success');
+}
+
+/**
+ * 从Markdown文章中提取元数据（标题、副标题、摘要、标签、封面、结尾）
+ * @param {string} markdown - 文章Markdown内容
+ * @returns {Object} 元数据对象
+ */
+function extractArticleMetadata(markdown) {
+  if (!markdown) return { title: '', subtitle: '', summary: '', tags: [], coverUrl: '', ending: '' };
+  
+  const lines = markdown.split('\n');
+  let title = '';
+  let subtitle = '';
+  let summary = '';
+  let tags = [];
+  let coverUrl = '';
+  let ending = '';
+  
+  // 提取第一个标题作为文章标题（优先 ### 或 ## 或 #）
+  for (const line of lines) {
+    const h3Match = line.match(/^###\s+(.+)/);
+    const h2Match = line.match(/^##\s+(.+)/);
+    const h1Match = line.match(/^#\s+(.+)/);
+    if (h3Match) { title = h3Match[1].trim(); break; }
+    if (h2Match) { title = h2Match[1].trim(); break; }
+    if (h1Match) { title = h1Match[1].trim(); break; }
+  }
+  
+  // 如果没有标题标记，取第一行非空文本
+  if (!title) {
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('**') && !trimmed.startsWith('>')) {
+        title = trimmed.replace(/[#*>\-]/g, '').trim();
+        break;
+      }
+    }
+  }
+  
+  // 提取副标题：第二个标题或第一段加粗文本
+  let titleFound = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.match(/^#{1,3}\s+/)) {
+      if (titleFound) {
+        subtitle = trimmed.replace(/^#{1,3}\s+/, '').trim();
+        break;
+      }
+      titleFound = true;
+    }
+  }
+  if (!subtitle) {
+    // 取第一个加粗段落作为副标题
+    for (const line of lines) {
+      const boldMatch = line.match(/^\*\*(.+?)\*\*/);
+      if (boldMatch && boldMatch[1].length > 10) {
+        subtitle = boldMatch[1].trim();
+        break;
+      }
+    }
+  }
+  
+  // 提取摘要：取前200字的纯文本
+  const plainText = markdown.replace(/[#*>`\-\[\]()!]/g, '').replace(/\n+/g, ' ').trim();
+  summary = plainText.substring(0, 120);
+  if (plainText.length > 120) summary += '...';
+  
+  // 提取标签：从关键词、标题、内容中提取
+  if (AppState.step2Keywords && AppState.step2Keywords.length > 0) {
+    tags = AppState.step2Keywords.slice(0, 5);
+  }
+  // 从标题提取额外标签
+  const titleWords = title.replace(/[，。！？、：；""''《》【】\[\]{}()（）]/g, ' ').split(/\s+/).filter(w => w.length >= 2 && w.length <= 6);
+  if (titleWords.length > 0 && tags.length < 5) {
+    for (const w of titleWords) {
+      if (!tags.includes(w) && tags.length < 5) tags.push(w);
+    }
+  }
+  
+  // 提取封面URL：第一个图片
+  const imgMatch = markdown.match(/!\[.*?\]\((.+?)\)/);
+  if (imgMatch) coverUrl = imgMatch[1];
+  if (!coverUrl) {
+    const config = AppConfig.getConfig();
+    if (config.defaultImage) coverUrl = config.defaultImage;
+  }
+  
+  // 提取结尾：最后一段非空文本
+  const reversedLines = [...lines].reverse();
+  for (const line of reversedLines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('>') && !trimmed.startsWith('-') && trimmed.length > 20) {
+      ending = trimmed.replace(/[*]/g, '').trim();
+      if (ending.length > 100) ending = ending.substring(0, 100) + '...';
+      break;
+    }
+  }
+  
+  return { title, subtitle, summary, tags, coverUrl, ending };
+}
+
+/**
+ * 异步生成文章元数据（通过AI提取更精准的标题、摘要、标签）
+ * @param {string} article - 文章内容
+ * @param {string} stepKey - 步骤标识 'step3' 或 'step4'
+ */
+async function generateArticleMetadata(article, stepKey) {
+  if (!article) return null;
+  
+  const messages = [
+    { role: 'system', content: `你是文章元数据提取专家。从文章内容中提取以下信息，输出JSON格式：
+{
+  "title": "文章主标题（15字以内，吸引眼球）",
+  "subtitle": "副标题（20字以内，补充说明）",
+  "summary": "文章摘要（80-120字，概括核心观点）",
+  "tags": ["标签1", "标签2", "标签3", "标签4", "标签5"],
+  "ending": "结尾金句（30字以内，有感染力）"
+}
+要求：
+1. 标题要吸引人，适合社交媒体传播
+2. 标签要覆盖文章主题和受众兴趣点
+3. 摘要要精准概括文章价值
+4. 只输出JSON，不要其他文字` },
+    { role: 'user', content: `请从以下文章中提取元数据：\n\n${article.substring(0, 3000)}` }
+  ];
+  
+  try {
+    const result = await API.callArkAPI(messages, false, stepKey + '_meta');
+    const jsonMatch = result.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const metadata = JSON.parse(jsonMatch[0]);
+      // 保留原有封面URL
+      const existing = stepKey === 'step3' ? AppState.step3Metadata : AppState.step4Metadata;
+      if (existing && existing.coverUrl) metadata.coverUrl = existing.coverUrl;
+      return metadata;
+    }
+  } catch (e) {
+    console.warn('元数据生成失败，使用基础提取:', e.message);
+  }
+  
+  // 降级：使用基础提取
+  return extractArticleMetadata(article);
+}
+
+</script>
+<script>
+/**
+ * keyword-cache.js - 关键词缓存与补充说明智能弹窗模块
+ *
+ * 功能1：浏览器缓存高频/中频标签
+ *   - 使用 localStorage 记录用户使用过的关键词及其使用次数
+ *   - 在 Step 1 关键词输入框上方显示高频（前10）和中频（11-20）标签
+ *   - 点击标签可快速添加到关键词输入框
+ *   - 提供"清空标签缓存"功能
+ *
+ * 功能2：补充说明智能弹窗
+ *   - 多维度选择构建补充说明文本
+ *   - 维度：作者身份、目标受众、写作目的、文章风格、用户提升方向
+ *   - 确认后自动填充到 #step1Description 输入框
+ *
+ * 依赖：无外部框架，纯 JavaScript 实现
+ * 样式：通过 injectStyles() 注入，复用 main.css 中定义的 CSS 变量保持主题一致
+ */
+
+// ==================== 常量定义 ====================
+
+/** localStorage 缓存键名 */
+const KEYWORD_CACHE_KEY = 'article_keyword_cache';
+
+/** 高频标签数量上限（前10名） */
+const HIGH_FREQ_LIMIT = 10;
+
+/** 中频标签数量上限（11-20名） */
+const MEDIUM_FREQ_LIMIT = 10;
+
+// ==================== 功能1：关键词缓存 ====================
+
+/**
+ * 关键词缓存管理对象
+ * 使用 localStorage 持久化存储用户使用过的关键词及其次数
+ * 键名：article_keyword_cache
+ * 值：JSON 对象 {keyword: count, ...}
+ */
+const KeywordCache = {
+  /**
+   * 读取缓存数据
+   * @returns {Object} {keyword: count, ...}
+   */
+  getCache() {
+    try {
+      const raw = localStorage.getItem(KEYWORD_CACHE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.warn('读取关键词缓存失败：', e);
+      return {};
+    }
+  },
+
+  /**
+   * 写入缓存数据
+   * @param {Object} cache - 缓存对象 {keyword: count}
+   */
+  saveCache(cache) {
+    try {
+      localStorage.setItem(KEYWORD_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+      console.warn('写入关键词缓存失败：', e);
+    }
+  },
+
+  /**
+   * 记录关键词使用（支持单个或逗号/换行分隔的多个）
+   * 每次记录该关键词的 count + 1
+   * @param {string} keyword - 关键词字符串，可为逗号或换行分隔的多个
+   */
+  recordKeyword(keyword) {
+    if (!keyword || typeof keyword !== 'string') return;
+    // 按中英文逗号、换行符分隔，去除空白和空项
+    const keywords = keyword.split(/[,，\n]/)
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+    if (keywords.length === 0) return;
+
+    const cache = this.getCache();
+    keywords.forEach(kw => {
+      cache[kw] = (cache[kw] || 0) + 1;
+    });
+    this.saveCache(cache);
+  },
+
+  /**
+   * 获取所有标签，按使用次数降序排列
+   * @returns {Array<{keyword: string, count: number}>}
+   */
+  getAllTags() {
+    const cache = this.getCache();
+    return Object.entries(cache)
+      .map(([keyword, count]) => ({ keyword, count }))
+      .sort((a, b) => b.count - a.count);
+  },
+
+  /**
+   * 获取高频标签（使用次数排名前 limit 名）
+   * @param {number} limit - 数量上限，默认 10
+   * @returns {Array<{keyword: string, count: number}>}
+   */
+  getHighFrequencyTags(limit = HIGH_FREQ_LIMIT) {
+    return this.getAllTags().slice(0, limit);
+  },
+
+  /**
+   * 获取中频标签（使用次数排名 limit+1 到 limit*2 名）
+   * 默认获取排名 11-20 的关键词
+   * @param {number} limit - 数量上限，默认 10
+   * @returns {Array<{keyword: string, count: number}>}
+   */
+  getMediumFrequencyTags(limit = MEDIUM_FREQ_LIMIT) {
+    return this.getAllTags().slice(HIGH_FREQ_LIMIT, HIGH_FREQ_LIMIT + limit);
+  },
+
+  /**
+   * 清空缓存
+   */
+  clearCache() {
+    try {
+      localStorage.removeItem(KEYWORD_CACHE_KEY);
+    } catch (e) {
+      console.warn('清空关键词缓存失败：', e);
+    }
+  }
+};
+
+// ==================== 标签渲染与交互 ====================
+
+/**
+ * 渲染关键词标签区域到 #keywordTagsContainer
+ * - 缓存为空时显示提示"暂无历史标签，使用后将自动记录"
+ * - 有缓存时显示高频标签（主色调样式）和中频标签（次要样式）
+ * - 每个标签是可点击的 chip/badge，点击添加到关键词输入框
+ * - 提供"清空标签缓存"按钮
+ */
+function renderKeywordTags() {
+  const container = document.getElementById('keywordTagsContainer');
+  if (!container) return;
+
+  const allTags = KeywordCache.getAllTags();
+  const highTags = KeywordCache.getHighFrequencyTags();
+  const mediumTags = KeywordCache.getMediumFrequencyTags();
+
+  // 缓存为空时显示提示
+  if (allTags.length === 0) {
+    container.innerHTML = `
+      <div class="kw-tags-empty">暂无历史标签，使用后将自动记录</div>
+    `;
+    return;
+  }
+
+  // 构建高频标签区域 HTML
+  const highHtml = highTags.length > 0 ? `
+    <div class="kw-tags-section">
+      <span class="kw-tags-section-title">高频标签</span>
+      <div class="kw-tags-chips">
+        ${highTags.map(t => `
+          <span class="kw-tag-chip kw-tag-high" data-keyword="${kwEscapeHtml(t.keyword)}" title="使用 ${t.count} 次">
+            <span class="kw-tag-text">${kwEscapeHtml(t.keyword)}</span>
+            <span class="kw-tag-count">${t.count}</span>
+          </span>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  // 构建中频标签区域 HTML
+  const mediumHtml = mediumTags.length > 0 ? `
+    <div class="kw-tags-section">
+      <span class="kw-tags-section-title">中频标签</span>
+      <div class="kw-tags-chips">
+        ${mediumTags.map(t => `
+          <span class="kw-tag-chip kw-tag-medium" data-keyword="${kwEscapeHtml(t.keyword)}" title="使用 ${t.count} 次">
+            <span class="kw-tag-text">${kwEscapeHtml(t.keyword)}</span>
+            <span class="kw-tag-count">${t.count}</span>
+          </span>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  container.innerHTML = `
+    <div class="kw-tags-header">
+      <span class="kw-tags-title">历史标签</span>
+      <button class="kw-tags-clear-btn" id="kwTagsClearBtn" type="button">清空标签缓存</button>
+    </div>
+    ${highHtml}
+    ${mediumHtml}
+  `;
+
+  // 绑定标签点击事件：点击添加到关键词输入框
+  container.querySelectorAll('.kw-tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const keyword = chip.getAttribute('data-keyword');
+      if (keyword) addKeywordToInput(keyword);
+    });
+  });
+
+  // 绑定清空缓存按钮
+  const clearBtn = document.getElementById('kwTagsClearBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (confirm('确定要清空所有历史标签缓存吗？')) {
+        KeywordCache.clearCache();
+        renderKeywordTags();
+      }
+    });
+  }
+}
+
+/**
+ * 将关键词添加到 #step1Keywords 输入框
+ * - 如果关键词已存在（不区分大小写），则不重复添加
+ * - 追加时使用换行符分隔，保持输入框整洁
+ * @param {string} keyword - 要添加的关键词
+ */
+function addKeywordToInput(keyword) {
+  const input = document.getElementById('step1Keywords');
+  if (!input) return;
+
+  const trimmed = keyword.trim();
+  if (!trimmed) return;
+
+  const current = input.value;
+  // 输入框为空时直接填入
+  if (!current.trim()) {
+    input.value = trimmed;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+
+  // 检查是否已存在（不区分大小写比较）
+  const existing = current.split(/[,，\n]/)
+    .map(k => k.trim().toLowerCase())
+    .filter(k => k);
+  if (existing.includes(trimmed.toLowerCase())) {
+    return; // 已存在，不重复添加
+  }
+
+  // 追加到末尾，使用换行符分隔
+  input.value = current.endsWith('\n') ? current + trimmed : current + '\n' + trimmed;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// ==================== 功能2：补充说明智能弹窗 ====================
+
+/**
+ * 补充说明构建器的维度配置数据
+ * 每个维度包含若干子维度，每个子维度为单选
+ */
+const DESCRIPTION_DIMENSIONS = [
+  {
+    id: 'author',
+    title: '维度1：作者身份',
+    subDimensions: [
+      {
+        id: 'profession',
+        label: '职业',
+        options: ['职场新人', '中层管理', '高管', '创业者', '自由职业者', '内容创作者', '教师', '咨询师', '设计师', '程序员', '产品经理', '运营人员', '销售专家', '财务顾问', '心理咨询师']
+      },
+      {
+        id: 'expertise',
+        label: '擅长领域',
+        options: ['个人成长', '职业发展', '学习方法', '思维模型', '心理学', '时间管理', '沟通技巧', '领导力', '创新思维', '投资理财', '健康养生', '人际关系', '情绪管理', '习惯养成']
+      },
+      {
+        id: 'languageStyle',
+        label: '语言结构',
+        options: ['口语化接地气', '专业严谨', '幽默风趣', '温暖治愈', '犀利直接', '故事化叙述', '金句频出', '数据驱动']
+      },
+      {
+        id: 'personality',
+        label: '个人特点',
+        options: ['亲和大姐姐型', '严厉导师型', '知性学者型', '热血激励型', '理性分析型', '创意发散型']
+      }
+    ]
+  },
+  {
+    id: 'audience',
+    title: '维度2：目标受众',
+    subDimensions: [
+      {
+        id: 'ageGroup',
+        label: '年龄段',
+        options: ['18-22岁(大学生)', '23-28岁(职场新人)', '28-35岁(职场中坚)', '35-45岁(成熟人群)', '45岁以上']
+      },
+      {
+        id: 'audienceType',
+        label: '人群类型',
+        options: ['都市白领', '打工者/上班族', '成长女性', '创业者', '老板/企业主', '职业经理人', '自由职业者', '宝妈群体', '学生群体', '退休人群']
+      }
+    ]
+  },
+  {
+    id: 'purpose',
+    title: '维度3：写作目的',
+    subDimensions: [
+      {
+        id: 'purpose',
+        label: '目的',
+        options: ['品牌推广', '个人成长', '思维觉醒', '专注疗愈', '增长技能', '情绪疏导', '知识科普', '经验分享', '励志激励', '价值观传递']
+      }
+    ]
+  },
+  {
+    id: 'style',
+    title: '维度4：文章风格',
+    subDimensions: [
+      {
+        id: 'conciseness',
+        label: '简洁程度',
+        options: ['极简(300字核心观点)', '精炼(800字要点)', '标准(1500字详述)', '深度(2500字以上分析)']
+      },
+      {
+        id: 'valueDirection',
+        label: '价值方向',
+        options: ['实操方法论', '思维启发', '情感共鸣', '案例拆解', '工具推荐', '趋势分析']
+      }
+    ]
+  },
+  {
+    id: 'improvement',
+    title: '维度5：用户提升方向',
+    subDimensions: [
+      {
+        id: 'improvement',
+        label: '提升方向',
+        options: ['认知提升', '技能增长', '习惯改变', '心态调整', '行动执行', '关系改善', '效率提升']
+      }
+    ]
+  }
+];
+
+/** 弹窗选择状态：{子维度id: 选中的值} */
+let descriptionBuilderState = {};
+
+/**
+ * 重置弹窗选择状态（全部置空）
+ */
+function resetDescriptionBuilderState() {
+  descriptionBuilderState = {};
+  DESCRIPTION_DIMENSIONS.forEach(dim => {
+    dim.subDimensions.forEach(sub => {
+      descriptionBuilderState[sub.id] = '';
+    });
+  });
+}
+
+/**
+ * 创建弹窗 DOM 并添加到 body（仅创建一次）
+ * 弹窗 HTML 通过 JS 动态生成
+ */
+function createDescriptionBuilderModal() {
+  if (document.getElementById('descBuilderModal')) return;
+
+  // 构建所有维度区域 HTML
+  const dimensionsHtml = DESCRIPTION_DIMENSIONS.map(dim => {
+    const subDimsHtml = dim.subDimensions.map(sub => {
+      const chipsHtml = sub.options.map(opt => `
+        <span class="desc-builder-chip" data-dim="${sub.id}" data-value="${kwEscapeHtml(opt)}">${kwEscapeHtml(opt)}</span>
+      `).join('');
+      return `
+        <div class="desc-builder-sub-dimension">
+          <div class="desc-builder-sub-label">${sub.label}</div>
+          <div class="desc-builder-chips">${chipsHtml}</div>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div class="desc-builder-dimension">
+        <div class="desc-builder-dimension-title">${dim.title}</div>
+        ${subDimsHtml}
+      </div>
+    `;
+  }).join('');
+
+  const modalHtml = `
+    <div class="desc-builder-modal" id="descBuilderModal">
+      <div class="desc-builder-content">
+        <div class="desc-builder-header">
+          <h3>智能补充说明构建器</h3>
+          <button class="desc-builder-close" id="descBuilderCloseBtn" type="button" title="关闭">✕</button>
+        </div>
+        <div class="desc-builder-body">
+          ${dimensionsHtml}
+        </div>
+        <div class="desc-builder-footer">
+          <button class="btn btn-secondary" id="descBuilderCancelBtn" type="button">取消</button>
+          <button class="btn btn-primary" id="descBuilderConfirmBtn" type="button">确认</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  // 绑定弹窗内的事件（事件委托）
+  const modal = document.getElementById('descBuilderModal');
+
+  modal.addEventListener('click', (e) => {
+    // chip 点击：单选切换
+    const chip = e.target.closest('.desc-builder-chip');
+    if (chip) {
+      handleChipClick(chip);
+      return;
+    }
+
+    // 关闭按钮
+    if (e.target.id === 'descBuilderCloseBtn' || e.target.id === 'descBuilderCancelBtn') {
+      closeDescriptionBuilder();
+      return;
+    }
+
+    // 确认按钮
+    if (e.target.id === 'descBuilderConfirmBtn') {
+      confirmDescriptionBuilder();
+      return;
+    }
+
+    // 点击遮罩层关闭
+    if (e.target === modal) {
+      closeDescriptionBuilder();
+    }
+  });
+
+  // ESC 键关闭弹窗
+  modal.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDescriptionBuilder();
+  });
+}
+
+/**
+ * 处理 chip 点击事件（单选逻辑）
+ * 同一子维度内只能选中一个，再次点击已选中项则取消选中
+ * @param {Element} chip - 被点击的 chip 元素
+ */
+function handleChipClick(chip) {
+  const dim = chip.getAttribute('data-dim');
+  const value = chip.getAttribute('data-value');
+  if (!dim || !value) return;
+
+  const subDimension = chip.closest('.desc-builder-chips');
+  if (!subDimension) return;
+
+  // 如果已选中则取消选中
+  if (chip.classList.contains('selected')) {
+    chip.classList.remove('selected');
+    descriptionBuilderState[dim] = '';
+  } else {
+    // 取消同组内其他选中
+    subDimension.querySelectorAll('.desc-builder-chip.selected').forEach(c => c.classList.remove('selected'));
+    // 选中当前
+    chip.classList.add('selected');
+    descriptionBuilderState[dim] = value;
+  }
+}
+
+/**
+ * 打开补充说明构建器弹窗
+ * 每次打开重置选择状态
+ */
+function openDescriptionBuilder() {
+  createDescriptionBuilderModal();
+  resetDescriptionBuilderState();
+  // 清除所有选中样式
+  document.querySelectorAll('#descBuilderModal .desc-builder-chip.selected').forEach(c => c.classList.remove('selected'));
+  const modal = document.getElementById('descBuilderModal');
+  modal.classList.add('show');
+}
+
+/**
+ * 关闭补充说明构建器弹窗
+ */
+function closeDescriptionBuilder() {
+  const modal = document.getElementById('descBuilderModal');
+  if (modal) modal.classList.remove('show');
+}
+
+/**
+ * 确认选择，组装补充说明文本并填充到 #step1Description
+ * - 未选择任何项时给出提示
+ * - 将组装好的文本设置到 #step1Description 输入框
+ */
+function confirmDescriptionBuilder() {
+  const text = assembleDescriptionText();
+
+  // 未选择任何项时提示
+  if (!text) {
+    if (typeof StepsUI !== 'undefined' && StepsUI.showStatus) {
+      StepsUI.showStatus('请至少选择一个维度选项', 'warning');
+    } else {
+      alert('请至少选择一个维度选项');
+    }
+    return;
+  }
+
+  // 填充到补充说明输入框
+  const input = document.getElementById('step1Description');
+  if (input) {
+    input.value = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  closeDescriptionBuilder();
+
+  if (typeof StepsUI !== 'undefined' && StepsUI.showStatus) {
+    StepsUI.showStatus('补充说明已生成', 'success');
+  }
+}
+
+/**
+ * 根据当前选择状态组装补充说明文本
+ * 未选择的维度/子维度自动跳过
+ * 格式：
+ *   作者身份：{职业}，擅长{擅长领域}，语言风格{语言结构}，{个人特点}
+ *   目标受众：{年龄段}的{人群类型}
+ *   写作目的：{写作目的}
+ *   文章风格：{简洁程度}，侧重{价值方向}
+ *   用户提升：{用户提升方向}
+ * @returns {string} 组装后的文本
+ */
+function assembleDescriptionText() {
+  const lines = [];
+  const s = descriptionBuilderState;
+
+  // 作者身份：{职业}，擅长{擅长领域}，语言风格{语言结构}，{个人特点}
+  const authorParts = [];
+  if (s.profession) authorParts.push(s.profession);
+  if (s.expertise) authorParts.push('擅长' + s.expertise);
+  if (s.languageStyle) authorParts.push('语言风格' + s.languageStyle);
+  if (s.personality) authorParts.push(s.personality);
+  if (authorParts.length > 0) {
+    lines.push('作者身份：' + authorParts.join('，'));
+  }
+
+  // 目标受众：{年龄段}的{人群类型}
+  if (s.ageGroup && s.audienceType) {
+    lines.push(`目标受众：${s.ageGroup}的${s.audienceType}`);
+  } else if (s.ageGroup) {
+    lines.push(`目标受众：${s.ageGroup}`);
+  } else if (s.audienceType) {
+    lines.push(`目标受众：${s.audienceType}`);
+  }
+
+  // 写作目的：{写作目的}
+  if (s.purpose) {
+    lines.push(`写作目的：${s.purpose}`);
+  }
+
+  // 文章风格：{简洁程度}，侧重{价值方向}
+  const styleParts = [];
+  if (s.conciseness) styleParts.push(s.conciseness);
+  if (s.valueDirection) styleParts.push('侧重' + s.valueDirection);
+  if (styleParts.length > 0) {
+    lines.push('文章风格：' + styleParts.join('，'));
+  }
+
+  // 用户提升：{用户提升方向}
+  if (s.improvement) {
+    lines.push(`用户提升：${s.improvement}`);
+  }
+
+  return lines.join('\n');
+}
+
+// ==================== 工具函数 ====================
+
+/**
+ * HTML 转义，防止 XSS 注入
+ * 使用带前缀的命名以避免与项目其他文件冲突
+ * @param {string} str - 原始字符串
+ * @returns {string} 转义后的字符串
+ */
+function kwEscapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ==================== 样式注入 ====================
+
+/**
+ * 注入本模块所需的 CSS 样式
+ * 复用 main.css 中定义的 CSS 变量（--primary, --surface 等）保持主题一致
+ * 样式通过 <style> 标签注入，仅注入一次
+ */
+function injectStyles() {
+  if (document.getElementById('keywordCacheStyles')) return;
+  const style = document.createElement('style');
+  style.id = 'keywordCacheStyles';
+  style.textContent = `
+    /* ===== 关键词标签区域 ===== */
+    #keywordTagsContainer {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .kw-tags-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .kw-tags-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+    }
+    .kw-tags-clear-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text2);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .kw-tags-clear-btn:hover {
+      border-color: var(--error);
+      color: var(--error);
+    }
+    .kw-tags-section {
+      margin-bottom: 10px;
+    }
+    .kw-tags-section:last-child {
+      margin-bottom: 0;
+    }
+    .kw-tags-section-title {
+      display: inline-block;
+      font-size: 11px;
+      color: var(--text2);
+      margin-right: 8px;
+      vertical-align: middle;
+      min-width: 56px;
+    }
+    .kw-tags-chips {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      vertical-align: middle;
+    }
+    .kw-tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+      border: 1px solid transparent;
+    }
+    .kw-tag-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .kw-tag-high {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .kw-tag-high:hover {
+      background: var(--primary-hover);
+    }
+    .kw-tag-medium {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .kw-tag-medium:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .kw-tag-count {
+      font-size: 10px;
+      opacity: 0.8;
+      padding: 0 5px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.18);
+    }
+    .kw-tag-medium .kw-tag-count {
+      background: rgba(124,58,237,0.12);
+      color: var(--primary);
+      opacity: 0.85;
+    }
+    .kw-tags-empty {
+      color: var(--text2);
+      font-size: 13px;
+      text-align: center;
+      padding: 10px;
+    }
+
+    /* ===== 补充说明构建器触发按钮 ===== */
+    .desc-builder-trigger {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 10px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: background 0.2s;
+    }
+    .desc-builder-trigger:hover {
+      background: var(--primary-hover);
+    }
+
+    /* ===== 补充说明构建器弹窗 ===== */
+    .desc-builder-modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 3000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .desc-builder-modal.show {
+      display: flex;
+    }
+    .desc-builder-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      max-width: 720px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .desc-builder-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .desc-builder-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .desc-builder-close {
+      background: var(--surface2);
+      border: none;
+      color: var(--text);
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .desc-builder-close:hover {
+      background: var(--error);
+      color: white;
+    }
+    .desc-builder-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .desc-builder-dimension {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .desc-builder-dimension:last-child {
+      margin-bottom: 0;
+    }
+    .desc-builder-dimension-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .desc-builder-sub-dimension {
+      margin-bottom: 12px;
+    }
+    .desc-builder-sub-dimension:last-child {
+      margin-bottom: 0;
+    }
+    .desc-builder-sub-label {
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 6px;
+    }
+    .desc-builder-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .desc-builder-chip {
+      display: inline-block;
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--text);
+      background: var(--surface);
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .desc-builder-chip:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .desc-builder-chip.selected {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .desc-builder-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// ==================== 初始化与集成 ====================
+
+/**
+ * 确保 #keywordTagsContainer 容器存在
+ * 如果不存在，在 Step 1 关键词输入框（.input-group）上方动态创建
+ */
+function ensureKeywordTagsContainer() {
+  let container = document.getElementById('keywordTagsContainer');
+  if (container) return container;
+
+  const keywordsInput = document.getElementById('step1Keywords');
+  if (!keywordsInput) return null;
+
+  const inputGroup = keywordsInput.closest('.input-group');
+  if (!inputGroup) return null;
+
+  container = document.createElement('div');
+  container.id = 'keywordTagsContainer';
+  inputGroup.parentNode.insertBefore(container, inputGroup);
+  return container;
+}
+
+/**
+ * 在补充说明输入框标签旁注入"智能构建"按钮
+ * 点击后打开补充说明构建器弹窗
+ */
+function injectDescriptionBuilderTrigger() {
+  if (document.getElementById('descBuilderTriggerBtn')) return;
+
+  const descInput = document.getElementById('step1Description');
+  if (!descInput) return;
+
+  const inputGroup = descInput.closest('.input-group');
+  if (!inputGroup) return;
+
+  const label = inputGroup.querySelector('label');
+  if (!label) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'descBuilderTriggerBtn';
+  btn.type = 'button';
+  btn.className = 'desc-builder-trigger';
+  btn.textContent = '智能构建';
+  btn.addEventListener('click', openDescriptionBuilder);
+  label.appendChild(btn);
+}
+
+/**
+ * 包装 executeStep1，在其完成后记录关键词到缓存
+ * 这样无需修改 steps.js 即可集成缓存功能
+ * 原函数执行完成后调用 KeywordCache.recordKeyword() 并刷新标签显示
+ */
+function wrapExecuteStep1() {
+  if (typeof window.executeStep1 !== 'function') return;
+  if (window.executeStep1.__kwWrapped) return;
+
+  const original = window.executeStep1;
+  window.executeStep1 = async function () {
+    const result = await original.apply(this, arguments);
+    // 执行完成后记录关键词到缓存
+    try {
+      const keywordsInput = document.getElementById('step1Keywords');
+      const keywords = keywordsInput ? keywordsInput.value : '';
+      if (keywords && keywords.trim()) {
+        KeywordCache.recordKeyword(keywords);
+        renderKeywordTags(); // 刷新标签显示
+      }
+    } catch (e) {
+      console.warn('记录关键词到缓存失败：', e);
+    }
+    return result;
+  };
+  window.executeStep1.__kwWrapped = true;
+}
+
+/**
+ * 模块初始化
+ * 1. 注入样式
+ * 2. 确保标签容器存在
+ * 3. 注入"智能构建"按钮
+ * 4. 渲染标签区域
+ * 5. 包装 executeStep1 集成缓存记录
+ */
+function initKeywordCacheModule() {
+  injectStyles();
+  ensureKeywordTagsContainer();
+  injectDescriptionBuilderTrigger();
+  renderKeywordTags();
+  wrapExecuteStep1();
+}
+
+// DOM 就绪后初始化（兼容脚本在 DOMContentLoaded 之前/之后加载的情况）
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initKeywordCacheModule);
+} else {
+  initKeywordCacheModule();
+}
+
+// ==================== 全局暴露 ====================
+// 将需要供外部调用的对象和函数挂载到 window
+window.KeywordCache = KeywordCache;
+window.renderKeywordTags = renderKeywordTags;
+window.openDescriptionBuilder = openDescriptionBuilder;
+window.closeDescriptionBuilder = closeDescriptionBuilder;
+window.confirmDescriptionBuilder = confirmDescriptionBuilder;
+
+</script>
+<script>
+// 初始化（放在所有模块定义之后）
+window.addEventListener('DOMContentLoaded', () => {
+  // 填充主题选项
+  const modalSelect = document.getElementById('modalThemeSelect');
+  if (modalSelect) modalSelect.innerHTML = getTemplateOptions();
+
+  StepsUI.updateStepStates();
+
+  // 初始化插件检测
+  if (typeof initPluginDetection === 'function') initPluginDetection();
+
+  // 点击外部关闭复制菜单
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.copy-dropdown')) StepsUI.closeAllCopyMenus();
+  });
+
+  // 自动测试连接
+  setTimeout(() => API.testConnection(), 1000);
+  // 从本地存储恢复全部配置（平台、模型、接口、API Key 等）
+  AppConfig.loadAllConfig();
+  AppConfig.initApiKey();
+  // 触发平台切换（填充模型列表和接口地址）
+  var savedConfig = JSON.parse(localStorage.getItem('article_config_v3') || '{}');
+  var select = document.getElementById('apiPlatform');
+  if (select) {
+    if (savedConfig.apiPlatform) {
+      if (select.value !== savedConfig.apiPlatform) {
+        select.value = savedConfig.apiPlatform;
+      }
+    } else {
+      // 无已保存配置时默认选择火山云
+      select.value = 'ark';
+    }
+    AppConfig.switchPlatform();
+  }
+});
+</script>
+</body>
+</html>
