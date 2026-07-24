@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "byted-ark-seedream-skill": {
+      "source": "skills.volces.com",
+      "sourceType": "well-known",
+      "computedHash": "4a150ace8b7d8ffa28e7fab87ec0398e5dff72221a032ee41a3013a617329798"
+    }
+  }
+}

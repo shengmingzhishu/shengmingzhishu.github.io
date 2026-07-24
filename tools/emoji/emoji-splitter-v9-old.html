@@ -82,20 +82,9 @@ textarea:focus{border-color:var(--primary)}
 .emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
 .emoji-card{background:#f9f9f9;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);transition:box-shadow .2s}
 .emoji-card:hover{box-shadow:var(--shadow-lg)}
-.emoji-card .preview{position:relative;width:100%;aspect-ratio:1;background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/16px 16px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--border)}
-.emoji-card .preview canvas{max-width:100%;max-height:100%;display:block;cursor:grab;border:1px dashed rgba(0,120,212,0.4);box-sizing:border-box}
+.emoji-card .preview{position:relative;width:100%;aspect-ratio:1;background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/16px 16px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.emoji-card .preview canvas{max-width:100%;max-height:100%;display:block;cursor:grab}
 .emoji-card .preview canvas:active{cursor:grabbing}
-.emoji-card .preview .img-border-hint{position:absolute;top:2px;left:2px;font-size:8px;color:rgba(0,120,212,0.6);background:rgba(255,255,255,0.8);padding:0 4px;border-radius:2px;pointer-events:none;z-index:5}
-.emoji-card .quick-zoom{display:flex;gap:2px;padding:2px 10px;border-top:1px solid #f0f0f0;background:#fafafa}
-.emoji-card .quick-zoom .qz-btn{flex:1;padding:3px 4px;font-size:10px;border:1px solid var(--border);border-radius:3px;background:#fff;cursor:pointer;text-align:center;transition:all .12s}
-.emoji-card .quick-zoom .qz-btn:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary-dark)}
-.batch-toolbar{display:flex;align-items:center;gap:4px;padding:6px 12px;background:#f0f4f8;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.batch-toolbar .bt-label{font-size:11px;color:var(--text-sub);font-weight:600;margin-right:4px}
-.batch-toolbar .bt-btn{padding:4px 10px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer;transition:all .12s;min-width:32px}
-.batch-toolbar .bt-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
-.batch-toolbar .bt-btn.bt-reset{background:#fff3e0;color:#e65100;border-color:#ffb74d}
-.batch-toolbar .bt-btn.bt-reset:hover{background:#ff9800;color:#fff}
-.batch-toolbar .bt-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
 .emoji-card .preview .drag-hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(0,0,0,.4);background:rgba(255,255,255,.7);padding:1px 6px;border-radius:3px;pointer-events:none;white-space:nowrap}
 .emoji-card .info{padding:8px 10px}
 .emoji-card .info .idx{font-size:11px;color:var(--text-light);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
@@ -149,30 +138,6 @@ textarea:focus{border-color:var(--primary)}
 .cover-item .img-wrap{background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/12px 12px;border-radius:8px;padding:8px;border:1px solid var(--border)}
 .cover-item canvas{display:block;max-width:200px;max-height:200px}
 .cover-item .label{font-size:12px;color:var(--text-sub);margin-top:6px}
-/* V10: 真实聊天场景 */
-.chat-scene-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;padding:8px 12px;background:#f8f8f8;border-radius:8px}
-.chat-scene-bar .cs-label{font-size:12px;font-weight:600;color:var(--text-sub);flex-shrink:0}
-.chat-scene-bar .cs-bg-btn{padding:4px 12px;border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;display:flex;align-items:center;gap:4px;transition:all .12s;user-select:none}
-.chat-scene-bar .cs-bg-btn:hover{border-color:var(--primary)}
-.chat-scene-bar .cs-bg-btn.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark);font-weight:500}
-.chat-scene-bar .cs-bg-swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.15)}
-.chat-window{border-radius:10px;overflow:hidden;min-height:300px;padding:16px 12px;display:flex;flex-direction:column;gap:6px}
-.chat-window.bg-white{background:#fff}
-.chat-window.bg-black{background:#1a1a1a}
-.chat-window.bg-green{background:#95ec69}
-.chat-window.bg-chat{background:linear-gradient(180deg,#e5ddd5 0%,#d4cfc8 100%)}
-.chat-window.bg-none{background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/20px 20px}
-.chat-row{display:flex;align-items:flex-end;gap:6px;max-width:80%}
-.chat-row.right{margin-left:auto;flex-direction:row-reverse}
-.chat-avatar{width:32px;height:32px;border-radius:6px;background:#ccc;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.chat-bubble{padding:4px;background:#fff;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.1);display:inline-block}
-.chat-bubble.dark-bubble{background:#262523}
-.chat-emoji-img{width:80px;height:80px;display:block;border-radius:4px;overflow:hidden}
-.chat-emoji-img.rounded{border-radius:16px}
-.chat-emoji-img canvas{width:80px;height:80px;display:block}
-.chat-time{text-align:center;font-size:10px;color:rgba(0,0,0,.35);margin:8px 0 4px}
-.chat-window.bg-black .chat-time,.chat-window.bg-green .chat-time{color:rgba(255,255,255,.4)}
-.chat-window.bg-chat .chat-time{color:rgba(0,0,0,.3)}
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:300;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px}
 .loading-overlay.show{display:flex}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite}
@@ -189,149 +154,69 @@ textarea:focus{border-color:var(--primary)}
 .crop-info .coord{background:#f0f0f0;padding:4px 8px;border-radius:4px;font-family:monospace}
 .crop-hint{font-size:11px;color:var(--text-light);margin-top:8px;text-align:center}
 .square-badge{display:inline-block;background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px}
-/* V10: 新功能标记 */
-.v10-tag{display:inline-block;background:var(--accent);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:2px;vertical-align:middle}
-.v10-new{position:relative}
 .bg-selector{display:inline-flex;gap:2px;background:#f0f0f0;border-radius:6px;padding:2px;font-size:12px}
 .bg-option{padding:2px 10px;border-radius:4px;cursor:pointer;user-select:none;transition:all .15s;color:var(--text-sub)}
 .bg-option.active{background:var(--card);color:var(--text);box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--primary);font-weight:500;position:relative;z-index:1}
 .bg-option:not(.active):hover{color:var(--text)}
-/* V10: 横幅编辑器（三栏布局） */
-.banner-modal{max-width:1200px;width:95vw;height:90vh}
-.banner-modal .modal-body{padding:0;overflow:hidden}
-.banner-body{display:flex;flex:1;min-height:0;overflow:hidden}
-/* 左侧设置栏 */
-.banner-sidebar{width:220px;flex-shrink:0;background:#fafafa;border-right:1px solid var(--border);padding:12px;overflow-y:auto}
-.banner-section{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px}
-.bs-title{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);display:flex;align-items:center;gap:4px}
-.bs-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;color:var(--text-sub)}
-.bs-val{font-weight:500;color:var(--text);font-family:"Consolas",monospace;font-size:11px}
-.bs-btns{display:flex;gap:4px;margin-top:6px}
-.bs-btns .btn{flex:1;padding:4px 6px;font-size:11px}
-.banner-section input[type=range]{width:100%;margin-bottom:4px;accent-color:var(--primary)}
-/* 中间画布区 */
-.banner-canvas-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-.banner-canvas-wrap{flex:1;position:relative;background:#1e1e1e;overflow:hidden;margin:12px;border-radius:8px;display:flex;align-items:center;justify-content:center;min-height:360px}
-.banner-drop-hint{display:flex;flex-direction:column;align-items:center;gap:6px;color:#888;font-size:14px;cursor:pointer;border:2px dashed #555;border-radius:10px;padding:40px 60px;transition:all .2s;z-index:3}
-.banner-drop-hint:hover,.banner-drop-hint.dragover{border-color:var(--primary);color:var(--primary);background:rgba(7,193,96,.08)}
-.banner-drop-hint .drop-icon{font-size:36px}
-.banner-drop-hint .drop-sub{font-size:11px;color:#666}
-.banner-img-layer{position:absolute;top:50%;left:50%;cursor:grab;user-select:none;max-width:none;max-height:none;transform-origin:center center;transform:translate(-50%,-50%);z-index:2;display:none;pointer-events:auto}
-.banner-img-layer.show{display:block}
-.banner-img-layer.dragging{cursor:grabbing}
-.banner-crop-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:2px dashed var(--primary);z-index:5;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.5)}
-.banner-crop-frame .cf-label{position:absolute;font-size:10px;color:#fff;background:var(--primary);padding:1px 6px;border-radius:3px;font-family:"Consolas",monospace;white-space:nowrap}
-.banner-crop-frame .cf-label.tl{top:-22px;left:-1px}
-.banner-crop-frame .cf-label.br{bottom:-22px;right:-1px}
-.banner-crop-frame .cf-dim{position:absolute;top:5px;left:50%;transform:translateX(-50%);font-size:10px;color:#fff;background:var(--primary);padding:2px 10px;border-radius:10px;font-weight:500;white-space:nowrap}
-.banner-crop-frame .cf-rule-h,.banner-crop-frame .cf-rule-v{position:absolute;background:rgba(7,193,96,.3)}
-.banner-crop-frame .cf-rule-h{left:0;right:0;height:1px;top:33.3%}
-.banner-crop-frame .cf-rule-h.b{top:66.6%}
-.banner-crop-frame .cf-rule-v{top:0;bottom:0;width:1px;left:33.3%}
-.banner-crop-frame .cf-rule-v.r{left:66.6%}
-.banner-crop-frame .cf-corner{position:absolute;width:12px;height:12px;border:2px solid var(--primary);background:#fff;border-radius:2px}
-.banner-crop-frame .cf-corner.tl{top:-7px;left:-7px}
-.banner-crop-frame .cf-corner.tr{top:-7px;right:-7px}
-.banner-crop-frame .cf-corner.bl{bottom:-7px;left:-7px}
-.banner-crop-frame .cf-corner.br{bottom:-7px;right:-7px}
-.banner-toolbar{padding:8px 12px;background:#f3f3f3;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
-.banner-toolbar .bt-hint{font-size:11px;color:var(--text-light);margin-left:auto}
-/* 右侧预览栏 */
-.banner-preview-side{width:240px;flex-shrink:0;background:#fafafa;border-left:1px solid var(--border);padding:12px;overflow-y:auto}
-.bps-title{font-size:12px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:4px}
-.banner-preview-frame{background:repeating-conic-gradient(#f0f0f0 0% 25%,#fff 0% 50%) 50%/12px 12px;border:1px solid var(--border);border-radius:6px;aspect-ratio:750/400;position:relative;overflow:hidden;margin-bottom:10px;display:flex;align-items:center;justify-content:center}
-.banner-preview-frame canvas{display:block;width:100%;height:100%;object-fit:fill}
-.banner-preview-frame .bp-empty{font-size:11px;color:var(--text-light);text-align:center}
-.bps-info{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px}
+/* V4: 横幅 */
+.banner-modal{max-width:800px}
+.banner-upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:40px 16px;text-align:center;cursor:pointer;transition:all .2s}
+.banner-upload-zone:hover,.banner-upload-zone.dragover{border-color:var(--primary);background:var(--primary-light)}
+.banner-upload-zone .icon{font-size:40px;color:var(--text-light);margin-bottom:8px}
+.banner-presets{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.banner-preset{padding:5px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;transition:all .15s}
+.banner-preset:hover,.banner-preset.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.banner-preview-wrap{position:relative;background:#1a1a1a;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;width:100%;cursor:grab;user-select:none}
+.banner-preview-wrap:active{cursor:grabbing}
+.banner-preview-wrap canvas{display:block;width:100%;height:auto}
+.banner-crop-hint{font-size:11px;color:var(--text-light);text-align:center;margin-top:4px}
+.banner-result-wrap{text-align:center;margin-top:12px}
+.banner-result-wrap canvas{border-radius:6px;border:1px solid var(--border);max-width:100%}
 
-/* V10: Windows Paint Ribbon 橡皮擦界面 */
-.eraser-modal{max-width:94vw;width:94vw;height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
-.eraser-modal .modal-footer{flex-shrink:0;padding:6px 12px;background:#f0f0f0;border-top:1px solid var(--border)}
+/* V6: Paint-style eraser modal */
+.eraser-modal{max-width:94vw;width:94vw;height:88vh;display:flex;flex-direction:column}
+.eraser-modal .modal-header{flex-shrink:0}
+.eraser-modal .modal-footer{flex-shrink:0}
 .eraser-body{flex:1;display:flex;gap:0;padding:0;min-height:0;overflow:hidden}
-/* Windows 标题栏 */
-.er-win-titlebar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:linear-gradient(180deg,#0078d4,#005a9e);color:#fff;flex-shrink:0}
-.er-win-titlebar .win-icon{font-size:16px;flex-shrink:0}
-.er-win-titlebar .win-title{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.er-win-titlebar .win-badge{background:rgba(255,255,255,.2);padding:2px 8px;border-radius:3px;font-size:11px;flex-shrink:0}
-.er-win-titlebar .win-ctrl{display:flex;gap:2px;flex-shrink:0}
-.er-win-titlebar .win-ctrl span{width:28px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:3px;cursor:pointer;font-size:12px;transition:background .12s;user-select:none}
-.er-win-titlebar .win-ctrl span:hover{background:rgba(255,255,255,.2)}
-.er-win-titlebar .win-ctrl .close:hover{background:#e81123}
-/* 菜单栏（装饰性） */
-.er-menubar{display:flex;gap:0;padding:0 8px;background:#f3f3f3;border-bottom:1px solid var(--border);flex-shrink:0;height:28px;align-items:center}
-.er-menubar>a{padding:4px 10px;font-size:12px;color:var(--text-sub);text-decoration:none;border-radius:3px;cursor:pointer;transition:background .1s;user-select:none}
-.er-menubar>a:hover{background:#e5f3ff;color:#0078d4}
-/* Ribbon 工具栏 */
-.er-ribbon{display:flex;gap:0;background:#fafafa;border-bottom:1px solid var(--border);flex-shrink:0;padding:4px 6px;overflow-x:auto}
-.er-ribbon-group{display:flex;flex-direction:column;align-items:center;border-right:1px solid #e0e0e0;padding:0 6px;min-width:0;flex-shrink:0}
-.er-ribbon-group:last-child{border-right:none}
-.er-ribbon-group .rg-content{display:flex;gap:4px;align-items:flex-start;flex:1}
-.er-ribbon-group .rg-label{font-size:9px;color:var(--text-light);text-align:center;margin-top:2px;padding-top:2px;border-top:1px solid #e8e8e8;width:100%}
-.er-big-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:10px;color:var(--text-sub);transition:all .12s;border:1px solid transparent;min-width:44px;background:transparent;font-family:inherit;text-align:center;user-select:none}
-.er-big-btn:hover{background:#e5f3ff;border-color:#0078d4}
-.er-big-btn.active{background:#cfe8ff;border-color:#0078d4;color:#0078d4}
-.er-big-btn .icon{font-size:20px;line-height:1}
-.er-big-btn:disabled,.er-big-btn[disabled]{opacity:.4;pointer-events:none;cursor:default}
-.er-sm-btns{display:flex;flex-direction:column;gap:2px}
-.er-sm-btn{display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:3px;cursor:pointer;font-size:11px;color:var(--text-sub);transition:all .1s;border:1px solid transparent;white-space:nowrap;user-select:none}
-.er-sm-btn:hover{background:#e5f3ff}
-.er-sm-btn.active{background:#cfe8ff;color:#0078d4}
-.er-sm-btn .icon{font-size:13px}
-.er-split-btn{display:flex;flex-direction:column;border-radius:4px;overflow:hidden;border:1px solid transparent}
-.er-split-btn:hover{border-color:#0078d4}
-.er-split-btn .sb-main{display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 8px;cursor:pointer;font-size:10px;color:var(--text-sub)}
-.er-split-btn .sb-arrow{background:#f0f0f0;text-align:center;padding:1px;cursor:pointer;font-size:9px;color:var(--text-light)}
-.er-split-btn .sb-arrow:hover{background:#e5f3ff}
-/* 主区域三栏 */
-.eraser-canvas-area{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:#3a3a3a;padding:0}
-/* 左侧属性面板 */
-.er-prop-panel{width:200px;flex-shrink:0;background:#fafafa;border-right:1px solid var(--border);padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
-.er-prop-panel .pp-section{border-bottom:1px solid #e8e8e8;padding-bottom:6px}
-.er-prop-panel .pp-section:last-child{border-bottom:none}
-.er-prop-panel .pp-label{font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
-.er-brush-preview{background:#fff;border:1px solid var(--border);border-radius:6px;height:60px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background-image:linear-gradient(45deg,#eee 25%,transparent 25%,transparent 75%,#eee 75%),linear-gradient(45deg,#eee 25%,transparent 25%,transparent 75%,#eee 75%);background-size:12px 12px;background-position:0 0,6px 6px}
-.er-brush-preview .bp-circle{border-radius:50%;background:#333;transition:all .15s}
-.er-brush-preview .bp-size-tag{position:absolute;bottom:2px;right:4px;font-size:9px;color:var(--text-light);background:rgba(255,255,255,.85);padding:0 3px;border-radius:2px}
-.er-slider-row{display:flex;align-items:center;gap:4px;margin-top:2px}
-.er-slider-row label{font-size:10px;color:var(--text-sub);min-width:32px}
-.er-slider-row input[type=range]{flex:1;height:3px;accent-color:#0078d4;min-width:0}
-.er-slider-row .val{font-size:10px;min-width:22px;text-align:right;color:var(--text-sub)}
-.er-color-row{display:flex;align-items:center;gap:4px;margin-top:4px}
-.er-color-row label{font-size:10px;color:var(--text-sub);min-width:32px}
-.er-color-row input[type=color]{width:32px;height:24px;border:1px solid var(--border);border-radius:4px;padding:1px;cursor:pointer}
-/* 中间画布区 */
-.eraser-canvas-wrap{flex:1;background:#1a1a1a;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;min-height:0;user-select:none}
+.eraser-toolbar{width:150px;flex-shrink:0;background:#f8f8f8;border-right:1px solid var(--border);padding:12px 10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.eraser-toolbar .tb-label{font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.eraser-toolbar .tb-group{border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:4px}
+.eraser-toolbar .tb-group:last-child{border-bottom:none;margin-bottom:0}
+.eraser-tool-btn{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;transition:all .12s;border:1px solid transparent;user-select:none}
+.eraser-tool-btn:hover{background:var(--primary-light)}
+.eraser-tool-btn.active{background:var(--primary-light);border-color:var(--primary);color:var(--primary-dark);font-weight:500}
+.eraser-tool-btn .icon{font-size:16px}
+.eraser-canvas-area{flex:1;display:flex;flex-direction:column;padding:12px;min-width:0;min-height:0}
+.eraser-canvas-wrap{flex:1;background:#1a1a1a;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;min-height:0;user-select:none}
 .eraser-canvas-wrap canvas#eraserCanvas{display:block;position:absolute;top:0;left:0;z-index:1;cursor:none}
 .eraser-hover-circle{position:absolute;border:2px solid rgba(7,193,96,0.9);border-radius:50%;pointer-events:none;z-index:3;transform:translate(-50%,-50%);background:rgba(7,193,96,0.07);box-shadow:0 0 8px rgba(7,193,96,0.15)}
-.eraser-status{font-size:11px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
-/* 右侧面板 */
-.er-side-panel{width:220px;flex-shrink:0;background:#fafafa;border-left:1px solid var(--border);display:flex;flex-direction:column}
-.er-side-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
-.er-side-tab{flex:1;padding:6px;text-align:center;font-size:11px;color:var(--text-sub);cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;user-select:none}
-.er-side-tab:hover{background:#f0f0f0}
-.er-side-tab.active{color:#0078d4;border-bottom-color:#0078d4;font-weight:500}
-.er-side-content{flex:1;overflow-y:auto;padding:6px}
-.er-history-item{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:4px;font-size:11px;color:var(--text-sub);cursor:default;transition:background .1s;margin-bottom:2px}
-.er-history-item:hover{background:#f0f0f0}
-.er-history-item.current{background:#e5f3ff;color:#0078d4}
-.er-history-item .icon{font-size:14px;flex-shrink:0}
-.er-history-item .desc{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.er-history-item .time{font-size:9px;color:var(--text-light);flex-shrink:0}
-.er-info-row{display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid #f0f0f0}
-.er-info-row label{color:var(--text-light)}
-.er-info-row span{color:var(--text-sub);font-weight:500}
-/* 底部状态栏 */
-.er-statusbar{display:flex;align-items:center;gap:12px;padding:3px 12px;background:#0078d4;color:#fff;font-size:11px;flex-shrink:0;height:24px}
-.er-statusbar .sb-item{display:flex;align-items:center;gap:3px;white-space:nowrap}
-.er-statusbar .sb-item .icon{font-size:12px}
-.er-statusbar .sb-divider{width:1px;height:14px;background:rgba(255,255,255,.3);flex-shrink:0}
-.er-statusbar .sb-zoom{margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0}
-.er-statusbar .sb-zoom button{background:rgba(255,255,255,.15);border:none;color:#fff;width:20px;height:18px;border-radius:2px;cursor:pointer;font-size:12px}
-.er-statusbar .sb-zoom button:hover{background:rgba(255,255,255,.3)}
-.er-statusbar .sb-zoom input[type=range]{width:80px;height:3px;accent-color:#fff}
+.eraser-zoom-bar{display:flex;align-items:center;gap:6px;margin-top:8px;flex-shrink:0}
+.eraser-zoom-bar input[type=range]{width:120px;height:4px;accent-color:var(--primary)}
+.eraser-zoom-bar .zoom-lvl{font-size:12px;color:var(--text-light);min-width:44px;font-variant-numeric:tabular-nums}
+.eraser-status{font-size:11px;color:#888}
 .eraser-lasso-point{fill:rgba(7,193,96,0.9)}.eraser-lasso-line{stroke:rgba(7,193,96,0.8);stroke-width:2;stroke-dasharray:4 3;fill:none}
-@media(max-width:900px){.er-prop-panel{width:160px}.er-side-panel{width:180px}.eraser-modal{width:96vw}}
-@media(max-width:768px){.er-prop-panel{display:none}.er-side-panel{display:none}.eraser-modal{width:96vw;height:85vh}}
+.eraser-modal{max-width:960px}
+.eraser-body{display:flex;gap:0;padding:0;min-height:420px}
+.eraser-toolbar{width:140px;flex-shrink:0;background:#f8f8f8;border-right:1px solid var(--border);padding:12px 10px;display:flex;flex-direction:column;gap:10px}
+.eraser-toolbar .tb-label{font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.eraser-toolbar .tb-group{border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:4px}
+.eraser-toolbar .tb-group:last-child{border-bottom:none;margin-bottom:0}
+.eraser-tool-btn{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;transition:all .12s;border:1px solid transparent;user-select:none}
+.eraser-tool-btn:hover{background:var(--primary-light)}
+.eraser-tool-btn.active{background:var(--primary-light);border-color:var(--primary);color:var(--primary-dark);font-weight:500}
+.eraser-tool-btn .icon{font-size:16px}
+.eraser-canvas-area{flex:1;display:flex;flex-direction:column;padding:12px;min-width:0}
+.eraser-canvas-wrap{flex:1;background:#1a1a1a;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;min-height:350px;user-select:none}
+.eraser-canvas-wrap canvas{display:block;position:absolute;top:0;left:0}
+.eraser-canvas-wrap canvas#eraserCanvas{z-index:1;cursor:none}
+.eraser-canvas-wrap canvas#eraserOverlay{z-index:2;pointer-events:none}
+.eraser-hover-circle{position:absolute;border:2px solid rgba(7,193,96,0.9);border-radius:50%;pointer-events:none;z-index:3;transform:translate(-50%,-50%);background:rgba(7,193,96,0.07);box-shadow:0 0 8px rgba(7,193,96,0.15)}
+.eraser-bottom-bar{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.eraser-bottom-bar .size-row{display:flex;align-items:center;gap:4px}
+.eraser-bottom-bar .size-row input[type=range]{width:80px;height:4px}
+.eraser-bottom-bar .color-row{display:flex;align-items:center;gap:4px}
+.eraser-bottom-bar .color-row input[type=color]{width:28px;height:26px;border:1px solid var(--border);border-radius:4px;padding:1px;cursor:pointer}
+.eraser-bottom-bar .action-row{margin-left:auto;display:flex;gap:4px}
 </style>
 </head>
 <body>
@@ -470,20 +355,7 @@ textarea:focus{border-color:var(--primary)}
         <input type="range" id="cleanLineWidth" value="3" min="1" max="8" style="flex:0.5;height:4px">
         <span class="value-tag" id="cleanLineWidthVal">3px</span>
       </div>
-      <!-- V10 新增：清理斑点 -->
-      <label class="checkbox-row">
-        <input type="checkbox" id="v10DespeckleChk" checked>
-        <span>🧹 清理斑点 <span class="v10-tag">V10</span> <span style="font-size:10px;color:var(--text-light)">清除孤立小像素残渣</span></span>
-      </label>
-      <div class="form-row" style="margin-left:20px">
-        <label style="min-width:36px">阈值</label>
-        <input type="range" id="v10DespeckleSize" value="10" min="2" max="50" style="height:4px">
-        <span class="value-tag" id="v10DespeckleVal">10px</span>
-      </div>
       <button class="btn btn-primary btn-block" onclick="processImage()" id="btnProcess" style="margin-top:8px">⚡ 当前图追加拆分</button>
-      <!-- V10 新增：初始化拆分（先清空全部表情再拆分当前图） -->
-      <button class="btn btn-outline btn-block" onclick="initSplit()" style="margin-top:5px">🔄 初始化拆分 <span class="v10-tag">V10</span></button>
-      <div style="font-size:9px;color:var(--text-light);margin-top:3px;text-align:center">全清后拆分：删除所有已拆分表情再拆当前图</div>
     </div>
 
     <div class="card" id="textCard" style="display:none">
@@ -520,22 +392,6 @@ textarea:focus{border-color:var(--primary)}
       <div class="form-row"><label>图标</label><input type="number" id="iconSize" value="50" min="32" max="128"><span class="hint">px（平台缩略图）</span></div>
       <label class="checkbox-row"><input type="checkbox" id="genCover" checked><span>生成封面图（240×240）</span></label>
       <label class="checkbox-row"><input type="checkbox" id="coverUseFirst" checked><span>封面使用第一个表情</span></label>
-      <!-- V10新增：背景填充 -->
-      <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
-        <label class="checkbox-row"><input type="checkbox" id="v10ExportFillBg"><span>🎨 背景填充 <span class="v10-tag">V10</span> <span style="font-size:10px;color:var(--text-light)">勾选后下载的图片填充底色</span></span></label>
-        <div class="form-row" style="margin-left:20px"><label>填充色</label><input type="color" id="v10ExportFillColor" value="#ffffff" style="width:38px;height:28px"><span class="hint">白色=不透明底</span></div>
-      </div>
-      <!-- V10新增：圆角/直角 -->
-      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:8px">
-        <div class="form-row"><label>图片边角</label>
-          <div class="btn-group" style="flex:1">
-            <span class="seg-btn active" id="v10CornerSquare" onclick="setCorner(this,'square')">▢ 直角</span>
-            <span class="seg-btn" id="v10CornerRound" onclick="setCorner(this,'round')">◯ 圆角 <span class="v10-tag">V10</span></span>
-          </div>
-        </div>
-        <div class="form-row" style="margin-left:20px"><label>圆角半径</label><input type="range" id="v10CornerRadius" value="20" min="0" max="60" style="height:4px" disabled><span class="value-tag" id="v10CornerRadiusVal">20px</span></div>
-        <div style="font-size:9px;color:var(--text-light);text-align:center;margin-top:2px">直角=标准表情包 · 圆角=微信/钉钉风格</div>
-      </div>
       <div class="form-row" style="margin-top:8px">
         <button class="btn btn-outline btn-sm" style="flex:1" onclick="redrawAll()">🔄 刷新预览</button>
         <button class="btn btn-primary btn-sm" style="flex:1" onclick="showReport()">📦 生成报告</button>
@@ -551,31 +407,9 @@ textarea:focus{border-color:var(--primary)}
           <span class="bg-option active" data-bg="none" onclick="setPreviewBg(null)" title="无背景">无</span>
           <span class="bg-option" data-bg="#ffffff" onclick="setPreviewBg('#ffffff')" title="白色背景" style="background:#fff;color:#333">白</span>
           <span class="bg-option" data-bg="#000000" onclick="setPreviewBg('#000000')" title="黑色背景" style="background:#000;color:#fff">黑</span>
-          <span class="bg-option" data-bg="#95ec69" onclick="setPreviewBg('#95ec69')" title="微信绿背景" style="background:#95ec69;color:#333">绿</span>
-          <span class="bg-option" data-bg="chat" onclick="setPreviewBg('chat')" title="聊天壁纸背景" style="background:linear-gradient(135deg,#e5ddd5,#d4cfc8);color:#333">💬</span>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <!-- V10: 批量导入已拆分图片 -->
-        <button class="btn btn-outline btn-sm" onclick="$('v10BatchInput').click()">📥 批量导入 <span class="v10-tag">V10</span></button>
-        <input type="file" id="v10BatchInput" accept="image/*" multiple style="display:none">
-        <!-- V10: 全部清空 -->
-        <button class="btn btn-outline btn-sm" style="background:#fee;color:#c00;border-color:#fcc" onclick="clearAllEmojis()">🗑 全部清空 <span class="v10-tag">V10</span></button>
-        <span id="emojiCount" style="font-size:13px;color:var(--text-light)">等待上传图片...</span>
-      </div>
-    </div>
-    <!-- V10: 统一操作工具栏 -->
-    <div class="batch-toolbar" id="batchToolbar" style="display:none">
-      <span class="bt-label">统一操作:</span>
-      <button class="bt-btn" onclick="batchZoomAll(-0.1)" title="全部缩小">🔍−</button>
-      <button class="bt-btn" onclick="batchZoomAll(0.1)" title="全部放大">🔍+</button>
-      <span class="bt-sep"></span>
-      <button class="bt-btn" onclick="batchMoveAll(0,-2)" title="全部上移">↑</button>
-      <button class="bt-btn" onclick="batchMoveAll(0,2)" title="全部下移">↓</button>
-      <button class="bt-btn" onclick="batchMoveAll(-2,0)" title="全部左移">←</button>
-      <button class="bt-btn" onclick="batchMoveAll(2,0)" title="全部右移">→</button>
-      <span class="bt-sep"></span>
-      <button class="bt-btn bt-reset" onclick="batchResetAll()" title="全部重置">↺ 重置</button>
+      <span id="emojiCount" style="font-size:13px;color:var(--text-light)">等待上传图片...</span>
     </div>
     <div id="emojiContainer">
       <div class="empty-state">
@@ -625,190 +459,119 @@ textarea:focus{border-color:var(--primary)}
   </div>
 </div>
 
-<!-- Eraser Modal V10 — Windows Paint Ribbon 界面（保留全部真实 canvas 逻辑） -->
+<!-- Eraser Modal V6 — Paint-style -->
 <div class="modal-overlay" id="eraserModal">
   <div class="modal eraser-modal">
-    <!-- Windows 标题栏 -->
-    <div class="er-win-titlebar">
-      <span class="win-icon">🎨</span>
-      <span class="win-title" id="eraserModalTitle">表情包编辑器 — 表情 #1</span>
-      <span class="win-badge" id="eraserModalBadge">—×—</span>
-      <div class="win-ctrl">
-        <span title="最小化" onclick="showToast('最小化')">─</span>
-        <span title="最大化" onclick="showToast('最大化')">▢</span>
-        <span class="close" title="关闭" onclick="closeEraserModal(true)">×</span>
-      </div>
+    <div class="modal-header">
+      <h2 id="eraserModalTitle">✏️ 编辑 — 表情 #1</h2>
+      <button class="modal-close" onclick="closeEraserModal(true)">×</button>
     </div>
-    <!-- 菜单栏（装饰性） -->
-    <div class="er-menubar">
-      <a onclick="showToast('文件菜单')">文件</a>
-      <a onclick="showToast('编辑菜单')">编辑</a>
-      <a onclick="showToast('视图菜单')">视图</a>
-      <a onclick="showToast('工具菜单')">工具</a>
-      <a onclick="showToast('帮助菜单')">帮助</a>
-    </div>
-    <!-- Ribbon 工具栏 -->
-    <div class="er-ribbon">
-      <!-- 工具组 -->
-      <div class="er-ribbon-group">
-        <div class="rg-content">
-          <div class="er-big-btn active" data-tool="erase" onclick="setEraserTool('erase')" title="橡皮擦"><span class="icon">🧹</span>擦除</div>
-          <div class="er-big-btn" data-tool="paint" onclick="setEraserTool('paint')" title="画笔"><span class="icon">🎨</span>画笔</div>
-          <div class="er-big-btn" data-tool="pan" onclick="setEraserTool('pan')" title="拖拽移动"><span class="icon">✋</span>拖拽</div>
-        </div>
-        <div class="rg-label">工具</div>
-      </div>
-      <!-- 选择组 -->
-      <div class="er-ribbon-group">
-        <div class="rg-content">
-          <div class="er-sm-btns">
-            <div class="er-sm-btn" data-tool="lasso" onclick="setEraserTool('lasso')" title="套索选取"><span class="icon">🔗</span>套索</div>
-            <div class="er-sm-btn" data-tool="sel" onclick="setEraserTool('sel')" title="矩形选框"><span class="icon">🔲</span>选框</div>
-          </div>
-          <div class="er-split-btn" title="形状擦除（敬请期待）">
-            <div class="sb-main" onclick="showToast('形状擦除（敬请期待）')"><span style="font-size:18px">⬜</span>形状</div>
-            <div class="sb-arrow">▼</div>
-          </div>
-        </div>
-        <div class="rg-label">选择</div>
-      </div>
-      <!-- 智能擦除组 -->
-      <div class="er-ribbon-group">
-        <div class="rg-content">
-          <div class="er-big-btn" data-tool="magic" onclick="setEraserTool('magic')" title="魔力擦"><span class="icon">⚡</span>魔力擦</div>
-          <div class="er-big-btn" data-tool="bgerase" onclick="setEraserTool('bgerase')" title="背景色擦"><span class="icon">🎯</span>背景擦</div>
-          <div class="er-sm-btns">
-            <div class="er-sm-btn" onclick="eraserModalCleanEdge()" title="擦白边"><span class="icon">🧹</span>擦白边</div>
-            <div class="er-sm-btn" onclick="eraserModalCleanLine()" title="擦白线"><span class="icon">〰️</span>擦白线</div>
-          </div>
-        </div>
-        <div class="rg-label">智能擦除</div>
-      </div>
-      <!-- 历史组 -->
-      <div class="er-ribbon-group">
-        <div class="rg-content">
-          <button class="er-big-btn" id="eraserModalUndoBtn" onclick="eraserModalUndo()" title="撤销" disabled><span class="icon">↩️</span>撤销</button>
-          <button class="er-big-btn" id="eraserModalRedoBtn" onclick="eraserModalRedo()" title="重做" disabled><span class="icon">↪️</span>重做</button>
-          <div class="er-sm-btns">
-            <div class="er-sm-btn" id="clearSelBtn" onclick="clearSelection()" title="清除选框"><span class="icon">✕</span>清选框</div>
-            <div class="er-sm-btn" onclick="eraserModalReset()" title="恢复原图"><span class="icon">🔄</span>恢复</div>
-          </div>
-        </div>
-        <div class="rg-label">历史</div>
-      </div>
-      <!-- 视图组 -->
-      <div class="er-ribbon-group">
-        <div class="rg-content">
-          <div class="er-big-btn" onclick="eraserZoomStep(-1)" title="缩小"><span class="icon">🔍</span>缩小</div>
-          <div class="er-big-btn" onclick="eraserZoomStep(1)" title="放大"><span class="icon">🔎</span>放大</div>
-          <div class="er-big-btn" onclick="eraserZoomReset()" title="适应窗口"><span class="icon">📐</span>适应</div>
-        </div>
-        <div class="rg-label">视图</div>
-      </div>
-      <!-- 操作组 -->
-      <div class="er-ribbon-group">
-        <div class="rg-content">
-          <div class="er-big-btn v10-new" onclick="eraserModalDespeckle()" title="一键清理孤立斑点"><span class="icon">🧹</span>清斑点<span class="v10-tag" style="font-size:7px;padding:0 3px;margin-left:2px">V10</span></div>
-          <div class="er-big-btn" data-tool="restore" onclick="setEraserTool('restore')" title="还原笔刷"><span class="icon">🔙</span>还原</div>
-        </div>
-        <div class="rg-label">操作</div>
-      </div>
-    </div>
-    <!-- 主区域：左面板 + 画布 + 右面板 -->
     <div class="eraser-body">
-      <!-- 左侧属性面板 -->
-      <div class="er-prop-panel">
-        <div class="pp-section">
-          <div class="pp-label">笔刷预览</div>
-          <div class="er-brush-preview">
-            <div class="bp-circle" id="brushPreviewCircle" style="width:20px;height:20px"></div>
-            <span class="bp-size-tag" id="brushSizeTag">20px</span>
+      <!-- Left Toolbar -->
+      <div class="eraser-toolbar">
+        <div class="tb-group">
+          <div class="tb-label">工具</div>
+          <div class="eraser-tool-btn active" id="eraserToolErase" onclick="setEraserTool('erase')">
+            <span class="icon">🧹</span> 擦除
+          </div>
+          <div class="eraser-tool-btn" id="eraserToolPaint" onclick="setEraserTool('paint')">
+            <span class="icon">🎨</span> 画笔
+          </div>
+          <div class="eraser-tool-btn" id="eraserToolPan" onclick="setEraserTool('pan')">
+            <span class="icon">✋</span> 拖拽
+          </div>
+          <div class="eraser-tool-btn" id="eraserToolLasso" onclick="setEraserTool('lasso')">
+            <span class="icon">🔗</span> 套索
+          </div>
+          <div class="eraser-tool-btn" id="eraserToolMagic" onclick="setEraserTool('magic')">
+            <span class="icon">⚡</span> 魔力擦
+          </div>
+          <div class="eraser-tool-btn" id="eraserToolBgErase" onclick="setEraserTool('bgerase')">
+            <span class="icon">🎯</span> 背景色擦
+          </div>
+          <div class="eraser-tool-btn" id="eraserToolRestore" onclick="setEraserTool('restore')">
+            <span class="icon">🔙</span> 还原
+          </div>
+          <div class="eraser-tool-btn" id="eraserToolSel" onclick="setEraserTool('sel')">
+            <span class="icon">🔲</span> 选框
           </div>
         </div>
-        <div class="pp-section">
-          <div class="pp-label">笔刷参数</div>
-          <div class="er-slider-row"><label>大小</label><input type="range" id="eraserModalSize" min="2" max="200" value="20" oninput="eraserModalSizeChange(this.value)"><span class="val" id="eraserModalSizeLabel">20</span></div>
-          <div class="er-slider-row"><label>硬度</label><input type="range" min="0" max="100" value="80" oninput="this.nextElementSibling.textContent=this.value"><span class="val">80</span></div>
-          <div class="er-slider-row"><label>不透明</label><input type="range" min="10" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'"><span class="val">100%</span></div>
+        <div class="tb-group">
+          <div class="tb-label">笔刷大小</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button class="zoom-btn" style="width:22px;height:22px;font-size:13px" onclick="eraserModalSizeStep(-1)">−</button>
+            <span style="font-size:13px;font-weight:600;min-width:32px;text-align:center" id="eraserModalSizeLabel">20</span>
+            <button class="zoom-btn" style="width:22px;height:22px;font-size:13px" onclick="eraserModalSizeStep(1)">+</button>
+          </div>
+          <input type="range" id="eraserModalSize" min="2" max="200" value="20" oninput="eraserModalSizeChange(this.value)" style="width:100%;height:4px;margin-top:4px;accent-color:var(--primary)">
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-light);margin-top:1px"><span>2</span><span>200</span></div>
         </div>
-        <!-- 画笔颜色（仅画笔模式显示） -->
-        <div class="pp-section" id="eraserColorGroup" style="display:none">
-          <div class="pp-label">画笔颜色</div>
-          <div class="er-color-row"><input type="color" id="eraserPaintColor" value="#000000" style="width:100%;height:32px"></div>
+        <div class="tb-group" id="eraserColorGroup">
+          <div class="tb-label">画笔颜色</div>
+          <input type="color" id="eraserPaintColor" value="#000000" style="width:100%;height:32px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer">
         </div>
-        <!-- 背景色 + 容差（仅背景色擦模式显示） -->
-        <div class="pp-section" id="eraserBgColorGroup" style="display:none">
-          <div class="pp-label">背景色 / 容差</div>
-          <div class="er-color-row"><input type="color" id="eraserBgColor" value="#ffffff" style="width:100%;height:32px"></div>
-          <div class="er-slider-row" style="margin-top:4px"><label>容差</label><input type="range" id="eraserTolerance" min="5" max="120" value="40" oninput="document.getElementById('eraserTolLabel').textContent=this.value"><span class="val" id="eraserTolLabel">40</span></div>
+        <div class="tb-group" id="eraserBgColorGroup" style="display:none">
+          <div class="tb-label">背景色</div>
+          <input type="color" id="eraserBgColor" value="#ffffff" style="width:100%;height:32px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer">
+          <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+            <span style="font-size:10px;color:var(--text-light)">容差</span>
+            <input type="range" id="eraserTolerance" min="5" max="120" value="40" style="flex:1;height:4px;accent-color:var(--primary)">
+            <span style="font-size:11px;min-width:24px;text-align:center" id="eraserTolLabel">40</span>
+          </div>
         </div>
-        <!-- 魔力擦容差（仅魔力擦模式显示） -->
-        <div class="pp-section" id="eraserMagicGroup" style="display:none">
-          <div class="pp-label">魔力擦容差</div>
-          <div class="er-slider-row"><input type="range" id="eraserMagicTol" min="10" max="120" value="45" style="flex:1" oninput="updateMagicTol(this.value)"><span class="val" id="eraserMagicTolLabel">45</span></div>
+        <div class="tb-group" id="eraserMagicGroup" style="display:none">
+          <div class="tb-label">魔力擦容差</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="range" id="eraserMagicTol" min="10" max="120" value="45" style="flex:1;height:4px;accent-color:var(--primary)" oninput="updateMagicTol(this.value)">
+            <span style="font-size:11px;min-width:24px;text-align:center" id="eraserMagicTolLabel">45</span>
+          </div>
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-light);margin-top:1px"><span>严格</span><span>宽松</span></div>
         </div>
-        <!-- 擦白边 / 擦白线 强度 -->
-        <div class="pp-section" id="eraserEdgeGroup">
-          <div class="pp-label">擦白边强度</div>
-          <div class="er-slider-row"><input type="range" id="eraserEdgeWidth" min="1" max="15" value="3" style="flex:1" oninput="updateEraserEdgeWidth(this.value)"><span class="val" id="eraserEdgeWidthLabel">3</span></div>
-          <div class="pp-label" style="margin-top:6px">擦白线强度</div>
-          <div class="er-slider-row"><input type="range" id="eraserLineWidth" min="1" max="10" value="3" style="flex:1" oninput="updateEraserLineWidth(this.value)"><span class="val" id="eraserLineWidthLabel">3</span></div>
+        <div class="tb-group" id="eraserEdgeGroup">
+          <div class="tb-label">擦白边强度</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="range" id="eraserEdgeWidth" min="1" max="15" value="3" style="flex:1;height:4px;accent-color:var(--primary)" oninput="updateEraserEdgeWidth(this.value)">
+            <span style="font-size:11px;min-width:24px;text-align:center" id="eraserEdgeWidthLabel">3</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-light);margin-top:1px"><span>弱</span><span>强</span></div>
         </div>
-        <!-- 清理斑点（V10） -->
-        <div class="pp-section v10-new">
-          <div class="pp-label">清理斑点 <span class="v10-tag" style="font-size:7px">V10</span></div>
-          <div class="er-slider-row"><label>阈值</label><input type="range" id="eraserDespeckleSize" min="2" max="30" value="10" oninput="this.nextElementSibling.textContent=this.value"><span class="val">10</span></div>
-          <button class="btn btn-outline btn-xs" style="width:100%;margin-top:4px" onclick="eraserModalDespeckle()">🧹 一键清理</button>
+        <div class="tb-group" id="eraserLineGroup">
+          <div class="tb-label">擦白线强度</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="range" id="eraserLineWidth" min="1" max="10" value="3" style="flex:1;height:4px;accent-color:var(--primary)" oninput="updateEraserLineWidth(this.value)">
+            <span style="font-size:11px;min-width:24px;text-align:center" id="eraserLineWidthLabel">3</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-light);margin-top:1px"><span>少</span><span>多</span></div>
+        </div>
+        <div class="tb-group" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+          <div style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-xs" style="flex:1" onclick="eraserModalUndo()" id="eraserModalUndoBtn" disabled>↩️ 撤销</button>
+            <button class="btn btn-outline btn-xs" style="flex:1" onclick="eraserModalRedo()" id="eraserModalRedoBtn" disabled>↪️ 重做</button>
+            <button class="btn btn-outline btn-xs" style="width:100%;margin-top:4px" onclick="clearSelection()" id="clearSelBtn">✕ 清除选框</button>
+          </div>
+          <button class="btn btn-outline btn-xs" style="width:100%;margin-top:4px" onclick="eraserModalCleanEdge()">🧹 擦白边</button>
+          <button class="btn btn-outline btn-xs" style="width:100%;margin-top:4px" onclick="eraserModalCleanLine()">〰️ 擦白线</button>
+          <button class="btn btn-outline btn-xs" style="width:100%;margin-top:4px" onclick="eraserModalReset()">🔄 恢复原图</button>
         </div>
       </div>
-      <!-- 中间画布区 -->
+      <!-- Canvas Area -->
       <div class="eraser-canvas-area">
         <div class="eraser-canvas-wrap" id="eraserCanvasWrap">
           <canvas id="eraserCanvas"></canvas>
           <div class="eraser-hover-circle" id="eraserHoverCircle" style="display:none"></div>
         </div>
-      </div>
-      <!-- 右侧面板 -->
-      <div class="er-side-panel">
-        <div class="er-side-tabs">
-          <div class="er-side-tab active" onclick="switchErSideTab(this,'history')">📜 历史</div>
-          <div class="er-side-tab" onclick="switchErSideTab(this,'info')">ℹ️ 信息</div>
-        </div>
-        <div class="er-side-content" id="erSideHistory">
-          <div class="er-history-item current"><span class="icon">📂</span><span class="desc">打开图片</span><span class="time">刚刚</span></div>
-        </div>
-        <div class="er-side-content" id="erSideInfo" style="display:none">
-          <div class="er-info-row"><label>序号</label><span id="erInfoIdx">#1</span></div>
-          <div class="er-info-row"><label>原始尺寸</label><span id="erInfoSize">—×—</span></div>
-          <div class="er-info-row"><label>色彩模式</label><span>RGBA</span></div>
-          <div class="er-info-row"><label>透明像素</label><span id="erInfoAlpha">—</span></div>
-          <div class="er-info-row"><label>操作次数</label><span id="erInfoOps">0</span></div>
-          <div class="er-info-row"><label>撤销栈</label><span id="erInfoUndo">0</span></div>
-          <div class="er-info-row"><label>当前缩放</label><span id="erInfoZoom">100%</span></div>
+        <div class="eraser-zoom-bar">
+          <button class="zoom-btn" onclick="eraserZoomStep(-1)" title="缩小">−</button>
+          <input type="range" id="eraserZoomSlider" min="10" max="800" value="100" oninput="eraserZoomChange(this.value)">
+          <button class="zoom-btn" onclick="eraserZoomStep(1)" title="放大">+</button>
+          <span class="zoom-lvl" id="eraserZoomLabel">100%</span>
+          <button class="btn btn-xs btn-outline" onclick="eraserZoomReset()">适应</button>
+          <span class="eraser-status" id="eraserStatus">滚轮缩放 · [ ] 调整笔刷</span>
         </div>
       </div>
     </div>
-    <!-- 底部状态栏 -->
-    <div class="er-statusbar">
-      <span class="sb-item"><span class="icon">📍</span> <span id="sbCoord">X:— Y:—</span></span>
-      <span class="sb-divider"></span>
-      <span class="sb-item"><span class="icon" id="sbToolIcon">🧹</span> <span id="sbToolName">擦除</span></span>
-      <span class="sb-divider"></span>
-      <span class="sb-item"><span class="icon">📐</span> <span id="sbSize">—×—</span></span>
-      <span class="sb-divider"></span>
-      <span class="sb-item eraser-status" id="eraserStatus">滚轮缩放 · [ ] 调整笔刷 · 空格拖拽</span>
-      <span class="sb-zoom">
-        <button onclick="eraserZoomStep(-1)" title="缩小">−</button>
-        <input type="range" id="eraserZoomSlider" min="10" max="800" value="100" oninput="eraserZoomChange(this.value)">
-        <button onclick="eraserZoomStep(1)" title="放大">+</button>
-        <span id="eraserZoomLabel" style="min-width:38px;text-align:center">100%</span>
-        <button onclick="eraserZoomReset()" title="适应窗口" style="width:auto;padding:0 6px;font-size:11px">适应</button>
-      </span>
-    </div>
-    <!-- 底部按钮 -->
     <div class="modal-footer">
-      <span style="font-size:11px;color:var(--text-light)">🧹擦除 🎨画笔 🔙还原 ✋拖拽 🔗套索 ⚡魔力擦 🎯背景色擦 🔲选框 · [ ]笔刷 · 空格拖拽</span>
+      <span style="font-size:12px;color:var(--text-light)">🧹擦除 🎨画笔 🔙还原 ✋拖拽 🔗套索 ⚡魔力擦 🎯背景色擦 🔲选框 🧹擦白边 〰️擦白线 · [ ]笔刷 · 空格拖拽</span>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" onclick="closeEraserModal(true)">取消</button>
         <button class="btn btn-primary btn-sm" onclick="closeEraserModal(false)">✓ 确认</button>
@@ -817,96 +580,57 @@ textarea:focus{border-color:var(--primary)}
   </div>
 </div>
 
-<!-- Banner Modal (V10 三栏布局) -->
+<!-- Banner Modal -->
 <div class="modal-overlay" id="bannerModal">
   <div class="modal banner-modal">
     <div class="modal-header">
-      <h2>🖼 横幅编辑器 — 750×400</h2>
+      <h2>🖼 横幅制作</h2>
       <button class="modal-close" onclick="closeBannerModal()">×</button>
     </div>
-    <div class="modal-body banner-body">
-      <!-- 左侧设置栏 -->
-      <div class="banner-sidebar">
-        <div class="banner-section">
-          <div class="bs-title">📐 画布信息</div>
-          <div class="bs-row"><span>裁切尺寸</span><span class="bs-val">750 × 400</span></div>
-          <div class="bs-row"><span>图片尺寸</span><span class="bs-val" id="v10BannerImgSize">未导入</span></div>
-          <div class="bs-row"><span>缩放比例</span><span class="bs-val" id="v10BannerScaleVal">100%</span></div>
-        </div>
-        <div class="banner-section">
-          <div class="bs-title">🔍 缩放控制</div>
-          <input type="range" id="v10BannerScale" min="20" max="300" value="100" oninput="v10BannerScaleChange(this.value)">
-          <div class="bs-btns">
-            <button class="btn btn-outline btn-sm" onclick="v10BannerZoomStep(-10)" title="缩小">−</button>
-            <button class="btn btn-outline btn-sm" onclick="v10BannerZoomReset()" title="适应">适应</button>
-            <button class="btn btn-outline btn-sm" onclick="v10BannerZoomStep(10)" title="放大">+</button>
-          </div>
-        </div>
-        <div class="banner-section">
-          <div class="bs-title">🎯 位置调整</div>
-          <div class="bs-row"><span>X 偏移</span><span class="bs-val" id="v10BannerXVal">0 px</span></div>
-          <div class="bs-row"><span>Y 偏移</span><span class="bs-val" id="v10BannerYVal">0 px</span></div>
-          <div class="bs-btns">
-            <button class="btn btn-outline btn-sm" onclick="v10BannerCenter()">居中</button>
-            <button class="btn btn-outline btn-sm" onclick="v10BannerReset()">复位</button>
-          </div>
-        </div>
-        <div class="banner-section">
-          <div class="bs-title">✂️ 截取范围</div>
-          <div class="bs-row"><span>起点</span><span class="bs-val" id="v10BannerCropXY">0, 0</span></div>
-          <div class="bs-row"><span>尺寸</span><span class="bs-val">750 × 400</span></div>
-          <div class="bs-row"><span>格式</span><span class="bs-val">PNG</span></div>
-        </div>
+    <div class="modal-body" id="bannerModalBody">
+      <div class="banner-upload-zone" id="bannerUploadZone" onclick="document.getElementById('bannerFileInput').click()">
+        <div class="icon">🖼</div>
+        <p>点击或拖拽图片作为横幅背景</p>
+        <p style="font-size:11px;color:var(--text-light);margin-top:4px">支持 PNG / JPG / WEBP</p>
+        <input type="file" id="bannerFileInput" accept="image/*">
       </div>
-      <!-- 中间画布区 -->
-      <div class="banner-canvas-area">
-        <div class="banner-canvas-wrap" id="v10BannerCanvasWrap">
-          <!-- 拖拽提示 -->
-          <div class="banner-drop-hint" id="v10BannerDropHint" onclick="v10BannerImportClick()">
-            <span class="drop-icon">📥</span>
-            <span>拖拽图片到此处</span>
-            <span class="drop-sub">或点击选择图片 · 支持 PNG / JPG / WEBP</span>
+      <div id="bannerEditor" style="display:none">
+        <div class="form-row"><label>比例</label>
+          <div class="banner-presets">
+            <span class="banner-preset active" data-w="750" data-h="400" onclick="setBannerRatio(750,400,this)">750×400</span>
+            <span class="banner-preset" data-w="960" data-h="400" onclick="setBannerRatio(960,400,this)">960×400</span>
+            <span class="banner-preset" data-w="1200" data-h="400" onclick="setBannerRatio(1200,400,this)">1200×400</span>
+            <span class="banner-preset" data-w="750" data-h="500" onclick="setBannerRatio(750,500,this)">750×500</span>
+            <span class="banner-preset" data-w="16" data-h="9" onclick="setBannerRatio(16,9,this)">16:9</span>
+            <span class="banner-preset" data-w="4" data-h="3" onclick="setBannerRatio(4,3,this)">4:3</span>
           </div>
-          <!-- 图片层（可拖拽 / 滚轮缩放） -->
-          <img class="banner-img-layer" id="v10BannerImgLayer" alt="横幅背景" draggable="false">
-          <!-- 750×400 裁切框 -->
-          <div class="banner-crop-frame" id="v10BannerCropFrame">
-            <span class="cf-corner tl"></span><span class="cf-corner tr"></span>
-            <span class="cf-corner bl"></span><span class="cf-corner br"></span>
-            <span class="cf-rule-h"></span><span class="cf-rule-h b"></span>
-            <span class="cf-rule-v"></span><span class="cf-rule-v r"></span>
-            <span class="cf-label tl" id="v10BannerCfTL">0, 0</span>
-            <span class="cf-label br" id="v10BannerCfBR">750, 400</span>
-            <span class="cf-dim">截取范围 750 × 400</span>
+        </div>
+        <div class="banner-preview-wrap" id="bannerPreviewWrap">
+          <canvas id="bannerCanvas"></canvas>
+        </div>
+        <div class="banner-crop-hint">拖拽图片移动 · 滚轮缩放 · 绿色框内为裁切区域</div>
+        <div class="zoom-controls" style="margin-top:4px">
+          <button class="zoom-btn" onclick="bannerZoomStep(-1)" title="缩小">−</button>
+          <div class="zoom-track-wrap">
+            <input type="range" id="bannerZoomSlider" min="10" max="500" value="100" oninput="bannerZoomSliderChange(this)">
           </div>
-          <!-- 隐藏文件输入（保留原 id 以兼容导出逻辑） -->
-          <input type="file" id="bannerFileInput" accept="image/*" style="display:none">
+          <button class="zoom-btn" onclick="bannerZoomStep(1)" title="放大">+</button>
+          <span class="zoom-level" id="bannerZoomLevel">100%</span>
+          <button class="btn btn-xs btn-outline" onclick="resetBannerView()" title="重置视图">⟲</button>
         </div>
-        <div class="banner-toolbar">
-          <button class="btn btn-outline btn-sm" onclick="v10BannerImportClick()">📥 导入图片</button>
-          <button class="btn btn-outline btn-sm" onclick="clearBanner()" style="background:#fee;color:#c00;border:1px solid #fcc">🗑 清除</button>
-          <span class="bt-hint">🖱️拖动图片摆放 · 🔍滚轮缩放 · 绿框为 750×400 截取范围</span>
-        </div>
-      </div>
-      <!-- 右侧预览栏 -->
-      <div class="banner-preview-side">
-        <div class="bps-title">📱 实时预览</div>
-        <div class="banner-preview-frame" id="v10BannerPreviewFrame">
-          <span class="bp-empty">导入图片后<br>显示截取预览</span>
-        </div>
-        <div class="bps-info">
-          <div class="bs-title" style="margin-bottom:6px">📋 输出参数</div>
-          <div class="bs-row"><span>输出尺寸</span><span class="bs-val">750 × 400</span></div>
-          <div class="bs-row"><span>宽高比</span><span class="bs-val">15 : 8</span></div>
-          <div class="bs-row"><span>格式</span><span class="bs-val">PNG</span></div>
-          <div class="bs-row"><span>背景填充</span><span class="bs-val" id="v10BannerBgFill">透明</span></div>
+        <div class="banner-result-wrap" id="bannerResultWrap" style="display:none">
+          <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:6px">预览效果</div>
+          <canvas id="bannerResultCanvas"></canvas>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <span style="font-size:12px;color:var(--text-light)" id="bannerStatus">📥拖拽导入 · 🖱️拖动摆放 · 🔍滚轮缩放 · ✂️绿框截取 750×400</span>
+      <span style="font-size:12px;color:var(--text-light)" id="bannerStatus"></span>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" onclick="closeBannerModal()">关闭</button>
+        <button class="btn btn-outline btn-sm" onclick="clearBanner()" style="background:#fee;color:#c00;border:1px solid #fcc">🗑 清除并重新上传</button>
+        <button class="btn btn-outline btn-sm" 
+        <button class="btn btn-outline btn-sm" 
         <button class="btn btn-outline btn-sm" onclick="downloadBanner()">⬇ 下载单张</button>
         <button class="btn btn-primary btn-sm" onclick="confirmBanner()">✓ 确认横幅</button>
       </div>
@@ -949,20 +673,9 @@ const state = {
     image: null,
     srcW: 0, srcH: 0,
     cropW: 750, cropH: 400,
-    zoom: 1, focusX: 0, focusY: 0, // 旧字段，保留兼容
-    bannerScale: 100, // V10: 缩放百分比（100=cover 适应）
-    imgCX: 0, imgCY: 0, // V10: 图片中心相对裁切框中心的偏移（输出像素）
-    dispScale: 1, // V10: 屏幕像素/输出像素
+    zoom: 1, focusX: 0, focusY: 0,
     confirmed: false,
   },
-  // V10: 清理斑点（清除孤立小像素残渣）
-  despeckle: {enabled:true, size:10},
-  // V10: 导出背景填充
-  exportFillBg: false, exportFillColor: '#ffffff',
-  // V10: 图片边角（square=直角 / round=圆角）
-  exportCorner: 'square', cornerRadius: 20,
-  // V10: 聊天场景背景
-  chatSceneBg: 'green',
 };
 
 function createDefaultCustom(){
@@ -976,8 +689,6 @@ function createDefaultCustom(){
     undoStack:[],
     // V7: 文字X/Y偏移
     textPosX:0, textPosY:0, textDragMode:false,
-    // V10: 文字缩放与旋转
-    textScale:1, textRotation:0,
   };
 }
 
@@ -1517,262 +1228,287 @@ window.addEventListener('mousemove', e => {
 });
 window.addEventListener('mouseup', () => { panState.active = false; });
 
-// ============ V10: Banner Functions（三栏布局） ============
-// 拖拽状态：active=是否正在拖动图片；startMX/MY=按下时鼠标屏幕坐标；startCX/CY=按下时图片中心偏移（输出像素）
-const v10BannerDrag={active:false,startMX:0,startMY:0,startCX:0,startCY:0};
+// ============ V4: Banner Functions ============
+const bannerPan={active:false,startX:0,startY:0,startFX:0,startFY:0};
 
-// 打开横幅弹窗：计算显示比例并刷新视图
 function openBannerModal(){
   const bs=state.bannerState;
-  $('bannerModal').classList.add('show');
-  setTimeout(()=>{
-    v10BannerComputeDispScale();
-    const hint=$('v10BannerDropHint');
-    const layer=$('v10BannerImgLayer');
-    if(bs.image){
-      if(hint)hint.style.display='none';
-      if(layer)layer.classList.add('show');
-    }else{
-      if(hint)hint.style.display='flex';
-      if(layer)layer.classList.remove('show');
-    }
-    v10BannerUpdateView();
-  },50);
+  const modal=$('bannerModal');
+  modal.classList.add('show');
+  // 如果已确认过横幅，直接显示编辑器
+  if(bs.image&&bs.confirmed){
+    $('bannerUploadZone').style.display='none';
+    $('bannerEditor').style.display='block';
+    showBannerResultPreview();
+    setTimeout(drawBannerPreview,50);
+    return;
+  }
+  if(bs.image){
+    $('bannerUploadZone').style.display='none';
+    $('bannerEditor').style.display='block';
+    setTimeout(drawBannerPreview,50);
+  }else{
+    $('bannerUploadZone').style.display='block';
+    $('bannerEditor').style.display='none';
+  }
 }
 function closeBannerModal(){$('bannerModal').classList.remove('show')}
 
-// 触发隐藏文件输入
-function v10BannerImportClick(){$('bannerFileInput').click()}
+// Banner file upload
+const bz=$('bannerUploadZone');
+const bf=$('bannerFileInput');
+bz.addEventListener('dragover',e=>{e.preventDefault();bz.classList.add('dragover')});
+bz.addEventListener('dragleave',()=>bz.classList.remove('dragover'));
+bz.addEventListener('drop',e=>{e.preventDefault();bz.classList.remove('dragover');if(e.dataTransfer.files[0])loadBannerFile(e.dataTransfer.files[0])});
+bf.addEventListener('change',e=>{if(e.target.files[0])loadBannerFile(e.target.files[0])});
 
-// 加载横幅图片：测量自然尺寸后写入 state，并显示到 <img> 图层
 function loadBannerFile(file){
-  if(!file||!file.type.startsWith('image/')){showToast('请上传图片文件');return}
+  if(!file.type.startsWith('image/')){showToast('请上传图片文件');return}
   const reader=new FileReader();
-  reader.onload=ev=>{
-    const dataUrl=ev.target.result;
-    const probe=new Image();
-    probe.onload=()=>{
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
       const bs=state.bannerState;
-      bs.image=probe;
-      bs.srcW=probe.naturalWidth;
-      bs.srcH=probe.naturalHeight;
+      bs.image=img;
+      bs.srcW=img.naturalWidth;
+      bs.srcH=img.naturalHeight;
       bs.confirmed=false;
-      bs.bannerScale=100;   // 100% = cover 适应
-      bs.imgCX=0;bs.imgCY=0;
       state.banner=null;
-      const layer=$('v10BannerImgLayer');
-      layer.width=probe.naturalWidth;   // 显式尺寸，确保 translate(-50%) 在加载前即正确
-      layer.height=probe.naturalHeight;
-      layer.src=dataUrl;
-      layer.classList.add('show');
-      $('v10BannerDropHint').style.display='none';
-      v10BannerComputeDispScale();
-      v10BannerUpdateView();
-      showToast('横幅图片导入成功，拖动摆放并调整缩放');
+      $('bannerUploadZone').style.display='none';
+      $('bannerEditor').style.display='block';
+      initBannerViewport();
+      drawBannerPreview();
+      showToast('横幅图片上传成功');
     };
-    probe.src=dataUrl;
+    img.src=e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-// 清除横幅图片，回到拖拽提示态
-function clearBanner(){
+function initBannerViewport(){
   const bs=state.bannerState;
-  bs.image=null;bs.srcW=0;bs.srcH=0;
-  bs.confirmed=false;bs.bannerScale=100;bs.imgCX=0;bs.imgCY=0;
-  state.banner=null;
-  const layer=$('v10BannerImgLayer');
-  if(layer){layer.classList.remove('show');layer.src=''}
-  const hint=$('v10BannerDropHint');
-  if(hint)hint.style.display='flex';
-  v10BannerUpdateView();
-  showToast('已清除横幅图片');
+  if(!bs.image)return;
+  const wrap=$('bannerPreviewWrap');
+  const canvas=$('bannerCanvas');
+  const maxW=Math.min(wrap.clientWidth||580,580);
+  const ratio=bs.cropH/bs.cropW;
+  let cw=maxW,ch=cw*ratio;
+  const maxH=320;
+  if(ch>maxH){ch=maxH;cw=ch/ratio}
+  canvas.width=Math.round(cw);
+  canvas.height=Math.round(ch);
+  // cover模式初始化
+  const sx=cw/bs.srcW, sy=ch/bs.srcH;
+  bs.zoom=Math.max(sx,sy);
+  bs.focusX=bs.srcW/2;
+  bs.focusY=bs.srcH/2;
 }
 
-// 计算显示比例 dispScale（屏幕像素 / 输出像素），裁切框最大显示 750×400
-function v10BannerComputeDispScale(){
-  const wrap=$('v10BannerCanvasWrap');
+function drawBannerPreview(){
   const bs=state.bannerState;
-  if(!wrap)return;
-  const w=Math.max(0,wrap.clientWidth-40);
-  const h=Math.max(0,wrap.clientHeight-40);
-  let ds=Math.min(w/750,h/400,1.0);
-  ds=Math.max(ds,0.25);
-  bs.dispScale=ds;
-}
-
-// 缩放控制：bannerScale 范围 20-300，100=cover 适应
-function v10BannerScaleChange(v){
-  const bs=state.bannerState;
-  bs.bannerScale=Math.max(20,Math.min(300,parseInt(v)||100));
-  v10BannerUpdateView();
-}
-function v10BannerZoomStep(delta){
-  const bs=state.bannerState;
-  v10BannerScaleChange((bs.bannerScale||100)+delta);
-}
-function v10BannerZoomReset(){v10BannerScaleChange(100)}
-function v10BannerCenter(){
-  const bs=state.bannerState;
-  bs.imgCX=0;bs.imgCY=0;
-  v10BannerUpdateView();
-  showToast('已居中');
-}
-function v10BannerReset(){
-  const bs=state.bannerState;
-  bs.bannerScale=100;bs.imgCX=0;bs.imgCY=0;
-  v10BannerUpdateView();
-  showToast('已复位');
-}
-
-// 统一刷新视图：设置 <img> transform、裁切框尺寸、侧栏标签、实时预览
-function v10BannerUpdateView(){
-  const bs=state.bannerState;
-  v10BannerComputeDispScale();
-  const ds=bs.dispScale||1;
-  // 裁切框显示尺寸（输出 750×400 × dispScale）
-  const frame=$('v10BannerCropFrame');
-  if(frame){
-    frame.style.width=(750*ds)+'px';
-    frame.style.height=(400*ds)+'px';
-  }
-  // 图片层 transform：以裁切框中心为基准，按 imgCX/imgCY（输出像素）偏移，按 imgScale×dispScale 缩放
-  const layer=$('v10BannerImgLayer');
-  if(bs.image&&layer){
-    const fit=Math.max(750/bs.srcW,400/bs.srcH);     // 100% 时的 cover 适应比例
-    const imgScale=fit*(bs.bannerScale/100);          // 自然像素 → 输出像素
-    const totalScale=imgScale*ds;                       // 自然像素 → 屏幕像素
-    const tx=(bs.imgCX*ds).toFixed(2);
-    const ty=(bs.imgCY*ds).toFixed(2);
-    layer.style.transform='translate(calc(-50% + '+tx+'px), calc(-50% + '+ty+'px)) scale('+totalScale.toFixed(4)+')';
-  }
-  // 侧栏标签
-  const set=(id,v)=>{const el=$(id);if(el)el.textContent=v};
-  set('v10BannerImgSize',bs.image?(bs.srcW+' × '+bs.srcH):'未导入');
-  set('v10BannerScaleVal',(bs.bannerScale||100)+'%');
-  const slider=$('v10BannerScale');if(slider)slider.value=Math.max(20,Math.min(300,bs.bannerScale||100));
-  set('v10BannerXVal',Math.round(bs.imgCX||0)+' px');
-  set('v10BannerYVal',Math.round(bs.imgCY||0)+' px');
-  // 截取起点（图像自然坐标）
-  if(bs.image){
-    const fit=Math.max(750/bs.srcW,400/bs.srcH);
-    const imgScale=fit*(bs.bannerScale/100);
-    const sx=Math.round((-375-(bs.imgCX||0))/imgScale+bs.srcW/2);
-    const sy=Math.round((-200-(bs.imgCY||0))/imgScale+bs.srcH/2);
-    set('v10BannerCropXY',sx+', '+sy);
+  const canvas=$('bannerCanvas');
+  if(!canvas||!bs.image)return;
+  const ctx=canvas.getContext('2d');
+  const vw=canvas.width,vh=canvas.height;
+  ctx.clearRect(0,0,vw,vh);
+  // 绘制底图
+  ctx.save();
+  ctx.beginPath();ctx.rect(0,0,vw,vh);ctx.clip();
+  ctx.fillStyle='#1a1a1a';
+  ctx.fillRect(0,0,vw,vh);
+  ctx.translate(vw/2,vh/2);
+  ctx.scale(bs.zoom,bs.zoom);
+  ctx.translate(-bs.focusX,-bs.focusY);
+  ctx.drawImage(bs.image,0,0);
+  ctx.restore();
+  // 遮罩 - 左右两侧（如果 crop 比例与画布不同）
+  const cropRatio=bs.cropW/bs.cropH;
+  const canvasRatio=vw/vh;
+  let cropX=0,cropY=0,cropW=vw,cropH=vh;
+  if(cropRatio>canvasRatio){
+    cropH=vh;
+    cropW=vh*cropRatio;
+    cropX=(vw-cropW)/2;
   }else{
-    set('v10BannerCropXY','0, 0');
+    cropW=vw;
+    cropH=vw/cropRatio;
+    cropY=(vh-cropH)/2;
   }
-  // 状态栏
-  set('bannerStatus',bs.image?('缩放 '+bs.bannerScale+'% · 偏移 '+Math.round(bs.imgCX)+','+Math.round(bs.imgCY)+' · 输出 750×400'):'📥拖拽导入 · 🖱️拖动摆放 · 🔍滚轮缩放 · ✂️绿框截取 750×400');
-  // 右侧实时预览
-  v10BannerDrawPreview();
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  if(cropX>0){ctx.fillRect(0,0,cropX,vh);ctx.fillRect(cropX+cropW,0,vh-cropX-cropW,vh)}
+  if(cropY>0){ctx.fillRect(cropX,0,cropW,cropY);ctx.fillRect(cropX,cropY+cropH,cropW,vh-cropY-cropH)}
+  // 绿色裁切框
+  ctx.strokeStyle='rgba(7,193,96,0.9)';
+  ctx.lineWidth=2;
+  ctx.strokeRect(cropX,cropY,cropW,cropH);
+  // 三分线
+  ctx.strokeStyle='rgba(255,255,255,0.25)';
+  ctx.lineWidth=1;
+  for(let i=1;i<3;i++){
+    ctx.beginPath();ctx.moveTo(cropX+cropW*i/3,cropY);ctx.lineTo(cropX+cropW*i/3,cropY+cropH);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cropX,cropY+cropH*i/3);ctx.lineTo(cropX+cropW,cropY+cropH*i/3);ctx.stroke();
+  }
+  updateBannerZoomLabel();
 }
 
-// 右侧实时预览：750×400 canvas，与导出逻辑一致
-function v10BannerDrawPreview(){
+function updateBannerZoomLabel(){
   const bs=state.bannerState;
-  const frame=$('v10BannerPreviewFrame');
-  if(!frame)return;
-  if(!bs.image){
-    frame.innerHTML='<span class="bp-empty">导入图片后<br>显示截取预览</span>';
-    return;
-  }
-  let pc=frame.querySelector('canvas');
-  if(!pc){
-    pc=document.createElement('canvas');
-    pc.width=750;pc.height=400;
-    pc.style.width='100%';pc.style.height='100%';pc.style.display='block';
-    frame.innerHTML='';frame.appendChild(pc);
-  }
-  const ctx=pc.getContext('2d');
-  ctx.clearRect(0,0,750,400);
-  const fit=Math.max(750/bs.srcW,400/bs.srcH);
-  const imgScale=fit*(bs.bannerScale/100);
-  const destW=imgScale*bs.srcW, destH=imgScale*bs.srcH;
-  const destX=375+(bs.imgCX||0)-destW/2, destY=200+(bs.imgCY||0)-destH/2;
-  ctx.drawImage(bs.image,destX,destY,destW,destH);
+  if(!bs.image){$('bannerZoomLevel').textContent='100%';return}
+  const canvas=$('bannerCanvas');
+  const baseZoom=Math.min(canvas.width/bs.srcW,canvas.height/bs.srcH);
+  const pct=Math.round(bs.zoom/baseZoom*100);
+  const slider=$('bannerZoomSlider');
+  if(slider)slider.value=Math.max(10,Math.min(500,pct));
+  $('bannerZoomLevel').textContent=Math.max(10,Math.min(500,pct))+'%';
 }
 
-// V10 横幅交互：拖放导入、图片拖动、滚轮缩放、文件选择
-function setupV10BannerInteractions(){
-  const wrap=$('v10BannerCanvasWrap');
-  const img=$('v10BannerImgLayer');
-  const hint=$('v10BannerDropHint');
-  const finput=$('bannerFileInput');
-  if(!wrap)return;
-  // 拖放导入
-  wrap.addEventListener('dragover',e=>{e.preventDefault();if(hint)hint.classList.add('dragover')});
-  wrap.addEventListener('dragleave',e=>{if(e.target===wrap&&hint)hint.classList.remove('dragover')});
-  wrap.addEventListener('drop',e=>{
-    e.preventDefault();
-    if(hint)hint.classList.remove('dragover');
-    if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0])loadBannerFile(e.dataTransfer.files[0]);
+function setBannerRatio(w,h,el){
+  const bs=state.bannerState;
+  bs.cropW=w;bs.cropH=h;
+  document.querySelectorAll('.banner-preset').forEach(e=>e.classList.remove('active'));
+  if(el)el.classList.add('active');
+  if(bs.image){initBannerViewport();drawBannerPreview()}
+}
+function bannerZoomStep(dir){
+  const bs=state.bannerState;
+  const base=Math.min($('bannerCanvas').width/bs.srcW,$('bannerCanvas').height/bs.srcH);
+  const pct=Math.round(bs.zoom/base*100);
+  const next=Math.max(10,Math.min(500,pct+dir*1));
+  bs.zoom=base*(next/100);
+  drawBannerPreview();
+}
+function bannerZoomSliderChange(slider){
+  const bs=state.bannerState;
+  const base=Math.min($('bannerCanvas').width/bs.srcW,$('bannerCanvas').height/bs.srcH);
+  bs.zoom=base*(parseInt(slider.value)/100);
+  drawBannerPreview();
+}
+function resetBannerView(){
+  initBannerViewport();
+  drawBannerPreview();
+}
+
+// Banner canvas drag
+function setupBannerCanvasDrag(){
+  const canvas=$('bannerCanvas');
+  if(!canvas)return;
+  // V7: 鼠标悬停检测文字区域
+  canvas.addEventListener('mousemove',function(e2){
+    var emoji2_=state.emojis[idx];
+    if(!emoji2_||!emoji2_.textBounds||dragState.active){canvas.style.cursor='grab';return;}
+    var tb2_=emoji2_.textBounds;
+    if(tb2_ && e2.target===canvas){
+      var rect2_=canvas.getBoundingClientRect();
+      var mx2_=(e2.clientX-rect2_.left)*(canvas.width/rect2_.width);
+      var my2_=(e2.clientY-rect2_.top)*(canvas.height/rect2_.height);
+      if(mx2_>=tb2_.x && mx2_<=tb2_.x+tb2_.w && my2_>=tb2_.y && my2_<=tb2_.y+tb2_.h){
+        canvas.style.cursor='text';
+        canvas.title='拖拽移动文字位置';
+      } else {
+        canvas.style.cursor='grab';
+        canvas.title='';
+      }
+    }
   });
-  // 文件选择
-  if(finput)finput.addEventListener('change',e=>{if(e.target.files&&e.target.files[0]){loadBannerFile(e.target.files[0]);e.target.value=''}});
-  // 鼠标拖动图片（屏幕像素位移除以 dispScale 换算为输出像素位移）
-  if(img){
-    img.addEventListener('mousedown',e=>{
-      const bs=state.bannerState;
-      if(!bs.image)return;
-      v10BannerDrag.active=true;
-      v10BannerDrag.startMX=e.clientX;
-      v10BannerDrag.startMY=e.clientY;
-      v10BannerDrag.startCX=bs.imgCX||0;
-      v10BannerDrag.startCY=bs.imgCY||0;
-      img.classList.add('dragging');
-      e.preventDefault();
-    });
-  }
-  // 滚轮缩放
-  wrap.addEventListener('wheel',e=>{
+  canvas.addEventListener('mouseleave',function(){if(!dragState.active)canvas.style.cursor='grab'});
+  canvas.addEventListener('mousedown',e2=>{
+    bannerPan.active=true;
+    bannerPan.startX=e.clientX;
+    bannerPan.startY=e.clientY;
+    bannerPan.startFX=state.bannerState.focusX;
+    bannerPan.startFY=state.bannerState.focusY;
+    e.preventDefault();
+  });
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
     const bs=state.bannerState;
-    if(!bs.image)return;
-    e.preventDefault();
-    v10BannerZoomStep(e.deltaY<0?5:-5);
+    const rect=canvas.getBoundingClientRect();
+    const sx=canvas.width/canvas.offsetWidth;
+    const mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sx;
+    const imgX=(mx-canvas.width/2)/bs.zoom+bs.focusX;
+    const imgY=(my-canvas.height/2)/bs.zoom+bs.focusY;
+    const delta=e.deltaY>0?0.9:1.1;
+    bs.zoom=Math.max(0.05,Math.min(20,bs.zoom*delta));
+    bs.focusX=imgX;bs.focusY=imgY;
+    drawBannerPreview();
   },{passive:false});
-  // 窗口尺寸变化时重算显示比例
-  window.addEventListener('resize',()=>{
-    if($('bannerModal').classList.contains('show'))v10BannerUpdateView();
-  });
+  const wrap=$('bannerPreviewWrap');
+  if(wrap)wrap.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const bs=state.bannerState;
+    const rect=canvas.getBoundingClientRect();
+    const sx=canvas.width/canvas.offsetWidth;
+    const mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sx;
+    const imgX=(mx-canvas.width/2)/bs.zoom+bs.focusX;
+    const imgY=(my-canvas.height/2)/bs.zoom+bs.focusY;
+    const delta=e.deltaY>0?0.9:1.1;
+    bs.zoom=Math.max(0.05,Math.min(20,bs.zoom*delta));
+    bs.focusX=imgX;bs.focusY=imgY;
+    drawBannerPreview();
+  },{passive:false});
 }
-// 全局图片拖动移动（鼠标移动时实时更新）
+// 全局 banner 拖拽移动
 window.addEventListener('mousemove',e=>{
-  if(!v10BannerDrag.active)return;
+  if(!bannerPan.active)return;
+  const canvas=$('bannerCanvas');
+  if(!canvas)return;
   const bs=state.bannerState;
-  const ds=bs.dispScale||1;
-  bs.imgCX=v10BannerDrag.startCX+(e.clientX-v10BannerDrag.startMX)/ds;
-  bs.imgCY=v10BannerDrag.startCY+(e.clientY-v10BannerDrag.startMY)/ds;
-  v10BannerUpdateView();
+  const sx=canvas.width/canvas.offsetWidth;
+  bs.focusX=bannerPan.startFX-(e.clientX-bannerPan.startX)*sx/bs.zoom;
+  bs.focusY=bannerPan.startFY-(e.clientY-bannerPan.startY)*sx/bs.zoom;
+  drawBannerPreview();
 });
-window.addEventListener('mouseup',()=>{
-  if(v10BannerDrag.active){
-    v10BannerDrag.active=false;
-    const img=$('v10BannerImgLayer');
-    if(img)img.classList.remove('dragging');
-  }
-});
+window.addEventListener('mouseup',()=>{bannerPan.active=false});
 
-// 导出横幅：750×400 canvas，按当前缩放与偏移从原图裁切绘制
+// 导出横幅
 function exportBannerCanvas(){
   const bs=state.bannerState;
   if(!bs.image)return null;
+  const canvas=$('bannerCanvas');
+  const vw=canvas.width,vh=canvas.height;
+  const cropRatio=bs.cropW/bs.cropH;
+  const canvasRatio=vw/vh;
+  let cropX=0,cropY=0,cropW=vw,cropH=vh;
+  if(cropRatio>canvasRatio){
+    cropH=vh;cropW=vh*cropRatio;cropX=(vw-cropW)/2;
+  }else{
+    cropW=vw;cropH=vw/cropRatio;cropY=(vh-cropH)/2;
+  }
+  // 视口4角映射到图像坐标
+  const tl=viewportToImageBanner(cropX,cropY,vw,vh);
+  const br=viewportToImageBanner(cropX+cropW,cropY+cropH,vw,vh);
+  const ix=tl.x,iy=tl.y,iw=br.x-tl.x,ih=br.y-tl.y;
   const out=document.createElement('canvas');
-  out.width=bs.cropW;out.height=bs.cropH;   // 固定 750×400
-  const ctx=out.getContext('2d');
-  const fit=Math.max(bs.cropW/bs.srcW,bs.cropH/bs.srcH);
-  const imgScale=fit*(bs.bannerScale/100);
-  const destW=imgScale*bs.srcW, destH=imgScale*bs.srcH;
-  const destX=bs.cropW/2+(bs.imgCX||0)-destW/2, destY=bs.cropH/2+(bs.imgCY||0)-destH/2;
-  ctx.drawImage(bs.image,destX,destY,destW,destH);
+  out.width=bs.cropW;out.height=bs.cropH;
+  const octx=out.getContext('2d');
+  octx.drawImage(bs.image,ix,iy,iw,ih,0,0,bs.cropW,bs.cropH);
   return out;
 }
+function viewportToImageBanner(vx,vy,vw,vh){
+  const bs=state.bannerState;
+  return{
+    x:(vx-vw/2)/bs.zoom+bs.focusX,
+    y:(vy-vh/2)/bs.zoom+bs.focusY,
+  };
+}
 
-// 下载横幅（保留原有导出逻辑）
+function showBannerResultPreview(){
+  const canvas=exportBannerCanvas();
+  if(!canvas)return;
+  const wrap=$('bannerResultWrap');
+  wrap.style.display='block';
+  const rc=$('bannerResultCanvas');
+  const maxW=Math.min(wrap.clientWidth-20||400,400);
+  const ratio=canvas.height/canvas.width;
+  rc.width=Math.round(maxW);rc.height=Math.round(maxW*ratio);
+  const rctx=rc.getContext('2d');
+  rctx.drawImage(canvas,0,0,rc.width,rc.height);
+  $('bannerStatus').textContent=`${state.bannerState.cropW}×${state.bannerState.cropH} · 已就绪`;
+}
+
 function downloadBanner(){
   const canvas=exportBannerCanvas();
-  if(!canvas){showToast('请先导入横幅图片');return}
+  if(!canvas){showToast('请先上传横幅图片');return}
   canvas.toBlob(blob=>{
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
@@ -1782,13 +1518,12 @@ function downloadBanner(){
   },'image/png');
 }
 
-// 确认横幅：导出 canvas 存入 state.banner，供报告与打包使用
+
+
 function confirmBanner(){
-  const canvas=exportBannerCanvas();
-  if(!canvas){showToast('请先导入横幅图片');return}
   state.banner=canvas;
   state.bannerState.confirmed=true;
-  $('bannerStatus').textContent='✓ 已确认 '+state.bannerState.cropW+'×'+state.bannerState.cropH;
+  $('bannerStatus').textContent='✓ 已确认';
   showToast('横幅已确认');
   // 刷新报告
   const br=$('btnReport');if(br&&br.disabled===false)renderBannerInReport();
@@ -1805,9 +1540,6 @@ $('cleanEdgeWidth').addEventListener('input',e=>{state.cleanEdgeWidth=parseInt(e
 $('cleanWhiteLine').addEventListener('change',e=>{state.cleanWhiteLine=e.target.checked});
 $('cleanLineColor').addEventListener('input',e=>{state.cleanLineColor=e.target.value});
 $('cleanLineWidth').addEventListener('input',e=>{state.cleanLineWidth=parseInt(e.target.value);$('cleanLineWidthVal').textContent=e.target.value+'px'});
-// V10: 清理斑点控件同步到 state
-$('v10DespeckleChk').addEventListener('change',e=>{state.despeckle.enabled=e.target.checked});
-$('v10DespeckleSize').addEventListener('input',e=>{state.despeckle.size=parseInt(e.target.value);$('v10DespeckleVal').textContent=e.target.value+'px'});
 
 
 // V7: 智能避让处理函数
@@ -1891,72 +1623,6 @@ async function processImage(){
   showToast(`追加拆分 ${newOnes.length} 个表情，共 ${state.emojis.length} 个`);
 }
 
-// V10: 初始化拆分 —— 先清空所有已拆分表情，再拆分当前图
-function initSplit(){
-  if(!state.originalImage){showToast('请先上传图片');return}
-  state.emojis=[];
-  renderEmojis();
-  processImage();
-  showToast('已清空全部表情，开始拆分当前图');
-}
-
-// V10: 全部清空 —— 删除所有已拆分表情
-function clearAllEmojis(){
-  if(state.emojis.length===0){showToast('当前没有表情可清空');return}
-  if(!confirm('确定要清空所有已拆分的表情吗？此操作不可撤销。'))return;
-  state.emojis=[];
-  renderEmojis();
-  showToast('已清空所有表情');
-}
-
-// V10: 批量导入 —— 把每张图作为独立 emoji 加入 state.emojis（不做抠图，原样导入）
-function handleBatchImport(files){
-  if(!files||!files.length)return;
-  showLoading('正在批量导入 '+files.length+' 张图片...');
-  let loaded=0;
-  const total=files.length;
-  files.forEach(file=>{
-    const img=new Image();
-    img.onload=()=>{
-      // 将图片绘制到 canvas 作为表情原图
-      const canvas=document.createElement('canvas');
-      canvas.width=img.naturalWidth||img.width;
-      canvas.height=img.naturalHeight||img.height;
-      const ctx=canvas.getContext('2d');
-      ctx.drawImage(img,0,0);
-      const myIndex=state.emojis.length;
-      state.emojis.push({
-        canvas:canvas,
-        text:'',
-        index:myIndex,
-        cropInfo:{gridX:0,gridY:0,gridW:canvas.width,gridH:canvas.height},
-        custom:createDefaultCustom()
-      });
-      URL.revokeObjectURL(img.src);
-      loaded++;
-      if(loaded===total)finishBatchImport(total);
-    };
-    img.onerror=()=>{URL.revokeObjectURL(img.src);loaded++;if(loaded===total)finishBatchImport(total)};
-    img.src=URL.createObjectURL(file);
-  });
-}
-function finishBatchImport(total){
-  hideLoading();
-  // 显示后续卡片并启用报告按钮
-  $('textCard').style.display='block';
-  $('styleCard').style.display='block';
-  $('exportCard').style.display='block';
-  const br=$('btnReport');if(br)br.disabled=false;
-  renderEmojis();
-  showToast(`批量导入 ${total} 个表情，共 ${state.emojis.length} 个`);
-}
-// V10: 批量导入文件选择
-$('v10BatchInput').addEventListener('change',e=>{
-  const files=Array.from(e.target.files).filter(f=>f.type.startsWith('image/'));
-  if(files.length)handleBatchImport(files);
-  e.target.value='';
-});
-
 // V5: 处理单元 - 支持矩形，接受可选抠图参数
 
 // V7: 去除边缘残留白边
@@ -2034,42 +1700,6 @@ function cleanWhiteLines(canvas, lineColor, lineWidth) {
   ctx.putImageData(imgData, 0, 0);
   return canvas;
 }
-
-// V10: 清理孤立小斑点 —— 4邻域BFS连通域标记，像素数小于阈值的连通块置为透明
-function despeckleCanvas(canvas, maxSize){
-  // 限制阈值范围 2-50，防止误删主体或无意义操作
-  var sz = Math.max(2, Math.min(50, parseInt(maxSize) || 10));
-  var ctx = canvas.getContext('2d');
-  var w = canvas.width, h = canvas.height;
-  if(w < 2 || h < 2) return canvas;
-  var imgData = ctx.getImageData(0, 0, w, h);
-  var d = imgData.data;
-  var total = w * h;
-  var visited = new Uint8Array(total); // 0=未访问，1=透明或已处理
-  var queue = new Int32Array(total);   // BFS 队列缓冲
-  // 透明像素直接标记为已访问：既避免从其起 BFS，也使其不参与连通主体
-  for(var i=0;i<total;i++){ if(d[i*4+3]===0) visited[i]=1; }
-  for(var start=0; start<total; start++){
-    if(visited[start]) continue;
-    // BFS 4邻域连通域标记
-    var head=0, tail=0;
-    queue[tail++]=start; visited[start]=1;
-    while(head<tail){
-      var pos=queue[head++];
-      var x=pos%w, y=(pos-x)/w;
-      if(x>0 && !visited[pos-1]){ visited[pos-1]=1; queue[tail++]=pos-1; }
-      if(x<w-1 && !visited[pos+1]){ visited[pos+1]=1; queue[tail++]=pos+1; }
-      if(y>0 && !visited[pos-w]){ visited[pos-w]=1; queue[tail++]=pos-w; }
-      if(y<h-1 && !visited[pos+w]){ visited[pos+w]=1; queue[tail++]=pos+w; }
-    }
-    // 本连通块全部像素都在 queue[0..tail-1]，像素数小于阈值则置透明
-    if(tail < sz){
-      for(var k=0;k<tail;k++){ d[queue[k]*4+3]=0; }
-    }
-  }
-  ctx.putImageData(imgData, 0, 0);
-  return canvas;
-}
 function processCell(img,sx,sy,sw,sh,cutoutOpts){
   const cellCanvas=document.createElement('canvas');
   cellCanvas.width=Math.max(1,Math.round(sw));
@@ -2097,10 +1727,6 @@ function processCell(img,sx,sy,sw,sh,cutoutOpts){
   }
   if(state.cleanWhiteLine && finalCanvas.width > 2 && finalCanvas.height > 2){
     cleanWhiteLines(finalCanvas, state.cleanLineColor || '#ffffff', state.cleanLineWidth || 3);
-  }
-  // V10: 清理孤立小斑点残渣
-  if(state.despeckle && state.despeckle.enabled && finalCanvas.width > 2 && finalCanvas.height > 2){
-    despeckleCanvas(finalCanvas, state.despeckle.size);
   }
   return{canvas:finalCanvas};;
 }
@@ -2179,8 +1805,6 @@ function getContentBounds(imageData){
 function renderEmojis(){
   const container=$('emojiContainer');
   $('emojiCount').textContent=`共 ${state.emojis.length} 个表情`;
-  const batchToolbar=$('batchToolbar');
-  if(batchToolbar) batchToolbar.style.display=state.emojis.length>0?'flex':'none';
   if(state.emojis.length===0){
     container.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>暂无表情数据</p></div>';
     return;
@@ -2189,15 +1813,6 @@ function renderEmojis(){
     <div class="emoji-card" data-idx="${i}">
       <div class="preview" id="preview-${i}">
         <span class="drag-hint">悬停文字变 I 光标即可拖拽</span>
-      </div>
-      <div class="quick-zoom">
-        <button class="qz-btn" onclick="quickZoomEmoji(${i},-0.1)" title="缩小图片">🔍−</button>
-        <button class="qz-btn" onclick="quickZoomEmoji(${i},0.1)" title="放大图片">🔍+</button>
-        <button class="qz-btn" onclick="quickMoveEmoji(${i},0,-2)" title="上移">↑</button>
-        <button class="qz-btn" onclick="quickMoveEmoji(${i},0,2)" title="下移">↓</button>
-        <button class="qz-btn" onclick="quickMoveEmoji(${i},-2,0)" title="左移">←</button>
-        <button class="qz-btn" onclick="quickMoveEmoji(${i},2,0)" title="右移">→</button>
-        <button class="qz-btn" onclick="quickResetEmoji(${i})" title="重置">↺</button>
       </div>
       <div class="info">
         <div class="idx"><span>表情 #${i+1}</span><span class="badge" id="badge-${i}">${getBadgeText(emoji)}</span></div>
@@ -2297,62 +1912,6 @@ function renderSettings(i){
     </div>
 
   `;
-}
-
-// V10: 快速缩放/移动单个表情
-function quickZoomEmoji(idx,delta){
-  const c=state.emojis[idx].custom;
-  if(!c.imgEnabled){c.imgEnabled=true;}
-  c.imgScale=Math.max(0.5,Math.min(2,c.imgScale+delta));
-  renderEmojiPreview(idx);
-  updateSliderValues(idx);
-  showToast('#'+(idx+1)+' 缩放: '+Math.round(c.imgScale*100)+'%');
-}
-function quickMoveEmoji(idx,dx,dy){
-  const c=state.emojis[idx].custom;
-  if(!c.imgEnabled){c.imgEnabled=true;}
-  c.offsetX=Math.max(-30,Math.min(30,c.offsetX+dx));
-  c.offsetY=Math.max(-30,Math.min(30,c.offsetY+dy));
-  renderEmojiPreview(idx);
-  updateSliderValues(idx);
-}
-function quickResetEmoji(idx){
-  const c=state.emojis[idx].custom;
-  c.offsetX=0;c.offsetY=0;c.imgScale=1;
-  renderEmojiPreview(idx);
-  updateSliderValues(idx);
-  showToast('#'+(idx+1)+' 已重置位置');
-}
-
-// V10: 统一操作所有表情
-function batchZoomAll(delta){
-  state.emojis.forEach((e,i)=>{
-    const c=e.custom;
-    if(!c.imgEnabled){c.imgEnabled=true;}
-    c.imgScale=Math.max(0.5,Math.min(2,c.imgScale+delta));
-    renderEmojiPreview(i);
-    updateSliderValues(i);
-  });
-  showToast('全部表情缩放: '+Math.round(state.emojis[0].custom.imgScale*100)+'%');
-}
-function batchMoveAll(dx,dy){
-  state.emojis.forEach((e,i)=>{
-    const c=e.custom;
-    if(!c.imgEnabled){c.imgEnabled=true;}
-    c.offsetX=Math.max(-30,Math.min(30,c.offsetX+dx));
-    c.offsetY=Math.max(-30,Math.min(30,c.offsetY+dy));
-    renderEmojiPreview(i);
-    updateSliderValues(i);
-  });
-}
-function batchResetAll(){
-  state.emojis.forEach((e,i)=>{
-    const c=e.custom;
-    c.offsetX=0;c.offsetY=0;c.imgScale=1;
-    renderEmojiPreview(i);
-    updateSliderValues(i);
-  });
-  showToast('全部表情已重置位置');
 }
 
 // V9: 删除单个表情（直接删除，不弹确认）
@@ -2567,18 +2126,7 @@ function openEraserModal(i){
   eraserModalState._linePass=0;
   eraserModalState._edgeWidth=3;
   eraserModalState._lineWidth=3;
-  // V10: 更新 Windows 标题栏文本、尺寸徽章与右侧信息面板
-  $('eraserModalTitle').textContent='表情包编辑器 — 表情 #'+(i+1);
-  const badge=$('eraserModalBadge');if(badge)badge.textContent=src.width+'×'+src.height;
-  const sbSize=$('sbSize');if(sbSize)sbSize.textContent=src.width+'×'+src.height;
-  const iIdx=$('erInfoIdx');if(iIdx)iIdx.textContent='#'+(i+1);
-  const iSize=$('erInfoSize');if(iSize)iSize.textContent=src.width+'×'+src.height;
-  // 计算透明像素占比
-  try{const d=copy.getContext('2d').getImageData(0,0,src.width,src.height).data;let t=0;for(let p=3;p<d.length;p+=4){if(d[p]===0)t++;}const pct=(t/(src.width*src.height)*100).toFixed(1);const iAlpha=$('erInfoAlpha');if(iAlpha)iAlpha.textContent=pct+'%';}catch(e){}
-  const iOps=$('erInfoOps');if(iOps)iOps.textContent='0';
-  const iZoom=$('erInfoZoom');if(iZoom)iZoom.textContent='100%';
-  // 重置右侧历史面板
-  const hl=$('erSideHistory');if(hl)hl.innerHTML='<div class="er-history-item current"><span class="icon">📂</span><span class="desc">打开图片 #'+(i+1)+'</span><span class="time">刚刚</span></div>';
+  $('eraserModalTitle').textContent='表情 #'+(i+1);
   $('eraserModal').classList.add('show');
   setTimeout(drawEraserModal,50);
 }
@@ -2633,36 +2181,11 @@ function drawEraserModal(){
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(src,dx,dy,imgW,imgH);
   ctx.restore();
-  // V10: 绘制图片边框（虚线），让用户看清图片边界
-  ctx.save();
-  ctx.strokeStyle='rgba(0,120,212,0.7)';
-  ctx.lineWidth=2;
-  ctx.setLineDash([8,4]);
-  ctx.strokeRect(dx,dy,imgW,imgH);
-  ctx.setLineDash([]);
-  // 四角标记
-  const cornerLen=Math.min(12,imgW/4,imgH/4);
-  ctx.strokeStyle='rgba(0,120,212,0.9)';
-  ctx.lineWidth=3;
-  ctx.beginPath();
-  ctx.moveTo(dx,dy+cornerLen);ctx.lineTo(dx,dy);ctx.lineTo(dx+cornerLen,dy);
-  ctx.moveTo(dx+imgW-cornerLen,dy);ctx.lineTo(dx+imgW,dy);ctx.lineTo(dx+imgW,dy+cornerLen);
-  ctx.moveTo(dx+imgW,dy+imgH-cornerLen);ctx.lineTo(dx+imgW,dy+imgH);ctx.lineTo(dx+imgW-cornerLen,dy+imgH);
-  ctx.moveTo(dx+cornerLen,dy+imgH);ctx.lineTo(dx,dy+imgH);ctx.lineTo(dx,dy+imgH-cornerLen);
-  ctx.stroke();
-  // 尺寸标注
-  ctx.fillStyle='rgba(0,120,212,0.85)';
-  ctx.font='11px sans-serif';
-  ctx.textAlign='center';
-  ctx.textBaseline='top';
-  ctx.fillText(src.width+'×'+src.height, dx+imgW/2, dy+imgH+4);
-  ctx.restore();
   ems._panOffX=dx;ems._panOffY=dy;
   ems._dispW=imgW;ems._dispH=imgH;
   ems._scale=src.width/imgW;
   const pct=Math.round(ems.zoom*100);
   $('eraserZoomLabel').textContent=pct+'%';
-  const iZoom=$('erInfoZoom');if(iZoom)iZoom.textContent=pct+'%';
   canvas.style.cursor=ems.tool==='pan'?'grab':ems.tool==='lasso'?'crosshair':'none';
   const st=$('eraserStatus');if(st)st.textContent=_spaceHeld?'🖐 空格拖拽中 · 松开恢复':ems.tool==='pan'?'✋ 拖拽画布':ems.tool==='lasso'?'🔗 点击布点 · 闭合删除':ems.tool==='magic'?'⚡ 点击区域即擦除':ems.tool==='bgerase'?'🎯 取色后点击擦除背景':ems.tool==='sel'?'🔲 拖拽选框 · 所有操作限定框内':ems.tool==='restore'?'🔙 还原笔刷 · 涂抹恢复被擦除的区域':'🧹 ['+ems.size+']px笔刷';
   if($('eraserZoomSlider'))$('eraserZoomSlider').value=Math.max(10,Math.min(800,pct));
@@ -2736,25 +2259,16 @@ function drawEraserModal(){
 }
 function clearSelection(){eraserModalState.selActive=false;eraserModalState.selW=0;eraserModalState.selH=0;drawEraserModal();}
 
-// V10: 工具名/图标映射（供 Ribbon 按钮高亮与状态栏使用）
-const _eraserToolMeta={erase:{name:'擦除',icon:'🧹'},paint:{name:'画笔',icon:'🎨'},pan:{name:'拖拽',icon:'✋'},lasso:{name:'套索',icon:'🔗'},magic:{name:'魔力擦',icon:'⚡'},bgerase:{name:'背景擦',icon:'🎯'},sel:{name:'选框',icon:'🔲'},restore:{name:'还原',icon:'🔙'}};
-// V10: 仅切换 Ribbon 按钮 active 类（不触发副作用，供空格拖拽复用）
-function setEraserToolActive(tool){
-  document.querySelectorAll('.er-big-btn[data-tool],.er-sm-btn[data-tool]').forEach(el=>el.classList.remove('active'));
-  const el=document.querySelector('.er-big-btn[data-tool="'+tool+'"],.er-sm-btn[data-tool="'+tool+'"]');
-  if(el)el.classList.add('active');
-  const m=_eraserToolMeta[tool];
-  const sn=$('sbToolName');if(sn&&m)sn.textContent=m.name;
-  const si=$('sbToolIcon');if(si&&m)si.textContent=m.icon;
-}
 function setEraserTool(tool){
   const ems=eraserModalState;
   // 保存lassoPts - 切到pan时不清除
   const prevTool=ems.tool;
   if(tool!=='pan'&&tool!=='sel')ems.lassoPts=[];
   ems.tool=tool;
-  // V10: 操作 Ribbon 按钮 active 类（按 data-tool 匹配）+ 更新状态栏工具名
-  setEraserToolActive(tool);
+  document.querySelectorAll('.eraser-tool-btn').forEach(el=>el.classList.remove('active'));
+  const ids={erase:'eraserToolErase',paint:'eraserToolPaint',pan:'eraserToolPan',lasso:'eraserToolLasso',magic:'eraserToolMagic',bgerase:'eraserToolBgErase',sel:'eraserToolSel',restore:'eraserToolRestore'};
+  const el=$(ids[tool]);
+  if(el)el.classList.add('active');
   const cg=$('eraserColorGroup');if(cg)cg.style.display=tool==='paint'?'block':'none';
   const bg=$('eraserBgColorGroup');if(bg)bg.style.display=tool==='bgerase'?'block':'none';
   const mg=$('eraserMagicGroup');if(mg)mg.style.display=tool==='magic'?'block':'none';
@@ -2766,9 +2280,6 @@ function setEraserTool(tool){
 function eraserModalSizeChange(v){
   eraserModalState.size=parseInt(v);
   $('eraserModalSizeLabel').textContent=v;
-  // V10: 同步左侧笔刷预览圆大小
-  const bp=$('brushPreviewCircle');if(bp){const sz=Math.max(4,Math.min(56,parseInt(v)));bp.style.width=sz+'px';bp.style.height=sz+'px';}
-  const tag=$('brushSizeTag');if(tag)tag.textContent=v+'px';
   drawEraserModal();
 }
 
@@ -2813,7 +2324,7 @@ function eraserModalSizeStep(dir){
   eraserModalSizeChange(v);
 }
 
-function eraserModalSaveSnapshot(label, icon){
+function eraserModalSaveSnapshot(){
   const ems=eraserModalState;
   if(!ems.canvas)return;
   const ctx=ems.canvas.getContext('2d');
@@ -2822,13 +2333,6 @@ function eraserModalSaveSnapshot(label, icon){
   if(ems.undo.length>30)ems.undo.shift();
   ems.redo=[];
   updateEraserModalBtns();
-  // V10: 往右侧历史面板 push 一条记录（未指定标签则按当前工具推断）
-  if(!label){
-    const m=_eraserToolMeta[ems.tool];
-    label=(m?m.name:'编辑')+'操作';
-    icon=m?m.icon:'✏️';
-  }
-  pushEraserHistory(label, icon);
 }
 function eraserModalUndo(){
   const ems=eraserModalState;
@@ -2858,10 +2362,10 @@ function eraserModalRedo(){
 function eraserModalCleanEdge(){
   var ems=eraserModalState;
   if(!ems.canvas)return;
-  var edgeWidth = ems._edgeWidth || 3;
-  // V10: 传入明确的历史标签
-  eraserModalSaveSnapshot('擦白边 (强度'+edgeWidth+')','🧹');
+  eraserModalSaveSnapshot();
   var edgeColor = $('cleanEdgeColor') ? $('cleanEdgeColor').value : '#ffffff';
+  // V8: 使用橡皮擦工具栏的强度控件
+  var edgeWidth = ems._edgeWidth || 3;
   if(ems._cleanPass==null)ems._cleanPass=0;
   ems._cleanPass++;
   cleanWhiteEdges(ems.canvas, edgeColor, edgeWidth * ems._cleanPass);
@@ -2873,10 +2377,10 @@ function eraserModalCleanEdge(){
 function eraserModalCleanLine(){
   var ems=eraserModalState;
   if(!ems.canvas)return;
-  var lineWidth = ems._lineWidth || 3;
-  // V10: 传入明确的历史标签
-  eraserModalSaveSnapshot('擦白线 (强度'+lineWidth+')','〰️');
+  eraserModalSaveSnapshot();
   var lineColor = $('cleanLineColor') ? $('cleanLineColor').value : '#ffffff';
+  // V8: 使用橡皮擦工具栏的强度控件
+  var lineWidth = ems._lineWidth || 3;
   if(ems._linePass==null)ems._linePass=0;
   ems._linePass++;
   cleanWhiteLines(ems.canvas, lineColor, lineWidth * ems._linePass);
@@ -2894,53 +2398,11 @@ function eraserModalReset(){
   ctx.putImageData(new ImageData(new Uint8ClampedArray(data.data),data.w,data.h),0,0);
   drawEraserModal();
   updateEraserModalBtns();
-  // V10: 记录历史 + 刷新透明像素占比
-  pushEraserHistory('恢复原图','🔄');
-  try{const d=ctx.getImageData(0,0,ems.canvas.width,ems.canvas.height).data;let t=0;for(let p=3;p<d.length;p+=4){if(d[p]===0)t++;}const pct=(t/(ems.canvas.width*ems.canvas.height)*100).toFixed(1);const iAlpha=$('erInfoAlpha');if(iAlpha)iAlpha.textContent=pct+'%';}catch(e){}
   showToast('已恢复原图');
 }
 function updateEraserModalBtns(){
   const u=$('eraserModalUndoBtn');if(u)u.disabled=!eraserModalState.undo.length;
   const r=$('eraserModalRedoBtn');if(r)r.disabled=!eraserModalState.redo.length;
-  // V10: 同步右侧信息面板撤销栈计数
-  const iUndo=$('erInfoUndo');if(iUndo)iUndo.textContent=eraserModalState.undo.length;
-}
-
-// V10: 往右侧历史面板插入一条操作记录
-function pushEraserHistory(desc, icon){
-  const list=$('erSideHistory');
-  if(!list)return;
-  // 之前的 current 标记取消
-  list.querySelectorAll('.er-history-item.current').forEach(el=>el.classList.remove('current'));
-  const item=document.createElement('div');
-  item.className='er-history-item current';
-  item.innerHTML='<span class="icon">'+(icon||'✏️')+'</span><span class="desc">'+(desc||'编辑操作')+'</span><span class="time">刚刚</span>';
-  list.insertBefore(item, list.firstChild);
-  // 限制历史条数
-  while(list.children.length>50)list.removeChild(list.lastChild);
-  // 同步信息面板操作次数
-  const ops=$('erInfoOps');if(ops){const n=parseInt(ops.textContent)||0;ops.textContent=(n+1);}
-}
-
-// V10: 切换右侧面板 历史/信息 Tab
-function switchErSideTab(btn, tab){
-  document.querySelectorAll('.er-side-tab').forEach(el=>el.classList.remove('active'));
-  btn.classList.add('active');
-  const h=$('erSideHistory'), inf=$('erSideInfo');
-  if(tab==='history'){if(h)h.style.display='';if(inf)inf.style.display='none';}
-  else{if(h)h.style.display='none';if(inf)inf.style.display='';}
-}
-
-// V10: 一键清理孤立小斑点（复用已有 despeckleCanvas）
-function eraserModalDespeckle(){
-  const ems=eraserModalState;
-  if(!ems.canvas)return;
-  const szInput=$('eraserDespeckleSize');
-  const sz=szInput?parseInt(szInput.value):10;
-  eraserModalSaveSnapshot('清斑点 (阈值'+sz+')','🧹');
-  despeckleCanvas(ems.canvas, sz);
-  drawEraserModal();
-  showToast('已清理孤立小斑点（阈值 '+sz+'）');
 }
 
 function bindEraserModalEvents(){
@@ -3236,8 +2698,8 @@ document.addEventListener('keydown',function(e){
     _spaceSavedTool=ems.tool;
     _spaceSavedLasso=ems.lassoPts.slice();
     ems.tool='pan';
-    // V10: 用 Ribbon 按钮高亮（按 data-tool 匹配）
-    setEraserToolActive('pan');
+    document.querySelectorAll('.eraser-tool-btn').forEach(el=>el.classList.remove('active'));
+    const pel=$('eraserToolPan');if(pel)pel.classList.add('active');
     const cv=$('eraserCanvas');
     if(cv)cv.style.cursor='grab';
     return;
@@ -3248,8 +2710,8 @@ document.addEventListener('keydown',function(e){
     const v=Math.max(2,Math.min(200,ems.size+dir*2));
     ems.size=v;
     $('eraserModalSize').value=v;
-    // V10: 同步笔刷预览圆
-    eraserModalSizeChange(v);
+    $('eraserModalSizeLabel').textContent=v;
+    drawEraserModal();
   }
 });
 
@@ -3267,31 +2729,11 @@ document.addEventListener('keyup',function(e){
       if(cv)cv.style.cursor=ems.tool==='pan'?'grab':ems.tool==='lasso'?'crosshair':'none';
       _spaceSavedTool=null;
       _spaceSavedLasso=null;
-      // V10: 刷新 Ribbon 按钮高亮但不调用 setEraserTool 以免清掉 lassoPts
-      setEraserToolActive(ems.tool);
+      // 刷新UI但不调用setEraserTool以免清掉lassoPts
+      document.querySelectorAll('.eraser-tool-btn').forEach(function(el){el.classList.remove('active')});
+      const ids={erase:'eraserToolErase',paint:'eraserToolPaint',pan:'eraserToolPan',lasso:'eraserToolLasso',magic:'eraserToolMagic',bgerase:'eraserToolBgErase',sel:'eraserToolSel'};
+      const rel=$(ids[ems.tool]);if(rel)rel.classList.add('active');
       drawEraserModal();
-    }
-  }
-});
-
-// V10: 鼠标移动时更新状态栏坐标（独立监听，不改动 bindEraserModalEvents）
-document.addEventListener('mousemove',function(e){
-  const ems=eraserModalState;
-  if(!ems.canvas)return;
-  const ce=$('eraserCanvas');
-  const sbCoord=$('sbCoord');
-  if(!ce||!sbCoord)return;
-  const r=ce.getBoundingClientRect();
-  const hx=e.clientX-r.left, hy=e.clientY-r.top;
-  if(hx<0||hx>r.width||hy<0||hy>r.height){sbCoord.textContent='X:— Y:—';return;}
-  // 显示画布坐标 → 源图像坐标转换（与 bindEraserModalEvents 中 toSrc 一致）
-  if(ems._dispW&&ems._dispH){
-    const sx=Math.round((hx/r.width*ce.width-ems._panOffX)/ems._dispW*ems.canvas.width);
-    const sy=Math.round((hy/r.height*ce.height-ems._panOffY)/ems._dispH*ems.canvas.height);
-    if(sx>=0&&sx<ems.canvas.width&&sy>=0&&sy<ems.canvas.height){
-      sbCoord.textContent='X:'+sx+' Y:'+sy;
-    }else{
-      sbCoord.textContent='X:— Y:—';
     }
   }
 });
@@ -3326,10 +2768,7 @@ function renderEmojiPreview(idx){
   if(!emoji)return;
   const container=$('preview-'+idx);
   if(!container)return;
-  // V10: 支持 'chat' 聊天壁纸背景（映射为渐变 CSS）
-  var bgVal=state.previewBg;
-  if(bgVal==='chat') bgVal='linear-gradient(135deg,#e5ddd5,#d4cfc8)';
-  container.style.background=bgVal||'';
+  container.style.background=state.previewBg||'';
   container.innerHTML='';
   const PS=200;
   const canvas=document.createElement('canvas');
@@ -3692,54 +3131,18 @@ function drawTextOnCanvas(ctx,text,w,h,styles){
 }
 
 // ============ Generate Export Canvas (V2: 100% fill) ============
-function generateExportCanvas(emoji,size,noText){
+function generateExportCanvas(emoji,size){
   const src=emoji.canvas;
-  // V5: 强制1:1正方形导出，按最大边作为正方形边长，内容居中
+  // V5: 强制1:1正方形导出，按最大边作为正方形边长，内容居中，不填充背景
   const canvas=document.createElement('canvas');
   canvas.width=size;canvas.height=size;
   const ctx=canvas.getContext('2d');
-  // V10: 顺序 —— 填充背景 → 绘制图片 → 绘制文字 → 应用圆角遮罩
-  // 1) 背景填充
-  if(state.exportFillBg){
-    ctx.fillStyle=state.exportFillColor||'#ffffff';
-    ctx.fillRect(0,0,size,size);
-  }
-  // 2) 绘制图片
   drawEmojiOnCanvas(ctx,emoji,size,size);
-  // 3) 绘制文字（noText=true 时跳过，用于"无文字"预览）
-  if(!noText){
-    const scaleRatio=size/240;
-    const styles=getEffectiveStyles(emoji,scaleRatio);
-    drawTextOnCanvas(ctx,emoji.text,size,size,styles);
-  }
-  // 4) 圆角遮罩：用 destination-in + roundRect 裁剪圆角
-  if(state.exportCorner==='round' && state.cornerRadius>0){
-    ctx.globalCompositeOperation='destination-in';
-    ctx.fillStyle='#fff';
-    roundRect(ctx,0,0,size,size,state.cornerRadius);
-    ctx.fill();
-    ctx.globalCompositeOperation='source-over';
-  }
+  const scaleRatio=size/240;
+  const styles=getEffectiveStyles(emoji,scaleRatio);
+  drawTextOnCanvas(ctx,emoji.text,size,size,styles);
   return canvas;
 }
-
-// V10: 图片边角切换（square=直角 / round=圆角）
-function setCorner(el,mode){
-  state.exportCorner=mode;
-  // 切换按钮高亮
-  const sq=$('v10CornerSquare'),rd=$('v10CornerRound');
-  if(sq)sq.classList.toggle('active',mode==='square');
-  if(rd)rd.classList.toggle('active',mode==='round');
-  // 圆角模式下启用半径滑块
-  const cr=$('v10CornerRadius');
-  if(cr)cr.disabled=(mode!=='round');
-  showToast(mode==='round'?'已切换圆角边':'已切换直角边');
-}
-
-// V10: 导出设置控件同步到 state
-$('v10ExportFillBg').addEventListener('change',e=>{state.exportFillBg=e.target.checked});
-$('v10ExportFillColor').addEventListener('input',e=>{state.exportFillColor=e.target.value});
-$('v10CornerRadius').addEventListener('input',e=>{state.cornerRadius=parseInt(e.target.value);$('v10CornerRadiusVal').textContent=e.target.value+'px'});
 
 // ============ Report ============
 function showReport(){
@@ -3753,8 +3156,6 @@ function showReport(){
   html+='<span class="report-tab" onclick="switchReportTab(this,\'small\')">小尺寸 '+state.smallSize+'×'+state.smallSize+'</span>';
   html+='<span class="report-tab" onclick="switchReportTab(this,\'icon\')">图标 '+state.iconSize+'×'+state.iconSize+'</span>';
   html+='<span class="report-tab" onclick="switchReportTab(this,\'banner\')" id="reportBannerTab">🖼 横幅</span>';
-  html+='<span class="report-tab" onclick="switchReportTab(this,\'notext\')">🚫 无文字 <span class="v10-tag">V10</span></span>';
-  html+='<span class="report-tab" onclick="switchReportTab(this,\'chat\')">💬 真实聊天场景 <span class="v10-tag">V10</span></span>';
   html+='</div>';
   html+='<div class="report-grid" id="reportLarge">';
   state.emojis.forEach((emoji,i)=>{
@@ -3776,14 +3177,6 @@ function showReport(){
   });
   html+='</div>';
   html+='<div id="reportBannerSection" style="display:none"><div class="cover-section"><h3>🖼 横幅</h3><div class="cover-preview"><div class="cover-item"><div class="img-wrap" id="reportBannerPreview"></div><div class="label" id="reportBannerLabel">等待生成...</div></div></div><div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="downloadBanner()">下载横幅</button></div></div></div>';
-  // V10: 无文字预览区（不叠加文字的原始图片）
-  html+='<div class="report-grid" id="v10ReportNotext" style="display:none">';
-  state.emojis.forEach((emoji,i)=>{
-    html+=`<div class="report-item"><div class="label">#${i+1} · 无文字 ${state.largeSize}×${state.largeSize}</div><div class="img-wrap" id="report-img-notext-${i}"></div><div class="name">${escapeHtml(emoji.text||'（无文字）')}</div><button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="downloadSingle(${i},'large')">下载</button></div>`;
-  });
-  html+='</div>';
-  // V10: 真实聊天场景区（用真实导出canvas渲染气泡）
-  html+='<div id="v10ChatSection" style="display:none">'+renderChatScene()+'</div>';
   body.innerHTML=html;
   renderBannerInReport();
   const hasBanner=state.banner!==null;
@@ -3799,12 +3192,7 @@ function showReport(){
       const sC=$('report-img-small-'+i);if(sC)sC.appendChild(sc);
       const ic=generateExportCanvas(emoji,state.iconSize);
       const iC=$('report-img-icon-'+i);if(iC)iC.appendChild(ic);
-      // V10: 无文字预览（noText=true 跳过文字叠加）
-      const nc=generateExportCanvas(emoji,state.largeSize,true);
-      const nC=$('report-img-notext-'+i);if(nC)nC.appendChild(nc);
     });
-    // V10: 聊天场景填充真实导出canvas
-    renderChatSceneCanvases();
     if($('genCover').checked){
       const cc=generateCoverCanvas();
       const cC=$('coverPreview');if(cC)cC.appendChild(cc);
@@ -3821,68 +3209,6 @@ function switchReportTab(btn,tab){
   const bs=$('reportBannerSection');
   if(bs)bs.style.display=tab==='banner'?'block':'none';
   if(tab==='banner')renderBannerInReport();
-  // V10: 无文字 / 聊天场景 分支
-  const nt=$('v10ReportNotext');
-  if(nt)nt.style.display=tab==='notext'?'grid':'none';
-  const cs=$('v10ChatSection');
-  if(cs)cs.style.display=tab==='chat'?'block':'none';
-  // 切到聊天场景时确保 canvas 已填充
-  if(tab==='chat')renderChatSceneCanvases();
-}
-
-// V10: 真实聊天场景渲染 —— 返回 HTML 结构，表情位置用占位 div，canvas 由 renderChatSceneCanvases 填充
-function renderChatScene(){
-  const cornerClass = state.exportCorner==='round' ? 'rounded' : '';
-  const bubbleClass = state.chatSceneBg==='black' ? 'dark-bubble' : '';
-  let html = '<div class="chat-scene-bar">'+
-    '<span class="cs-label">💬 聊天背景：</span>'+
-    '<span class="cs-bg-btn '+(state.chatSceneBg==='green'?'active':'')+'" onclick="setChatSceneBg(\'green\')"><span class="cs-bg-swatch" style="background:#95ec69"></span> 微信绿</span>'+
-    '<span class="cs-bg-btn '+(state.chatSceneBg==='white'?'active':'')+'" onclick="setChatSceneBg(\'white\')"><span class="cs-bg-swatch" style="background:#fff"></span> 白色</span>'+
-    '<span class="cs-bg-btn '+(state.chatSceneBg==='black'?'active':'')+'" onclick="setChatSceneBg(\'black\')"><span class="cs-bg-swatch" style="background:#1a1a1a"></span> 深色</span>'+
-    '<span class="cs-bg-btn '+(state.chatSceneBg==='chat'?'active':'')+'" onclick="setChatSceneBg(\'chat\')"><span class="cs-bg-swatch" style="background:linear-gradient(135deg,#e5ddd5,#d4cfc8)"></span> 聊天壁纸</span>'+
-    '<span class="cs-bg-btn '+(state.chatSceneBg==='none'?'active':'')+'" onclick="setChatSceneBg(\'none\')"><span class="cs-bg-swatch" style="background:repeating-conic-gradient(#ccc 0% 25%,#fff 0% 50%) 50%/4px 4px"></span> 透明</span>'+
-    '</div>';
-  html += `<div class="chat-window bg-${state.chatSceneBg}">`;
-  html += '<div class="chat-time">今天 14:30</div>';
-  // 交替左右气泡，每个表情占一个气泡，表情用真实导出 canvas 占位
-  state.emojis.forEach((emoji,i)=>{
-    const isRight = i%2===1;
-    const sideClass = isRight ? 'right' : '';
-    html += `<div class="chat-row ${sideClass}">`;
-    if(!isRight) html += '<div class="chat-avatar">😀</div>';
-    html += `<div class="chat-bubble ${bubbleClass}"><div class="chat-emoji-img ${cornerClass}" id="v10ChatEmoji-${i}"></div></div>`;
-    if(isRight) html += '<div class="chat-avatar">😎</div>';
-    html += '</div>';
-    // 每 3 个插一个时间分隔
-    if((i+1)%3===0 && i<state.emojis.length-1){
-      html += '<div class="chat-time">今天 14:3'+((i+1)/3)+'</div>';
-    }
-  });
-  html += '</div>';
-  html += '<div style="font-size:11px;color:var(--text-light);text-align:center;margin-top:8px">💡 模拟真实聊天场景预览 · 可切换背景色查看表情在不同聊天背景下的效果 · 表情为真实导出 canvas</div>';
-  return html;
-}
-
-// V10: 为聊天场景占位 div 填充真实导出 canvas（96px，带文字与圆角/背景效果）
-function renderChatSceneCanvases(){
-  state.emojis.forEach((emoji,i)=>{
-    const wrap=$('v10ChatEmoji-'+i);
-    if(!wrap)return;
-    wrap.innerHTML='';
-    const c=generateExportCanvas(emoji,96);
-    c.style.width='80px';c.style.height='80px';c.style.display='block';
-    wrap.appendChild(c);
-  });
-}
-
-// V10: 切换聊天场景背景色，重新渲染场景并填充 canvas
-function setChatSceneBg(mode){
-  state.chatSceneBg=mode;
-  const section=$('v10ChatSection');
-  if(section){
-    section.innerHTML=renderChatScene();
-    renderChatSceneCanvases();
-  }
 }
 
 function renderBannerInReport(){
@@ -4049,11 +3375,10 @@ function resetAll(){
   const cw=$('colSplitW');if(cw){cw.value=50;$('colSplitVal').textContent='50%'}
   // V4: 重置横幅
   state.banner=null;
-  state.bannerState={image:null,srcW:0,srcH:0,cropW:750,cropH:400,zoom:1,focusX:0,focusY:0,bannerScale:100,imgCX:0,imgCY:0,dispScale:1,confirmed:false};
-  // V10: 重置横幅 UI（拖拽提示态）
-  const _bHint=$('v10BannerDropHint');if(_bHint)_bHint.style.display='flex';
-  const _bLayer=$('v10BannerImgLayer');if(_bLayer){_bLayer.classList.remove('show');_bLayer.src=''}
-  const _bFrame=$('v10BannerPreviewFrame');if(_bFrame)_bFrame.innerHTML='<span class="bp-empty">导入图片后<br>显示截取预览</span>';
+  state.bannerState={image:null,srcW:0,srcH:0,cropW:750,cropH:400,zoom:1,focusX:0,focusY:0,confirmed:false};
+  $('bannerUploadZone').style.display='block';
+  $('bannerEditor').style.display='none';
+  $('bannerResultWrap').style.display='none';
   $('bannerFileInput').value='';
   $('uploadPreview').style.display='none';
   $('gridCard').style.display='none';
@@ -4221,14 +3546,13 @@ updateStyles();
   });
   obs.observe(document.body,{childList:true,subtree:true});
 })();
-// V10: 初始化横幅编辑器交互（拖放导入 / 图片拖动 / 滚轮缩放）
-(function initV10Banner(){
-  const wrap=$('v10BannerCanvasWrap');
-  if(wrap){setupV10BannerInteractions();return}
-  // 若元素尚未就绪，等待 DOM 注入后再绑定
+// V4: 初始化横幅画布拖拽
+(function initBannerDrag(){
+  const cb=$('bannerCanvas');
+  if(cb&&!cb._bannerDrag){cb._bannerDrag=true;setupBannerCanvasDrag();return}
   const obs=new MutationObserver(()=>{
-    const w2=$('v10BannerCanvasWrap');
-    if(w2){setupV10BannerInteractions();obs.disconnect()}
+    const c2=$('bannerCanvas');
+    if(c2&&!c2._bannerDrag){c2._bannerDrag=true;setupBannerCanvasDrag();obs.disconnect()}
   });
   obs.observe(document.body,{childList:true,subtree:true});
 })();
