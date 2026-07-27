@@ -795,6 +795,7 @@
       <textarea class="caption-input" id="captionInput" placeholder="输入配文内容...&#10;&#10;段落之间用空行分隔&#10;空行位置会自动填充图片行&#10;&#10;例如：&#10;这是第一段配文&#10;&#10;这是第二段配文"></textarea>
       <div class="btn-group" style="margin-top:4px;">
         <button class="btn btn-secondary btn-sm" onclick="textShuffle()">🔀 文本乱序</button>
+        <button class="btn btn-secondary btn-sm" onclick="textAddEnter()">➕ 添加空行</button>
         <button class="btn btn-secondary btn-sm" onclick="textClearEnter()">🗑 删除空行</button>
         <button class="btn btn-secondary btn-sm" onclick="textPeriodLine()">↵ 句号换行</button>
       </div>
@@ -802,6 +803,29 @@
 
     <!-- === Right Panel === -->
     <aside class="panel-right">
+      <div class="theme-section">
+        <div class="section-title">预览显示</div>
+        <div class="settings-row">
+          <label>素材库图片</label>
+          <div class="toggle-switch" id="showImagesToggle" onclick="toggleShowImages()"></div>
+        </div>
+        <div class="settings-row">
+          <label>配文文本</label>
+          <div class="toggle-switch" id="showTextToggle" onclick="toggleShowText()"></div>
+        </div>
+      </div>
+
+      <div class="theme-section">
+        <div class="section-title">文字图片来源</div>
+        <div class="settings-row">
+          <label>来源</label>
+          <div class="radio-group" style="flex:1;">
+            <label><input type="radio" name="textImgSrc" value="library" checked><span>图库</span></label>
+            <label><input type="radio" name="textImgSrc" value="default"><span>默认</span></label>
+          </div>
+        </div>
+      </div>
+
       <div class="theme-section">
         <div class="section-title">图片样式主题</div>
         <div class="theme-grid" id="imageThemeGrid"></div>
@@ -839,6 +863,9 @@
           <button class="btn btn-sm" onclick="setQuickFontTheme('fangsong')">仿宋</button>
           <button class="btn btn-sm" onclick="setQuickFontTheme('song')">宋体</button>
           <button class="btn btn-sm" onclick="setQuickFontTheme('kai')">楷体</button>
+          <button class="btn btn-sm" onclick="setQuickFontTheme('hei')">黑体</button>
+          <button class="btn btn-sm" onclick="setQuickFontTheme('lishu')">隶书</button>
+          <button class="btn btn-sm" onclick="setQuickFontTheme('xingkai')">华文行楷</button>
           <span class="quick-tag">字号</span>
           <button class="btn btn-sm" onclick="setFontSize(13)">13px</button>
           <button class="btn btn-sm" onclick="setFontSize(15)">15px</button>
@@ -856,13 +883,31 @@
         <div class="settings-row">
           <label>字体</label>
           <select id="fontFamilySelect" class="text-select" onchange="setQuickFontTheme(this.value)">
-            <option value="default">思源黑体</option>
-            <option value="noto-serif">思源宋体</option>
-            <option value="fangsong">仿宋</option>
-            <option value="pingfang">苹方</option>
-            <option value="msyh">微软雅黑</option>
-            <option value="song">宋体</option>
-            <option value="kai">楷体</option>
+            <optgroup label="常用字体">
+              <option value="default">思源黑体</option>
+              <option value="noto-serif">思源宋体</option>
+              <option value="fangsong">仿宋</option>
+              <option value="pingfang">苹方</option>
+              <option value="msyh">微软雅黑</option>
+              <option value="song">宋体</option>
+              <option value="kai">楷体</option>
+              <option value="hei">黑体</option>
+              <option value="zhongsong">华文中宋</option>
+            </optgroup>
+            <optgroup label="装饰字体">
+              <option value="lishu">隶书</option>
+              <option value="youyuan">幼圆</option>
+              <option value="xingkai">华文行楷</option>
+              <option value="xinwei">华文新魏</option>
+              <option value="caiyun">华文彩云</option>
+              <option value="shuti">方正舒体</option>
+              <option value="yaoti">方正姚体</option>
+            </optgroup>
+            <optgroup label="西文字体">
+              <option value="arial">Arial</option>
+              <option value="georgia">Georgia</option>
+              <option value="times">Times New Roman</option>
+            </optgroup>
           </select>
         </div>
         <div class="settings-row">
@@ -985,7 +1030,10 @@
         imgWidth: 100,
         imgGap: 10,
         randomOrder: false,
-        oddStrategy: 'full'
+        oddStrategy: 'full',
+        showImages: true,
+        showText: true,
+        textImageSource: 'library'
       },
       themes: {
         imageTheme: 'rounded-shadow',
@@ -1427,12 +1475,12 @@
       return arr[Math.floor(Math.random() * arr.length)];
     }
 
-    // Get effective images: user images if available, otherwise defaults
-    function getEffectiveImages() {
-      if (state.imageSrcList.length > 0) {
-        return state.imageSrcList.map(img => img.src);
-      }
-      return defaultImgLinks;
+    // 文字主题（book / moment）内嵌配图的来源：
+    //   'library' -> 素材库（为空时回退到默认图，避免裂图）
+    //   'default' -> 始终使用内置默认图
+    function getTextThemeImageSrc(defaultSet) {
+      if (state.preview.textImageSource === 'default') return defaultSet;
+      return state.imageSrcList.length > 0 ? state.imageSrcList.map(img => img.src) : defaultSet;
     }
 
     // ============================================
@@ -1785,8 +1833,8 @@
         render: function(text, index, align, user) {
           const escapedText = escapeHtml(text);
           const partNum = String(index).padStart(2, '0');
-          const effectiveImages = getEffectiveImages();
-          const imgUrl = getRandomItem(effectiveImages);
+          // 内嵌配图始终显示，来源由“文字图片来源”选项决定
+          const imgUrl = getRandomItem(getTextThemeImageSrc(defaultImgLinks));
           return `<section style="margin:16px auto;padding:16px 20px;border:2px groove #ddd;border-radius:20px;background:#fdfdfd;max-width:95%;">
   <p style="text-align:left;font-size:12px;color:#888;margin-bottom:10px;letter-spacing:0.1em;font-weight:bold;">◎ Part ${partNum}</p>
   <section style="text-align:center;margin:10px 0;">
@@ -1816,11 +1864,8 @@
           // Use user name if provided, otherwise random default name
           const userName = escapeHtml(user.name || getRandomItem(defaultNames));
           const timeStr = getRandomItem(defaultTimes);
-          // Random content image
-          const effectiveImages = state.imageSrcList.length > 0
-            ? state.imageSrcList.map(img => img.src)
-            : defaultMomentImages;
-          const contentImg = getRandomItem(effectiveImages);
+          // 内嵌配图始终显示，来源由“文字图片来源”选项决定（头像不属于素材库，始终保留）
+          const contentImg = getRandomItem(getTextThemeImageSrc(defaultMomentImages));
           return `<section style="margin:10px auto;padding:12px;background:#fff;max-width:95%;border-bottom:1px solid #f0f0f0;">
   <section style="display:flex;align-items:flex-start;gap:8px;">
     <img src="${avatar}" data-src="${avatar}" style="width:42px;height:42px;border-radius:6px;flex-shrink:0;">
@@ -1897,6 +1942,8 @@
       if (state.preview.randomOrder) {
         images.sort(() => Math.random() - 0.5);
       }
+      // 预览显示开关：关闭时素材库图片不渲染
+      if (!state.preview.showImages) images = [];
 
       const columns = state.preview.columns;
       const captionText = state.captionText;
@@ -1914,6 +1961,8 @@
             .filter(l => l.length > 0);
         }
       }
+      // 预览显示开关：关闭时配文文本不渲染
+      if (!state.preview.showText) paragraphs = [];
 
       // 3. Determine first line type
       let firstIsText = true;
@@ -2122,12 +2171,27 @@
     function textClearEnter() {
       const ta = document.getElementById('captionInput');
       let text = ta.value;
-      text = text.replace(/\r\n/g, '').replace(/\r/g, '').replace(/\n{2,}/g, '\n').replace(/\n\s*\n/g, '\n').trim();
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n{2,}/g, '\n').replace(/\n\s*\n/g, '\n').trim();
       ta.value = text;
       state.captionText = text;
       updatePreview();
       saveState();
       showToast('已删除空行');
+    }
+
+    // 添加空行：先将全部空行删除（与“删除空行”一致），再在每行之间加回一个空行
+    function textAddEnter() {
+      const ta = document.getElementById('captionInput');
+      let text = ta.value;
+      // 1. 删除全部空行（规范化换行，合并所有空行/空白行为单换行）
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n\s*\n/g, '\n').trim();
+      // 2. 在每行之间加回一个空行
+      text = text.replace(/\n/g, '\n\n');
+      ta.value = text;
+      state.captionText = text;
+      updatePreview();
+      saveState();
+      showToast('已添加空行');
     }
 
     function textPeriodLine() {
@@ -2303,6 +2367,22 @@
       saveState();
     }
 
+    // 预览显示开关：素材库图片
+    function toggleShowImages() {
+      state.preview.showImages = !state.preview.showImages;
+      document.getElementById('showImagesToggle').classList.toggle('active', state.preview.showImages);
+      updatePreview();
+      saveState();
+    }
+
+    // 预览显示开关：配文文本
+    function toggleShowText() {
+      state.preview.showText = !state.preview.showText;
+      document.getElementById('showTextToggle').classList.toggle('active', state.preview.showText);
+      updatePreview();
+      saveState();
+    }
+
     function toggleMobile() {
       state.mobilePreview = !state.mobilePreview;
       document.getElementById('previewWrap').classList.toggle('mobile', state.mobilePreview);
@@ -2461,6 +2541,54 @@
       'kai': {
         name: '楷体',
         family: "'KaiTi', cursive"
+      },
+      'hei': {
+        name: '黑体',
+        family: "'SimHei', 'Heiti SC', sans-serif"
+      },
+      'zhongsong': {
+        name: '华文中宋',
+        family: "'STZhongsong', 'SimSun', serif"
+      },
+      'lishu': {
+        name: '隶书',
+        family: "'LiSu', 'STLiti', '隶书', cursive"
+      },
+      'youyuan': {
+        name: '幼圆',
+        family: "'YouYuan', '幼圆', sans-serif"
+      },
+      'xingkai': {
+        name: '华文行楷',
+        family: "'STXingkai', '行楷', cursive"
+      },
+      'xinwei': {
+        name: '华文新魏',
+        family: "'STXinwei', '华文新魏', cursive"
+      },
+      'caiyun': {
+        name: '华文彩云',
+        family: "'STCaiyun', '华文彩云', cursive"
+      },
+      'shuti': {
+        name: '方正舒体',
+        family: "'FZShuTi', 'STKaiti', cursive"
+      },
+      'yaoti': {
+        name: '方正姚体',
+        family: "'FZYaoTi', 'STXihei', sans-serif"
+      },
+      'arial': {
+        name: 'Arial',
+        family: "'Arial', 'Helvetica', sans-serif"
+      },
+      'georgia': {
+        name: 'Georgia',
+        family: "'Georgia', serif"
+      },
+      'times': {
+        name: 'Times New Roman',
+        family: "'Times New Roman', serif"
       }
     };
 
@@ -2518,6 +2646,7 @@
       document.querySelector(`input[name="fillMode"][value="${state.preview.fillMode}"]`).checked = true;
       document.querySelector(`input[name="align"][value="${state.text.alignMode}"]`).checked = true;
       document.querySelector(`input[name="blockMode"][value="${state.text.blockMode}"]`).checked = true;
+      document.querySelector(`input[name="textImgSrc"][value="${state.preview.textImageSource}"]`).checked = true;
       document.getElementById('borderRadius').value = state.preview.borderRadius;
       document.getElementById('borderRadiusVal').textContent = state.preview.borderRadius + 'px';
       document.getElementById('imgWidth').value = state.preview.imgWidth;
@@ -2526,6 +2655,8 @@
       document.getElementById('imgGapVal').textContent = state.preview.imgGap + 'px';
       document.getElementById('oddStrategy').value = state.preview.oddStrategy;
       document.getElementById('randomToggle').classList.toggle('active', state.preview.randomOrder);
+      document.getElementById('showImagesToggle').classList.toggle('active', state.preview.showImages);
+      document.getElementById('showTextToggle').classList.toggle('active', state.preview.showText);
       document.getElementById('userName').value = state.user.name;
       document.getElementById('avatarUrl').value = state.user.avatar || '';
       document.getElementById('fontFamily').value = state.text.fontFamily;
@@ -2610,6 +2741,15 @@
       document.querySelectorAll('input[name="blockMode"]').forEach(radio => {
         radio.addEventListener('change', e => {
           state.text.blockMode = e.target.value;
+          updatePreview();
+          saveState();
+        });
+      });
+
+      // 文字图片来源 radio（图库 / 默认）
+      document.querySelectorAll('input[name="textImgSrc"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+          state.preview.textImageSource = e.target.value;
           updatePreview();
           saveState();
         });

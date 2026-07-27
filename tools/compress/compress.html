@@ -142,7 +142,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
     <div class="subtitle">上传多张图片 → 统一/单独调整裁切 → 批量导出</div>
   </div>
   <div class="header-actions">
-    <a href="../../index.html" style="text-decoration:none;" title="返回主页"><button class="btn btn-outline btn-sm" style="font-size:11px;">🏠 主页</button></a>
+    <a href="../../index.html" class="btn btn-outline btn-sm" style="font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;" title="返回主页">🏠 主页</a>
     <button class="btn btn-outline btn-sm" onclick="resetAll()">重置</button>
     <button class="btn btn-primary btn-sm" onclick="processAll()" id="btnProcess">⚡ 生成预览</button>
     <button class="btn btn-orange btn-sm" onclick="downloadZip()" id="btnDownload" disabled>📦 打包下载</button>
@@ -166,7 +166,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
       <div class="card-title"><span class="step-num">2</span> 输出设置</div>
       <label class="checkbox-row"><input type="checkbox" id="enableCutout"><span>开启抠图（去背景）</span></label>
       <div id="cutoutOptions" style="display:none">
-        <div class="form-row"><label>背景色</label><input type="color" id="bgColor" value="#ffffff"><span class="hint">取色</span></div>
+        <div class="form-row"><label>背景色</label><input type="color" id="bgColor" value="#ffffff"><button class="btn btn-xs btn-outline" onclick="enterPickMode()" type="button">🎯 从图片取色</button></div>
         <div class="form-row"><label>容差</label><input type="range" id="tolerance" value="32" min="0" max="120"><span class="value-tag" id="toleranceVal">32</span></div>
         <label class="checkbox-row"><input type="checkbox" id="edgeFeather" checked><span>边缘羽化</span></label>
       </div>
@@ -363,7 +363,8 @@ function renderImages(){
       </div>
       <div class="mini-actions">
         <button class="btn btn-outline" onclick="resetImage(${i})">📍复位</button>
-        <button class="btn btn-primary" onclick="downloadSingle(${i})">⬇ 下载</button>
+        <button class="btn btn-primary" onclick="downloadSingle(${i},'hd')">⬇高清</button>
+        <button class="btn btn-orange" onclick="downloadSingle(${i},'compress')">⬇压缩</button>
       </div>
       <div class="settings-toggle">
         <button onclick="toggleSettings(${i})" id="csettings-btn-${i}">⚙️ 单独设置 <span class="arrow">▼</span></button>
@@ -487,19 +488,22 @@ function renderPreview(idx){
   setupDrag(idx);
 }
 
-function drawImageOnCanvas(ctx,entry,w,h){
+function drawImageOnCanvas(ctx,entry,w,h,withOverlay){
+  if(withOverlay===undefined)withOverlay=true;
   const src=entry.image;
   const idx=state.images.indexOf(entry);
   const c=entry.custom;
   const outSize=getOutputSize(idx);
   const isCustom=c.override;
-  // 计算输出框（按真实比例）
+  // 计算输出框（按真实比例，适配预览区域）
   const outRatio=outSize.w/outSize.h;
   let boxX=0,boxY=0,boxW=w,boxH=h;
   if(outRatio>1){
-    boxH=h;boxW=h*outRatio;boxX=(w-boxW)/2;
+    // 宽>高：以宽度为基准，高度缩小
+    boxW=w;boxH=w/outRatio;boxX=0;boxY=(h-boxH)/2;
   }else if(outRatio<1){
-    boxW=w;boxH=w/outRatio;boxY=(h-boxH)/2;
+    // 高>宽：以高度为基准，宽度缩小
+    boxH=h;boxW=h*outRatio;boxY=0;boxX=(w-boxW)/2;
   }else{
     // 1:1 — 正方形
     const side=Math.min(w,h);
@@ -520,38 +524,41 @@ function drawImageOnCanvas(ctx,entry,w,h){
   const offY=c.offsetY*h/100;
   const dx=(w-drawW)/2+offX;
   const dy=(h-drawH)/2+offY;
-  // 先画背景
+  // 先画图片
   ctx.save();
   ctx.beginPath();ctx.rect(boxX,boxY,boxW,boxH);ctx.clip();
   ctx.drawImage(src,dx,dy,drawW,drawH);
   ctx.restore();
-  // 输出框外遮罩
-  ctx.fillStyle='rgba(0,0,0,0.35)';
-  ctx.fillRect(0,0,w,boxY);
-  ctx.fillRect(0,boxY+boxH,w,h-boxY-boxH);
-  ctx.fillRect(0,boxY,boxX,boxH);
-  ctx.fillRect(boxX+boxW,boxY,w-boxX-boxW,boxH);
-  // 输出框 - 绿色=全局, 红色=自定义
-  const boxColor=isCustom?'rgba(230,50,50,0.9)':'rgba(7,193,96,0.85)';
-  ctx.strokeStyle=boxColor;
-  ctx.lineWidth=2;
-  ctx.strokeRect(boxX,boxY,boxW,boxH);
-  // 尺寸标注
-  ctx.fillStyle='rgba(255,255,255,0.9)';
-  ctx.font='11px sans-serif';
-  ctx.textAlign='center';
-  ctx.textBaseline='bottom';
-  ctx.fillText(`${outSize.w}×${outSize.h}`,boxX+boxW/2,boxY-4);
-  // 模式标签
-  ctx.font='10px sans-serif';
-  ctx.textAlign='right';
-  ctx.textBaseline='top';
-  ctx.fillStyle=isCustom?'rgba(230,50,50,0.9)':'rgba(7,193,96,0.85)';
-  ctx.fillText(isCustom?'自定义':'全局',boxX+boxW-4,boxY+4);
+  if(withOverlay){
+    // 输出框外遮罩
+    ctx.fillStyle='rgba(0,0,0,0.35)';
+    ctx.fillRect(0,0,w,boxY);
+    ctx.fillRect(0,boxY+boxH,w,h-boxY-boxH);
+    ctx.fillRect(0,boxY,boxX,boxH);
+    ctx.fillRect(boxX+boxW,boxY,w-boxX-boxW,boxH);
+    // 输出框 - 绿色=全局, 红色=自定义
+    const boxColor=isCustom?'rgba(230,50,50,0.9)':'rgba(7,193,96,0.85)';
+    ctx.strokeStyle=boxColor;
+    ctx.lineWidth=2;
+    ctx.strokeRect(boxX,boxY,boxW,boxH);
+    // 尺寸标注
+    ctx.fillStyle='rgba(255,255,255,0.9)';
+    ctx.font='11px sans-serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='bottom';
+    ctx.fillText(`${outSize.w}×${outSize.h}`,boxX+boxW/2,boxY-4);
+    // 模式标签
+    ctx.font='10px sans-serif';
+    ctx.textAlign='right';
+    ctx.textBaseline='top';
+    ctx.fillStyle=isCustom?'rgba(230,50,50,0.9)':'rgba(7,193,96,0.85)';
+    ctx.fillText(isCustom?'自定义':'全局',boxX+boxW-4,boxY+4);
+  }
 }
 
 // ============ Drag ============
 const dragState={idx:-1,active:false,startX:0,startY:0,startOffX:0,startOffY:0};
+let pickMode=false;
 
 function setupDrag(idx){
   const container=$('cpreview-'+idx);
@@ -559,6 +566,7 @@ function setupDrag(idx){
   const canvas=container.querySelector('canvas');
   if(!canvas)return;
   canvas.addEventListener('mousedown',e=>{
+    if(pickMode)return;
     e.preventDefault();
     dragState.idx=idx;
     dragState.active=true;
@@ -568,6 +576,41 @@ function setupDrag(idx){
     dragState.startOffX=c.offsetX;
     dragState.startOffY=c.offsetY;
   });
+  canvas.addEventListener('click',e=>{
+    if(!pickMode)return;
+    pickColor(e,idx);
+  });
+}
+
+function enterPickMode(){
+  if(!state.images.length){showToast('请先上传图片');return}
+  pickMode=true;
+  document.querySelectorAll('.img-card .preview canvas').forEach(c=>c.style.cursor='crosshair');
+  showToast('请在图片预览区点击取色');
+}
+
+function pickColor(e,idx){
+  const container=$('cpreview-'+idx);
+  if(!container)return;
+  const canvas=container.querySelector('canvas');
+  if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();
+  const cx=Math.round((e.clientX-rect.left)/rect.width*canvas.width);
+  const cy=Math.round((e.clientY-rect.top)/rect.height*canvas.height);
+  // 创建干净的临时canvas（只画图片，无遮罩和边框）用于取色
+  const entry=state.images[idx];
+  const w=canvas.width,h=canvas.height;
+  const temp=document.createElement('canvas');
+  temp.width=w;temp.height=h;
+  const tctx=temp.getContext('2d');
+  drawImageOnCanvas(tctx,entry,w,h,false);
+  const pixel=tctx.getImageData(cx,cy,1,1).data;
+  const hex='#'+[pixel[0],pixel[1],pixel[2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+  state.bgColor={r:pixel[0],g:pixel[1],b:pixel[2]};
+  $('bgColor').value=hex;
+  pickMode=false;
+  document.querySelectorAll('.img-card .preview canvas').forEach(c=>c.style.cursor='grab');
+  showToast('已取色: '+hex);
 }
 
 window.addEventListener('mousemove',e=>{
@@ -764,21 +807,34 @@ function removeBackground(imageData){
 }
 
 // ============ Download ============
-function downloadSingle(i){
+function downloadSingle(i,mode){
   const canvas=exportSingleImage(i);
   const entry=state.images[i];
   const baseName=entry.name.replace(/\.[^.]+$/,'').replace(/[^\w一-龥]/g,'_').substring(0,30);
   const outSize=getOutputSize(i);
-  canvas.toBlob(blob=>{
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    const ext=state.jpgQuality<100?'jpg':'png';
-    a.download=`${baseName}_${outSize.w}x${outSize.h}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(`#${i+1} 已下载`);
-  },state.jpgQuality<100?'image/jpeg':'image/png',state.jpgQuality/100);
+  if(mode==='hd'){
+    // 高清下载 - PNG无损，只裁尺寸不压缩
+    canvas.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=`${baseName}_${outSize.w}x${outSize.h}_hd.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`#${i+1} 高清下载完成`);
+    },'image/png');
+  }else{
+    // 压缩下载 - JPEG按质量压缩
+    canvas.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=`${baseName}_${outSize.w}x${outSize.h}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`#${i+1} 压缩下载完成`);
+    },'image/jpeg',state.jpgQuality/100);
+  }
 }
 
 async function downloadZip(){

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>轻狐AI 发布助手</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 头部 -->
+    <div class="header">
+      <div class="logo">
+        <span class="logo-icon">🦊</span>
+        <span class="logo-text">轻狐AI 发布助手</span>
+      </div>
+      <div class="version">v1.0.0</div>
+    </div>
+
+    <!-- 连接状态 -->
+    <div class="status-section">
+      <div class="status-row" id="connectionStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-text" id="statusText">检测中...</span>
+      </div>
+      <div class="status-detail" id="statusDetail"></div>
+    </div>
+
+    <!-- 认证信息（自动获取） -->
+    <div class="auth-section">
+      <div class="auth-row">
+        <span class="auth-label">登录状态</span>
+        <span class="auth-value" id="tokenStatus">
+          <span class="token-dot" id="tokenDot"></span>
+          <span id="tokenStatusText">未检测到</span>
+        </span>
+      </div>
+      <div class="auth-hint" id="authHint">
+        打开轻狐AI 并登录后，插件将自动获取登录凭证
+      </div>
+    </div>
+
+    <!-- 快捷发布 -->
+    <div class="quick-section">
+      <div class="section-title">🚀 快捷发布</div>
+      <div class="platform-list">
+        <div class="platform-item" data-platform="wechat">
+          <span class="platform-icon">📘</span>
+          <span class="platform-name">微信公众号</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-item" data-platform="xiaohongshu">
+          <span class="platform-icon">📕</span>
+          <span class="platform-name">小红书</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-item" data-platform="douyin">
+          <span class="platform-icon">🎵</span>
+          <span class="platform-name">抖音</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-item" data-platform="bilibili">
+          <span class="platform-icon">📺</span>
+          <span class="platform-name">B站专栏</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-item" data-platform="toutiao">
+          <span class="platform-icon">📰</span>
+          <span class="platform-name">今日头条</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-hint">数据自动填充完成后，图片需要进行一次编辑才可以正常显示</div>
+        <div class="platform-item" data-platform="zhihu">
+          <span class="platform-icon">💡</span>
+          <span class="platform-name">知乎</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-item" data-platform="aliyun">
+          <span class="platform-icon">☁️</span>
+          <span class="platform-name">阿里云社区</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-item" data-platform="csdn">
+          <span class="platform-icon">💻</span>
+          <span class="platform-name">CSDN</span>
+          <span class="platform-arrow">→</span>
+        </div>
+        <div class="platform-item" data-platform="baijiahao">
+          <span class="platform-icon">🎯</span>
+          <span class="platform-name">百家号</span>
+          <span class="platform-arrow">→</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 发布历史 -->
+    <div class="history-section">
+      <div class="section-title">📋 最近发布</div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">暂无发布记录</div>
+      </div>
+    </div>
+
+    <!-- 更新状态 -->
+    <div class="update-section" id="updateSection" style="display:none;padding:0.5rem 1rem;border-top:1px solid #eee">
+      <div class="update-row" style="display:flex;align-items:center;gap:6px;font-size:0.75rem">
+        <span id="updateDot" style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block"></span>
+        <span id="updateText" style="color:#666">检查更新中...</span>
+        <a id="updateLink" href="#" target="_blank" style="margin-left:auto;color:#667eea;text-decoration:none;display:none">下载</a>
+      </div>
+    </div>
+
+    <!-- 底部 -->
+    <div class="footer">
+      <div class="footer-version" style="font-size:0.7rem;color:#aaa">v1.0.0</div>
+      <a href="https://contentai.hnzant.com" target="_blank" class="footer-link">打开轻狐AI</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

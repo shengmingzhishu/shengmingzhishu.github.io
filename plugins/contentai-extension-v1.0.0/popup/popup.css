@@ -1,0 +1,321 @@
+/* 轻狐AI Chrome 插件 — Popup 样式 */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 340px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  color: #333;
+  background: #f8f9fa;
+}
+
+.container {
+  padding: 0;
+}
+
+/* 头部 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  font-size: 20px;
+}
+
+.logo-text {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.version {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* 状态区域 */
+.status-section {
+  padding: 10px 16px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  transition: background 0.3s;
+}
+
+.status-dot.connected {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.status-dot.disconnected {
+  background: #ef4444;
+}
+
+.status-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.status-detail {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+  margin-left: 16px;
+}
+
+/* 认证信息区域 */
+.auth-section {
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.auth-label {
+  font-size: 11px;
+  color: #999;
+  font-weight: 500;
+}
+
+.auth-value {
+  font-size: 11px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.token-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.token-dot.online {
+  background: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+}
+
+.token-dot.offline {
+  background: #ccc;
+}
+
+.auth-hint {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f9fafb;
+  line-height: 1.5;
+}
+
+.auth-hint-ok {
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+/* 按钮 */
+.btn {
+  display: inline-block;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #5568d3;
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 11px;
+}
+
+/* 快捷发布 */
+.quick-section {
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.platform-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.platform-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.platform-item:hover {
+  background: #f3f4f6;
+}
+
+.platform-icon {
+  font-size: 18px;
+}
+
+.platform-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+}
+
+.platform-arrow {
+  color: #ccc;
+  font-size: 14px;
+}
+
+.platform-hint {
+  font-size: 10px;
+  color: #f59e0b;
+  padding: 2px 10px 6px 38px;
+  line-height: 1.4;
+}
+
+/* 发布历史 */
+.history-section {
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-size: 11px;
+}
+
+.history-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.history-status.success {
+  background: #22c55e;
+}
+
+.history-status.started {
+  background: #fbbf24;
+}
+
+.history-status.failed {
+  background: #ef4444;
+}
+
+.history-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #555;
+}
+
+.history-platform {
+  font-size: 10px;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.history-time {
+  font-size: 10px;
+  color: #aaa;
+  flex-shrink: 0;
+}
+
+.history-empty {
+  text-align: center;
+  color: #ccc;
+  font-size: 11px;
+  padding: 12px 0;
+}
+
+/* 底部 */
+.footer {
+  padding: 10px 16px;
+  text-align: center;
+  background: #f8f9fa;
+}
+
+.footer-link {
+  font-size: 11px;
+  color: #667eea;
+  text-decoration: none;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
