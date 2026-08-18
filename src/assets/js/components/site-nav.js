@@ -45,7 +45,7 @@
   var pageTitle = cfg.title || '';
   var links = cfg.links || [
     { href: '/index.html', text: '首页' },
-    { href: '/src/tools/doc-manager.html', text: '文档' }
+    { href: '/src/tools/docx/doc-manager.html', text: '文档' }
   ];
   var showMenu = cfg.menu !== false;
   var hideSelectors = cfg.hideSelectors || [];
@@ -192,7 +192,7 @@
     var menu = document.createElement('div');
     menu.className = 'snu-drop-menu';
     var items = [
-      { href: '/src/tools/doc-manager.html', text: '📄 文档管理器' },
+      { href: '/src/tools/docx/doc-manager.html', text: '📄 文档管理器' },
       { href: '/src/tools/skills/skill.html', text: '📚 技能文档' },
       { href: 'https://github.com/', text: '🐙 GitHub' }
     ];

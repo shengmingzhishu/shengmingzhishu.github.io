@@ -51,7 +51,7 @@
     { id: 'xhs-poster',  cat: 'layout',   name: '小红书海报生成',   desc: 'Markdown 转小红书风格图片，多模板可切换',   icon: 'image',    link: 'src/tools/xiaohongshu/poster-v6.html' },
     { id: 'img-text',    cat: 'layout',   name: '图文 VIP 排版',    desc: '统一风格，图片链接双列排版',               icon: 'columns',  link: 'src/tools/image-layout/image-text-layout-v11.html' },
     { id: 'vip-tuwen',   cat: 'doc',      name: '图文 VIP 工具',    desc: '文本转 MD · MD 预览 · 文章图片 URL 提取',   icon: 'doc',      link: 'src/tools/tuwen/vip_tuwen.html' },
-    { id: 'doc-manager', cat: 'doc',      name: '文档管理器',        desc: '结构化设计文档，缩进层级 + 树形预览 + 撤销导出', icon: 'doc', link: 'src/tools/doc-manager.html' },
+    { id: 'doc-manager', cat: 'doc',      name: '文档管理器',        desc: '结构化设计文档，缩进层级 + 树形预览 + 撤销导出', icon: 'doc', link: 'src/tools/docx/doc-manager.html' },
     { id: 'img-compress',cat: 'image',    name: '批量图片压缩',     desc: '多图上传统一裁切缩放，批量导出压缩包',     icon: 'compress', link: 'src/tools/compress/compress.html' },
     { id: 'skills-doc',  cat: 'doc',      name: 'Skills 技能文档',  desc: 'AI 写作工作流与多平台发布技能完整文档',     icon: 'book',     link: 'src/tools/skills/skill.html' },
     { id: 'fortune',     cat: 'fun',      name: '上上签',           desc: '随机抽签小工具，给你一个好彩头',           icon: 'fortune',  link: 'src/tools/fun/fortune.html' }
