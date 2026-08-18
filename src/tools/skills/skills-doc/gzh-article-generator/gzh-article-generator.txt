@@ -1,0 +1,314 @@
+---
+name: gzh-article-generator
+description: "书籍拆解公众号文章生成器。通过火山引擎API自动生成1200-1500字深度拆解文章，支持任何书籍主题，输出符合公众号发布标准的Markdown格式。"
+---
+
+# 公众号书籍拆解文章生成器
+
+## 核心流程（无需打开网页，直接API调用）
+
+```
+输入主题关键词 → [AI拆解：提取关键词/价值点/标题]
+                → [生成公众号文章：开头加粗 + 4-6个###段落 + 引用+列表]
+                → [保存为带frontmatter的.md文件]
+                → [排版样式（可选）]
+```
+
+## Step 1: AI拆解关键词
+
+### Prompt模板
+```
+你是一个内容策划专家。请分析用户提供的主题，提取核心关键词和价值点。输出JSON格式。
+
+主题：{用户输入的关键词，用逗号分隔}
+
+请分析并提取：
+1. 核心关键词（5-8个）
+2. 价值点（3-5个）
+3. 建议标题（3个）
+4. 搜索关键词（3-5个）
+
+JSON格式：{"keywords":["关键词1"],"valuePoints":["价值点1"],"titles":["标题1"],"searchQueries":["搜索词1"]}
+```
+
+### API参数
+```python
+model = "doubao-seed-2.0-mini"  # 速度快，适合结构化输出
+max_tokens = 800
+temperature = 0.3
+```
+
+## Step 2: 生成公众号文章
+
+### Prompt模板
+```
+你是一个公众号爆款文章创作者。要求：
+1. 开头第一句话必须用加粗格式，3秒内抓住注意力
+2. 文章必须有4-6个小段落标题（使用### 标记）
+3. 每个段落内的重点关键词必须用加粗
+4. 内容要有深度、有独到见解，结合真实案例
+5. 适当使用引用（> 标记）来突出金句或名人名言
+6. 使用列表（- 标记）来组织要点，增强可读性
+7. 结尾有总结升华，呼应主题
+8. 总字数约1200-1500字，宁可少写也不灌水
+
+主题：{用户输入的关键词}
+
+核心关键词：{拆解得到的keywords列表}
+
+价值点：{拆解得到的valuePoints列表}
+
+请生成一篇高质量的公众号深度拆解文章。
+```
+
+### API参数
+```python
+model = "doubao-seed-2.0-pro"  # 深度推理，适合长文
+max_tokens = 2200
+temperature = 0.7
+```
+
+## Step 3: 输出格式
+
+### 标准Frontmatter
+```markdown
+---
+title: {第一个建议标题}
+author: 屿蓝
+category: 书籍拆解
+keywords: {逗号分隔的关键词}
+date: {当前日期}
+---
+
+{文章正文}
+```
+
+## 完整Python代码示例
+
+```python
+import requests, json, re, os
+from datetime import datetime
+
+API_KEY = "your-api-key"
+BASE_URL = "https://ark.cn-beijing.volces.com/api/plan/v3/chat/completions"
+HEADERS = {"Content-Type": "application/json", "Authorization": f"Bearer {API_KEY}"}
+
+def generate_article(topic, output_dir="/home/ubuntu/article_output"):
+    """
+    生成一篇完整的公众号书籍拆解文章
+    
+    Args:
+        topic: 书籍主题关键词，如"红楼梦, 曹雪芹, 职场智慧"
+        output_dir: 输出目录
+    
+    Returns:
+        (title, filepath, word_count)
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # ========== Step 1: AI拆解关键词 ==========
+    messages = [
+        {"role": "system", "content": "你是一个内容策划专家。请分析用户提供的主题，提取核心关键词和价值点。输出JSON格式。"},
+        {"role": "user", "content": f"""主题：{topic}
+
+请分析并提取：
+1. 核心关键词（5-8个）
+2. 价值点（3-5个）
+3. 建议标题（3个）
+4. 搜索关键词（3-5个）
+
+JSON格式：{{"keywords":["关键词1"],"valuePoints":["价值点1"],"titles":["标题1"],"searchQueries":["搜索词1"]}}"""}
+    ]
+    
+    resp = requests.post(BASE_URL, headers=HEADERS, json={
+        "model": "doubao-seed-2.0-mini",
+        "messages": messages,
+        "max_tokens": 800
+    })
+    result_text = json.loads(resp.text)["choices"][0]["message"]["content"]
+    json_match = re.search(r'\{[\s\S]*\}', result_text)
+    analysis = json.loads(json_match.group(0)) if json_match else json.loads(result_text)
+    
+    # ========== Step 2: 生成公众号文章 ==========
+    messages = [
+        {"role": "system", "content": """你是一个公众号爆款文章创作者。要求：
+1. 开头第一句话必须用加粗格式，3秒内抓住注意力
+2. 文章必须有4-6个小段落标题（使用### 标记）
+3. 每个段落内的重点关键词必须用加粗
+4. 内容要有深度、有独到见解，结合真实案例
+5. 适当使用引用（> 标记）来突出金句或名人名言
+6. 使用列表（- 标记）来组织要点，增强可读性
+7. 结尾有总结升华，呼应主题
+8. 总字数约1200-1500字，宁可少写也不灌水"""},
+        {"role": "user", "content": f"""主题：{topic}
+
+核心关键词：{analysis['keywords']}
+
+价值点：{analysis['valuePoints']}
+
+请生成一篇高质量的公众号深度拆解文章。"""}
+    ]
+    
+    resp = requests.post(BASE_URL, headers=HEADERS, json={
+        "model": "doubao-seed-2.0-pro",
+        "messages": messages,
+        "max_tokens": 2200
+    })
+    article = json.loads(resp.text)["choices"][0]["message"]["content"]
+    
+    # ========== Step 3: 保存文件 ==========
+    title = analysis['titles'][0] if analysis['titles'] else topic
+    today = datetime.now().strftime('%Y-%m-%d')
+    keywords_str = ', '.join(analysis['keywords'][:6])
+    
+    # 生成文件名
+    safe_title = re.sub(r'[^\w\s-]', '', title).replace(' ', '-')[:40]
+    filename = f"{safe_title}.md"
+    filepath = os.path.join(output_dir, filename)
+    
+    # 写入文件
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(f"""---
+title: {title}
+author: 屿蓝
+category: 书籍拆解
+keywords: {keywords_str}
+date: {today}
+---
+
+{article}
+""")
+    
+    word_count = len(article)
+    return title, filepath, word_count
+
+# ========== 批量生成示例 ==========
+if __name__ == "__main__":
+    topics = [
+        "红楼梦, 曹雪芹, 人生哲学, 职场智慧",
+        "三体, 刘慈欣, 科幻文学, 黑暗森林法则",
+        "原则, 达利欧, 商业管理, 投资思维",
+    ]
+    
+    print(f"开始批量生成 {len(topics)} 篇文章...")
+    for idx, topic in enumerate(topics, 1):
+        title, filepath, wc = generate_article(topic)
+        print(f"[{idx}/{len(topics)}] ✓ {title[:40]}... ({wc}字)")
+        print(f"      保存到: {filepath}")
+```
+
+## 输出质量标准
+
+| 检查项 | 要求 |
+|--------|------|
+| 开头 | 第一句必须加粗，有冲击力 |
+| 段落标题 | 4-6个，使用 ### 标记 |
+| 关键词加粗 | 每个段落内至少2-3个加粗关键词 |
+| 引用 | 至少1处使用 > 标记的引用 |
+| 列表 | 至少1处使用 - 标记的有序要点 |
+| 字数 | 1200-1500字 |
+| 结尾 | 有总结升华，呼应主题 |
+
+## 模型回退策略（关键）
+
+火山引擎API有额度限制，批量生成时经常遇到 `AccountQuotaExceeded` 错误。必须实现模型回退：
+
+```python
+MODELS_FALLBACK = ["doubao-seed-2.0-pro", "doubao-seed-2.0-mini", "ark-code-latest"]
+
+def call_api(messages, max_tokens=2000):
+    for model in MODELS_FALLBACK:
+        try:
+            resp = requests.post(BASE_URL, headers=HEADERS, json={
+                "model": model,
+                "messages": messages,
+                "max_tokens": max_tokens
+            }, timeout=180)
+            resp_json = json.loads(resp.text)
+            
+            if 'error' in resp_json:
+                if resp_json['error'].get('code') == 'AccountQuotaExceeded':
+                    print(f"  ⚠️ {model} 额度用完，尝试下一个模型...")
+                    continue
+                else:
+                    raise Exception(resp_json['error']['message'])
+            
+            # ✅ ark-code-latest 的内容在 reasoning_content 里！
+            content = resp_json["choices"][0]["message"]["content"]
+            if not content or len(content) < 50:
+                content = resp_json["choices"][0]["message"].get("reasoning_content", "") or content
+            
+            return content
+        except requests.exceptions.Timeout:
+            continue
+    raise Exception("所有模型均不可用")
+```
+
+## JSON响应解析修复
+
+AI返回的JSON可能包含额外文本，必须用正则提取：
+
+```python
+result_text = json.loads(resp.text)["choices"][0]["message"]["content"]
+json_match = re.search(r'\{[\s\S]*\}', result_text)
+analysis = json.loads(json_match.group(0)) if json_match else json.loads(result_text)
+```
+
+## ⚠️ 模型选择与额度陷阱（实战经验）
+
+### 模型优先级
+
+```
+doubao-seed-2.0-mini  >  doubao-seed-2.0-pro  >>  ark-code-latest (不推荐)
+```
+
+- **doubao-seed-2.0-mini**：首选！速度快(15-20s/篇)，质量足够，额度消耗低
+- **doubao-seed-2.0-pro**：质量更好但额度消耗高，适合单篇精修
+- **ark-code-latest**：**极度不推荐用于文章生成**，原因见下
+
+### ark-code-latest 三大陷阱
+
+1. **内容在 reasoning_content 里**：该模型是推理模型(底层是GLM系列)，`content` 字段经常为空，实际文本在 `reasoning_content` 中。必须检查两个字段：
+   ```python
+   content = msg.get("content", "") or msg.get("reasoning_content", "") or ""
+   ```
+
+2. **推理消耗全部token**：max_tokens=500 时，500个token全部花在推理(reasoning)上，content 返回空字符串。需要 max_tokens=4000+ 才能拿到完整文章，但这样额度消耗是 mini 模型的3-5倍。
+
+3. **短消息能过、长文超限**：测试连接(max_tokens=10)能返回OK，但正式生成文章(max_tokens=2000)立即报 `AccountQuotaExceeded`。不能用短消息测试来判断是否有额度。
+
+### 模型回退不能绕过额度限制
+
+**关键**：doubao-seed-2.0-pro、doubao-seed-2.0-mini、ark-code-latest 共享同一个额度池。当一个模型报 `AccountQuotaExceeded`，切换到其他模型也会报同样的错误。模型回退只对网络超时有效，不能绕过额度限制。
+
+正确做法：
+- 遇到 `AccountQuotaExceeded` 立即停止，告知用户额度重置时间
+- 错误消息中包含重置时间：`"It will reset at 2026-08-03 00:00:00 +0800 CST"`
+- 不要重试3次浪费时间，直接告知用户
+
+### DeepSeek 官方API ≠ 火山引擎ARK
+
+火山引擎的 Key (`ark-xxxx`) 不能在 `api.deepseek.com` 上使用，两者是完全独立的平台：
+- 火山引擎ARK：`https://ark.cn-beijing.volces.com/api/plan/v3/chat/completions`
+- DeepSeek官方：`https://api.deepseek.com/v1/chat/completions`（需要单独注册的DeepSeek API Key）
+
+如果火山引擎额度用完，需要用户提供 DeepSeek 官方的 API Key 才能继续。
+
+## 其他注意事项
+
+1. **JSON解析**：AI返回的JSON可能包含额外文本说明，必须用 `re.search(r'\{[\s\S]*\}', text)` 提取JSON部分。
+2. **重试机制**：遇到网络超时时重试1-2次，每次间隔3-5秒。遇到额度超限不要重试。
+3. **去重处理**：批量生成多本书时，每次生成前检查主题是否重复。
+4. **超时设置**：doubao-seed-2.0-mini 设60秒，doubao-seed-2.0-pro 设120秒，ark-code-latest 设180秒。
+5. **额度重置时间不固定**：按套餐购买时间滚动计算（通常7天周期），错误消息中会包含具体重置时间。
+
+## 调用示例
+
+```bash
+# 单篇生成
+python3 -c "
+from gzh_generator import generate_article
+title, path, wc = generate_article('被讨厌的勇气, 阿德勒心理学, 自我接纳')
+print(f'✓ 完成: {title} ({wc}字)')
+"
+```

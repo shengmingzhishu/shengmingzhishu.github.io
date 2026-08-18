@@ -1,0 +1,342 @@
+---
+name: zhihu-publish
+description: "将Markdown文章发布到知乎专栏。通过浏览器自动化，自动填写标题、粘贴正文（保留格式）、选择创作声明并发布。适用于将本地Markdown文章发布到知乎的场景。"
+---
+
+# 知乎文章发布
+
+## 功能概述
+
+将Markdown格式的文章自动发布到知乎专栏（zhuanlan.zhihu.com）。自动完成：标题填写、正文粘贴（保留格式）、创作声明选择、发布文章。
+
+## 触发条件
+
+当用户需要将文章发布到知乎时调用此skill。典型场景：
+- 用户说"发到知乎"
+- 用户说"上传到知乎"
+- 用户说"把这篇文章发知乎"
+
+## 前置条件
+
+1. **已登录知乎**：用户需在浏览器中已登录知乎 (zhihu.com)
+2. **文章内容**：Markdown格式的文章内容（可从本地文件读取或直接提供）
+3. **排版工具（可选）**：如需保留Markdown格式转换为HTML，可使用排版工具 `https://shengmingzhishu.github.io/tools/wechat/editor-v1.html` 的 `mdToHtml()` 函数
+
+## 核心流程
+
+### 第零步：内容准备规范
+
+在发布文章前，需要对 Markdown 内容做以下处理：
+
+1. **首句加粗**：文章正文的第一句话必须用 `**...**` 包裹加粗，让文章开篇更有冲击力。例如：
+   - 原文：`"一万小时定律"你一定听过`
+   - 处理后：`**"一万小时定律"你一定听过**`
+
+2. **图片处理**：
+   - **默认无图发布**：知乎文章可以不配图直接发布
+   - **固定配图（可选）**：如需配图，可通过 HTML `<img>` 标签插入正文
+
+3. **标题截断**：知乎标题建议100字以内
+
+### 第一步：导航到知乎写作页
+
+```
+URL: https://zhuanlan.zhihu.com/write
+```
+
+等待页面加载完成，通过 `browser_snapshot` 确认标题输入框和正文编辑器已出现。
+
+**如果页面跳转到登录页**，说明未登录，需要提醒用户先登录知乎。
+
+### 第二步：填写标题
+
+知乎的标题输入框是一个 **textarea** 元素（实测验证），placeholder 为"请输入标题（最多 100 个字）"。
+
+```javascript
+// 在browser_evaluate中执行
+// 查找标题输入框（实测为 TEXTAREA 元素，不是 input）
+const titleInput = document.querySelector('textarea[placeholder*="标题"]');
+
+if (titleInput) {
+  // 标题是 textarea，必须用 HTMLTextAreaElement.prototype
+  const nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  nativeSetter.call(titleInput, '文章标题');
+  titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+  titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+  return 'title set: ' + titleInput.value;
+}
+return 'title input not found';
+```
+
+**注意**：
+- 标题是 `TEXTAREA` 元素，必须用 `HTMLTextAreaElement.prototype` 的 setter，用 `HTMLInputElement.prototype` 会报 "Illegal invocation" 错误
+- 选择器必须用 `textarea[placeholder*="标题"]`，不能用 `input[placeholder*="标题"]`（后者匹配不到）
+- 知乎标题限制 100 字以内
+
+### 第三步：填写正文
+
+知乎使用 Draft.js 编辑器（`contenteditable` 元素），通过 ClipboardEvent 注入 HTML：
+
+```javascript
+// 在browser_evaluate中执行
+// 查找正文编辑器 - 知乎使用 Draft.js
+const editor = document.querySelector('.public-DraftEditor-content') ||
+               document.querySelector('[contenteditable=true]');
+
+if (!editor) return 'editor not found';
+
+editor.focus();
+
+// 构造HTML内容
+const html = '<p>正文段落1</p><h3>小标题</h3><p>正文段落2</p>';
+
+// 通过ClipboardEvent注入HTML
+const clipboardData = new DataTransfer();
+clipboardData.setData('text/html', html);
+clipboardData.setData('text/plain', html.replace(/<[^>]*>/g, ''));
+const pasteEvent = new ClipboardEvent('paste', {
+  bubbles: true,
+  cancelable: true,
+  clipboardData: clipboardData
+});
+editor.dispatchEvent(pasteEvent);
+return 'content pasted via ClipboardEvent';
+```
+
+**注意**：知乎编辑器可能对某些HTML标签有过滤，但表格、引用块、标题、列表、粗体等基本格式都能保留。
+
+### 第四步：创作声明（默认无声明，可直接发布）
+
+知乎发布页底部有创作声明选项，默认为"无声明"。**实测验证：无需手动选择创作声明，可直接点击发布按钮发布。**
+
+页面底部按钮区域包含：无声明、添加话题、添加来源、预览、发布。
+
+如果需要选择"原创"声明：
+
+```javascript
+// 在browser_evaluate中执行（可选步骤）
+// 查找"无声明"按钮并点击展开选项
+const noDeclareBtn = Array.from(document.querySelectorAll('button'))
+  .find(btn => btn.textContent.trim() === '无声明');
+if (noDeclareBtn) {
+  noDeclareBtn.click();
+  await new Promise(r => setTimeout(r, 500));
+  // 选择"原创"
+  const originalOption = Array.from(document.querySelectorAll('[role=option], [role=menuitem], li, button'))
+    .find(el => el.textContent.trim().includes('原创'));
+  if (originalOption) {
+    originalOption.click();
+    return 'declaration set to 原创';
+  }
+}
+return 'declaration not changed (default: 无声明)';
+```
+
+**注意**：创作声明不是必选项，默认"无声明"即可直接发布。
+
+### 第五步：发布文章
+
+知乎的发布按钮在页面底部或右上角。
+
+```javascript
+// 在browser_evaluate中执行
+// 查找发布按钮
+const publishBtn = Array.from(document.querySelectorAll('button'))
+  .find(btn => btn.textContent.trim() === '发布' || btn.textContent.includes('发布文章'));
+
+if (publishBtn) {
+  publishBtn.click();
+  return 'publish button clicked';
+}
+
+// 备用：查找 class 含 publish 的按钮
+const btns = document.querySelectorAll('[class*=publish] button, [class*=Publish] button');
+if (btns.length > 0) {
+  btns[btns.length - 1].click();
+  return 'publish button clicked via class';
+}
+return 'no publish button found';
+```
+
+### 第六步：确认发布成功
+
+发布后页面应跳转到文章详情页（URL 含 `/p/` 编号）。
+
+```javascript
+// 检查URL是否跳转到文章页
+return JSON.stringify({
+  url: location.href,
+  isArticlePage: location.href.includes('/p/'),
+  title: document.title
+});
+```
+
+## Token优化策略
+
+### 单篇文章完整发布脚本模板
+
+将标题填写、正文粘贴合并到一个evaluate中执行：
+
+```javascript
+// === 在browser_evaluate中一次性执行 ===
+const title = '文章标题';
+const html = '<p><strong>首句加粗</strong>，正文内容...</p>';
+
+// 1. 填写标题（知乎标题是 TEXTAREA 元素）
+const titleInput = document.querySelector('textarea[placeholder*="标题"]');
+if (titleInput) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(titleInput, title);
+  titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// 2. 粘贴正文
+await new Promise(r => setTimeout(r, 500));
+const editor = document.querySelector('.public-DraftEditor-content') ||
+               document.querySelector('[contenteditable=true]');
+if (editor) {
+  editor.focus();
+  const cd = new DataTransfer();
+  cd.setData('text/html', html);
+  cd.setData('text/plain', html.replace(/<[^>]*>/g, ''));
+  editor.dispatchEvent(new ClipboardEvent('paste', {
+    bubbles: true, cancelable: true, clipboardData: cd
+  }));
+}
+
+// 3. 等待内容渲染，发布按钮激活
+await new Promise(r => setTimeout(r, 1500));
+
+// 4. 滚动到底部
+window.scrollTo(0, document.body.scrollHeight);
+await new Promise(r => setTimeout(r, 500));
+
+// 5. 点击发布按钮（创作声明默认"无声明"，可直接发布）
+const publishBtn = Array.from(document.querySelectorAll('button'))
+  .find(btn => btn.textContent.trim() === '发布');
+if (publishBtn && !publishBtn.disabled) {
+  publishBtn.click();
+  return 'article published';
+}
+return 'article filled but publish button not ready (disabled: ' + (publishBtn ? publishBtn.disabled : 'not found') + ')';
+```
+
+## Markdown转HTML的方法
+
+### 方法一：使用排版工具（推荐）
+
+1. 在浏览器中打开排版工具：`https://shengmingzhishu.github.io/tools/wechat/editor-v1.html`
+2. 在排版工具标签页中执行evaluate，调用 `mdToHtml()` 函数：
+
+```javascript
+// 在排版工具标签页的browser_evaluate中执行
+const textarea = document.querySelector('textarea');
+textarea.value = markdownContent;
+textarea.dispatchEvent(new Event('input', { bubbles: true }));
+const html = mdToHtml(textarea.value);
+return html; // 返回HTML字符串
+```
+
+3. 获取到HTML后，在知乎标签页中通过ClipboardEvent粘贴
+
+### 方法二：简单转换
+
+如果不需要复杂格式，可以直接将Markdown转为简单HTML：
+
+```javascript
+function simpleMdToHtml(md) {
+  let html = md;
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>');
+  html = html.split('\n\n').map(p => {
+    if (p.match(/^<(h|ul|ol|blockquote|table)/)) return p;
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+  return html;
+}
+```
+
+## 完整发布流程（从Markdown文件到发布）
+
+1. 读取本地Markdown文件内容
+2. **首句加粗处理**：将正文第一句用 `**...**` 包裹
+3. 打开排版工具标签页，将Markdown输入文本框，调用 `mdToHtml()` 获取HTML
+4. 打开知乎写作页 (`https://zhuanlan.zhihu.com/write`)
+5. 等待页面加载，确认标题输入框和编辑器已出现
+6. 执行完整evaluate脚本：填写标题 + 粘贴正文 + 等待按钮激活 + 发布
+7. 确认页面跳转到文章详情页（URL 含 `/p/`）
+8. 解锁浏览器，向用户报告结果
+
+## 批量发布流程
+
+如果需要发布多篇文章：
+
+1. 读取包含多篇文章的Markdown文件
+2. 按文章分隔符拆分为单篇文章
+3. 对每篇文章执行上述完整发布流程
+4. 每篇之间等待5秒，避免频繁操作
+5. 记录每篇的发布结果，最后统一报告
+
+### 批量发布脚本结构
+
+```
+对每篇文章：
+  → 导航到 https://zhuanlan.zhihu.com/write
+  → 等待2秒页面加载
+  → evaluate: 填写标题 + 粘贴正文 + 选择创作声明 + 发布
+  → 确认页面跳转到文章详情页
+  → 记录结果
+  → 继续下一篇
+```
+
+## 重要注意事项
+
+1. **登录状态**：知乎页面如果跳转到登录页，说明登录已过期，需要提醒用户重新登录
+2. **标题输入框类型**：知乎标题是 `TEXTAREA` 元素（与头条号相同），必须用 `HTMLTextAreaElement.prototype`，选择器用 `textarea[placeholder*="标题"]`
+3. **标题长度**：知乎标题限制100字以内（placeholder: "请输入标题（最多 100 个字）"）
+4. **首句加粗**：文章正文第一句必须用 `**...**` 加粗，提升开篇冲击力
+5. **正文格式**：知乎支持HTML粘贴，表格、引用块、标题、列表、粗体等格式保留（实测验证）
+6. **编辑器类型**：知乎使用 Draft.js 编辑器（`.public-DraftEditor-content`），与头条号的 ProseMirror 不同
+7. **发布按钮激活**：发布按钮在标题和正文都填写后才会从 disabled 变为可点击，需要等待1.5秒
+8. **创作声明**：默认"无声明"，可直接发布，不需要手动选择
+9. **发布即公开**：与头条号（草稿）和小红书（草稿）不同，知乎点击"发布"后文章直接公开
+10. **发布频率**：批量发布时每篇间隔5秒以上，避免被平台限制
+11. **DOM变化**：知乎前端可能更新，如果选择器失效，需要重新snapshot探查页面结构
+
+## 实测验证的选择器（2026-07-17）
+
+| 元素 | 选择器 | 状态 |
+|------|--------|------|
+| 标题输入框 | `textarea[placeholder*="标题"]` | ✅ 有效，元素类型为 `TEXTAREA`（placeholder: "请输入标题（最多 100 个字）"） |
+| 正文编辑器 | `.public-DraftEditor-content` 或 `[contenteditable=true]` | ✅ 有效（Draft.js 编辑器） |
+| 发布按钮 | `button` 文本为"发布" | ✅ 有效（标题+正文填写后激活） |
+| 创作声明 | `button` 文本为"无声明" | ✅ 有效（默认无声明，可直接发布） |
+| 底部按钮区 | 含"无声明"、"添加话题"、"添加来源"、"预览"、"发布" | ✅ 有效 |
+
+## 错误处理
+
+| 错误情况 | 处理方式 |
+|---------|---------|
+| 页面跳转到登录页 | 提醒用户登录知乎后重试 |
+| 标题输入框未找到 | 用 `textarea[placeholder*="标题"]`（不是 input） |
+| "Illegal invocation" 错误 | 标题是 textarea，需用 `HTMLTextAreaElement.prototype` 而非 `HTMLInputElement.prototype` |
+| 编辑器未找到 | 尝试 `.public-DraftEditor-content` 或 `[contenteditable=true]` |
+| 内容粘贴失败 | 确认编辑器已 focus，重试 ClipboardEvent 粘贴 |
+| 发布按钮 disabled | 等待1.5秒让标题和正文渲染完成，按钮会自动激活 |
+| 发布后未跳转 | 等待更长时间，检查是否有错误提示或弹窗 |
+
+## 输出报告格式
+
+发布完成后向用户报告：
+```
+知乎发布完成
+- 总计：N篇文章
+- 成功：M篇
+- 失败：K篇（列出失败的文章标题）
+- 文章链接：https://zhuanlan.zhihu.com/p/XXXXXXX
+```

@@ -1,0 +1,111 @@
+/* ============================================================
+ * 墨韵工具集 · 全站主题层（theme.css）
+ * ------------------------------------------------------------
+ * 职责：
+ *   1) 设计令牌（CSS 变量）—— 全站唯一颜色/圆角/阴影来源；
+ *   2) 安全的全局统一（字体栈/抗锯齿/选区/焦点环/滚动条），
+ *      不含任何 margin/padding 重置，避免影响旧工具页布局；
+ *   3) 新页面可用的基础组件类（.my-btn/.my-card/...，前缀 my- 防冲突）。
+ * 引用方式：根页面 href="css/theme.css"；tools 一级页 ../../css/theme.css
+ * 令牌语义与使用规范见 .agents/skills/frontend-page-style/SKILL.md
+ * ============================================================ */
+
+:root {
+  /* ---- 浅色令牌（工具页 fallback） ---- */
+  --ink-900: #111827;
+  --ink-600: #4b5563;
+  --ink-400: #9ca3af;
+  --brand:    #4d6bfe;
+  --brand-600:#3d55d9;
+  --brand-050:#eef1ff;
+  --bg:       #ffffff;
+  --bg-soft:  #f7f8fa;
+  --line:     #e5e7eb;
+  --radius:    12px;
+  --radius-sm: 8px;
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, .05);
+  --shadow-md: 0 6px 24px rgba(17, 24, 39, .08);
+  --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
+  --content-max: 1200px;
+  --nav-h: 56px;
+
+  /* ---- 深空墨色令牌（v2.1 主页 + 暗色模式） ---- */
+  --bg-deep:     #09090b;          /* 页面底色（近黑） */
+  --surface-1:   rgba(255,255,255,.04);  /* 卡片表面（微透） */
+  --surface-2:   rgba(255,255,255,.08);  /* 卡片 hover / 搜索框底 */
+  --surface-3:   rgba(255,255,255,.12);  /* 按钮底 / chip active 底 */
+  --line-dark:   rgba(255,255,255,.08);  /* 描边 */
+  --line-dark-2: rgba(255,255,255,.14); /* 描边 hover */
+  --ink-inv-900: #f0f0f2;          /* 暗色主文字 */
+  --ink-inv-600: rgba(255,255,255,.6);  /* 暗色次级文字 */
+  --ink-inv-400: rgba(255,255,255,.32); /* 暗色辅助文字 */
+  --brand-glow:  rgba(77,107,254,.35);   /* 品牌蓝辉光（光晕用） */
+  --brand-200:   #a5b4fc;          /* 渐变词亮端 */
+  --shadow-dark: 0 8px 32px rgba(0,0,0,.45);
+}
+
+/* ---- 全局统一（增量式，不重置布局） ---- */
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 文字选区：品牌蓝浅底 */
+::selection { background: var(--brand-050); color: var(--brand-600); }
+
+/* 键盘可达性：统一焦点环 */
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* 滚动条（新潮细条样式，webkit 内核） */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--ink-400); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 尊重系统“减少动态效果”偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ============================================================
+ * 基础组件（供新页面使用；旧页面不受影响）
+ * ============================================================ */
+
+/* 按钮：主/次两态 */
+.my-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 18px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500; line-height: 1; cursor: pointer;
+  border: 1px solid transparent; transition: all .2s ease; text-decoration: none;
+}
+.my-btn--primary { background: var(--brand); color: #fff; }
+.my-btn--primary:hover { background: var(--brand-600); box-shadow: 0 4px 14px rgba(77, 107, 254, .35); }
+.my-btn--ghost { background: #fff; color: var(--brand); border-color: var(--line); }
+.my-btn--ghost:hover { border-color: var(--brand); color: var(--brand-600); }
+
+/* 卡片 */
+.my-card {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow-sm); transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease;
+}
+.my-card:hover { border-color: rgba(77, 107, 254, .45); box-shadow: var(--shadow-md); transform: translateY(-3px); }
+
+/* 新页面统一导航骨架（配合 docs/design/page-template.md） */
+.page-nav {
+  position: sticky; top: 0; z-index: 50; height: var(--nav-h);
+  display: flex; align-items: center; gap: 16px; padding: 0 24px;
+  background: rgba(255, 255, 255, .92); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.page-nav .nav-home {
+  color: var(--brand); font-weight: 600; font-size: 14px; text-decoration: none;
+}
+.page-nav .nav-home:hover { color: var(--brand-600); }
+.page-nav .nav-title { color: var(--ink-600); font-size: 14px; }
+.page-main { max-width: var(--content-max); margin: 0 auto; padding: 24px; }
+.page-footer {
+  padding: 20px; text-align: center; color: var(--ink-400); font-size: 12px;
+  border-top: 1px solid var(--line); letter-spacing: 1px;
+}

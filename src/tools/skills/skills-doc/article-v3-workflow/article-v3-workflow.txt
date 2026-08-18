@@ -1,0 +1,192 @@
+---
+name: article-v3-workflow
+description: "通过API调用复刻AI文章写作工具V3的六步流程：AI拆解关键词→生成公众号文章。核心是Prompt模板，不依赖浏览器页面，支持火山引擎ARK API。"
+---
+
+# 公众号文章深度拆解 — AI写作工作流
+
+## 功能概述
+
+复刻 `shengmingzhishu.github.io` 上 AI文章写作工具 V3 的核心逻辑，通过 **API 直调** 完成全流程，无需浏览器操作：
+
+1. **输入主题** — 用户提供关键词/方向
+2. **AI拆解分析** — 提取核心关键词、价值点、标题、搜索词
+3. **生成公众号文章** — 带加粗、标题、引用、列表的深度文章
+
+**优势**：跳过页面操作，直接调 API，速度快10倍，适合批量生成。
+
+---
+
+## 触发条件
+
+- "写一篇XX的深度拆解文章"
+- "生成公众号文章"
+- "用article-v3写文章"
+- "书籍拆解文章"
+
+---
+
+## 核心提示词模板
+
+### 步骤1：AI拆解关键词（Step 2）
+
+```python
+system_prompt = "你是一个内容策划专家。请分析用户提供的主题，提取核心关键词和价值点。输出JSON格式。"
+
+user_prompt = f"""主题：{topic}
+
+请分析并提取：
+1. 核心关键词（5-8个）
+2. 价值点（3-5个）
+3. 建议标题（3个）
+4. 搜索关键词（3-5个）
+
+JSON格式：{{"keywords":["关键词1"],"valuePoints":["价值点1"],"titles":["标题1"],"searchQueries":["搜索词1"]}}"""
+```
+
+使用 `doubao-seed-2.0-mini` 模型（快速省token）。
+
+### 步骤2：生成公众号文章（Step 4）
+
+```python
+system_prompt = """你是一个公众号爆款文章创作者。要求：
+1. 开头第一句话必须用**加粗**格式，有吸引力
+2. 文章必须有4-6个小段落标题（使用### 标记）
+3. 每个段落内的重点关键词必须用**加粗**
+4. 内容要有深度、有独到见解
+5. 适当使用引用（> 标记）来突出金句
+6. 使用列表（- 标记）来组织要点
+7. 结尾有总结
+8. 总字数约1200-1500字"""
+
+user_prompt = f"""主题：{topic}
+
+核心关键词：{analysis['keywords']}
+
+价值点：{analysis['valuePoints']}
+
+请生成一篇高质量的公众号深度拆解文章。"""
+```
+
+使用 `doubao-seed-2.0-pro` 模型（质量更高）。
+
+---
+
+## 完整API调用代码
+
+```python
+import requests, json, re
+
+API_KEY = "用户提供的ARK Key"
+BASE_URL = "https://ark.cn-beijing.volces.com/api/plan/v3/chat/completions"
+HEADERS = {"Content-Type": "application/json", "Authorization": f"Bearer {API_KEY}"}
+
+def generate_article(topic):
+    # Step 1: AI拆解
+    messages = [
+        {"role": "system", "content": "你是一个内容策划专家。请分析用户提供的主题，提取核心关键词和价值点。输出JSON格式。"},
+        {"role": "user", "content": f"""主题：{topic}
+
+请分析并提取：
+1. 核心关键词（5-8个）
+2. 价值点（3-5个）
+3. 建议标题（3个）
+4. 搜索关键词（3-5个）
+
+JSON格式：{{"keywords":["关键词1"],"valuePoints":["价值点1"],"titles":["标题1"],"searchQueries":["搜索词1"]}}"""}
+    ]
+    resp = requests.post(BASE_URL, headers=HEADERS,
+        json={"model": "doubao-seed-2.0-mini", "messages": messages, "max_tokens": 800},
+        timeout=60)
+    result_text = json.loads(resp.text)["choices"][0]["message"]["content"]
+    json_match = re.search(r'\{[\s\S]*\}', result_text)
+    analysis = json.loads(json_match.group(0)) if json_match else json.loads(result_text)
+
+    # Step 2: 生成公众号文章
+    messages = [
+        {"role": "system", "content": """你是一个公众号爆款文章创作者。要求：
+1. 开头第一句话必须用**加粗**格式，有吸引力
+2. 文章必须有4-6个小段落标题（使用### 标记）
+3. 每个段落内的重点关键词必须用**加粗**
+4. 内容要有深度、有独到见解
+5. 适当使用引用（> 标记）来突出金句
+6. 使用列表（- 标记）来组织要点
+7. 结尾有总结
+8. 总字数约1200-1500字"""},
+        {"role": "user", "content": f"""主题：{topic}
+
+核心关键词：{', '.join(analysis['keywords'])}
+
+价值点：{' '.join(analysis['valuePoints'])}
+
+请生成一篇高质量的公众号深度拆解文章。"""}
+    ]
+    resp = requests.post(BASE_URL, headers=HEADERS,
+        json={"model": "doubao-seed-2.0-pro", "messages": messages, "max_tokens": 2200},
+        timeout=120)
+    article = json.loads(resp.text)["choices"][0]["message"]["content"]
+
+    return analysis, article
+```
+
+---
+
+## 最终输出格式
+
+文章保存为 `.md` 文件，带YAML frontmatter：
+
+```markdown
+---
+title: 《红楼梦》深度拆解：从荣国府生存学看懂人生+职场双智慧
+author: 屿蓝
+category: 书籍拆解
+keywords: 红楼梦, 曹雪芹, 深度拆解, 人生哲学, 职场智慧
+date: 2024-01-15
+---
+
+**开头第一句加粗...**
+
+### 段落标题
+
+正文内容，重点**加粗**...
+
+> 引用金句...
+
+- 列表项
+- 列表项
+
+## 总结
+
+结尾总结内容...
+```
+
+---
+
+## 注意事项
+
+### ⚠️ 模型选择
+- `doubao-seed-2.0-mini` - **首选**，速度快，额度消耗低，拆解+生成都能用
+- `doubao-seed-2.0-pro` - 质量更高但额度消耗大，额度有限时不要用
+- `ark-code-latest` - **不推荐用于文章生成**：是推理模型，content字段经常为空(内容在reasoning_content)，max_tokens=500时全部token花在推理上，输出为空字符串
+
+### ⚠️ 额度陷阱
+- 所有模型共享同一个额度池，一个超限全部不可用
+- 短消息测试(max_tokens=10)能过不代表长文生成(max_tokens=2000)能过
+- 遇到 `AccountQuotaExceeded` 立即停止，不要重试，告知用户重置时间
+- 火山引擎Key不能在DeepSeek官方API(api.deepseek.com)上使用，两者独立
+
+### ⚠️ Token消耗
+- 拆解步骤：约800 token
+- 文章生成：约2000-2200 token
+- 每篇文章总计约3000 token
+
+### ⚠️ 文章质量要点
+- 始终要求**加粗**开头第一句
+- 要求4-6个`###`段落标题
+- 要求引用`>`突出金句
+- 使用`-`列表组织要点
+- 结尾必须有总结
+
+## References
+
+- `references/article-v3-source-analysis.md` - article-v3.html 完整源码分析，包含6步流程的Prompt模板、API调用方式、配置面板字段说明

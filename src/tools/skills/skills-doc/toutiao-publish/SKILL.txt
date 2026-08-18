@@ -1,0 +1,377 @@
+---
+name: toutiao-publish
+description: "将Markdown文章发布到今日头条号草稿箱。通过浏览器自动化，自动填写标题、正文、标签，并保存为草稿。适用于将本地Markdown文章批量发布到头条号的场景。"
+---
+
+# 今日头条文章发布
+
+## 功能概述
+
+将Markdown格式的文章自动发布到今日头条号（mp.toutiao.com）草稿箱。自动完成：标题填写、正文粘贴（保留格式）、标签添加、保存草稿。
+
+## 触发条件
+
+当用户需要将文章发布到今日头条时调用此skill。典型场景：
+- 用户说"发到头条"
+- 用户说"上传到头条号"
+- 用户说"把这篇文章发头条"
+
+## 前置条件
+
+1. **已登录头条号**：用户需在浏览器中已登录头条号创作平台 (mp.toutiao.com)
+2. **文章内容**：Markdown格式的文章内容（可从本地文件读取或直接提供）
+3. **排版工具（可选）**：如需保留Markdown格式转换为HTML，可使用排版工具 `https://shengmingzhishu.github.io/tools/wechat/editor-v1.html` 的 `mdToHtml()` 函数
+
+## 核心流程
+
+### 第零步：内容准备规范
+
+在发布文章前，需要对 Markdown 内容做以下处理：
+
+1. **首句加粗**：文章正文的第一句话必须用 `**...**` 包裹加粗，让文章开篇更有冲击力。例如：
+   - 原文：`你有没有发现一个现象：`
+   - 处理后：`**你有没有发现一个现象：**`
+
+2. **图片处理**：
+   - **默认无图发布**：如果没有上传图片，在发布页选择"无封面"选项，直接以纯文本方式发布
+   - **固定配图（可选）**：如果需要配图，可使用固定的网络图片 URL，通过 HTML `<img>` 标签插入正文，或在封面设置中选择"单图"并填入图片 URL
+   - 推荐固定图片 URL 示例：`https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800`（书籍/阅读主题）
+
+3. **标题截断**：头条号标题限制 30 字以内，超长需截断
+
+### 第一步：导航到头条号发布页
+
+```
+URL: https://mp.toutiao.com/profile_v4/graphic/publish
+```
+
+等待页面加载完成，通过 `browser_snapshot` 确认标题输入框和正文编辑器已出现。
+
+**如果页面跳转到登录页**，说明未登录，需要提醒用户先登录头条号。
+
+### 第二步：填写标题
+
+头条号的标题输入框是一个 **textarea** 元素（实测验证），placeholder 为"请输入文章标题（2～30个字）"。
+
+```javascript
+// 在browser_evaluate中执行
+// 查找标题输入框（实测为 TEXTAREA 元素）
+const titleInput = document.querySelector('[placeholder*="标题"]');
+
+if (titleInput) {
+  // 标题是 textarea，必须用 HTMLTextAreaElement.prototype
+  const nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  nativeSetter.call(titleInput, '文章标题');
+  titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+  titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+  return 'title set: ' + titleInput.value;
+}
+return 'title input not found';
+```
+
+**注意**：
+- 标题是 `TEXTAREA` 元素，必须用 `HTMLTextAreaElement.prototype` 的 setter，用 `HTMLInputElement.prototype` 会报 "Illegal invocation" 错误
+- 标题限制 30 字以内，超长需截断
+
+### 第三步：填写正文（两种方式）
+
+#### 方式A：粘贴HTML（推荐，保留格式）
+
+如果已通过排版工具将Markdown转为HTML，使用ClipboardEvent注入：
+
+```javascript
+// 在browser_evaluate中执行
+// 查找正文编辑器 - 头条号通常使用ProseMirror或contenteditable编辑器
+const editor = document.querySelector('.ProseMirror') ||
+               document.querySelector('[contenteditable=true]') ||
+               document.querySelector('.public-DraftEditor-content') ||
+               document.querySelector('[class*="editor"][contenteditable]') ||
+               document.querySelector('[class*="content"][contenteditable]');
+
+if (!editor) return 'editor not found';
+
+editor.focus();
+
+// 构造HTML内容
+const html = '<p>正文段落1</p><h3>小标题</h3><p>正文段落2</p>';
+
+// 通过ClipboardEvent注入HTML
+const clipboardData = new DataTransfer();
+clipboardData.setData('text/html', html);
+clipboardData.setData('text/plain', html.replace(/<[^>]*>/g, ''));
+const pasteEvent = new ClipboardEvent('paste', {
+  bubbles: true,
+  cancelable: true,
+  clipboardData: clipboardData
+});
+editor.dispatchEvent(pasteEvent);
+return 'content pasted via ClipboardEvent';
+```
+
+#### 方式B：直接插入纯文本
+
+如果不需要保留格式，可以直接设置文本：
+
+```javascript
+// 在browser_evaluate中执行
+const editor = document.querySelector('[contenteditable=true]') ||
+               document.querySelector('.ProseMirror');
+if (!editor) return 'editor not found';
+
+editor.focus();
+document.execCommand('selectAll', false, null);
+document.execCommand('insertText', false, '正文内容...');
+return 'content inserted via execCommand';
+```
+
+### 第四步：添加标签
+
+头条号发布页通常有"添加标签"的入口。
+
+```javascript
+// 在browser_evaluate中执行
+// 查找标签输入区域
+const tagBtn = Array.from(document.querySelectorAll('button, a, [role=button], [class*=tag]'))
+  .find(el => el.textContent.includes('标签') || el.textContent.includes('话题'));
+
+if (tagBtn) {
+  tagBtn.click();
+  // 等待标签输入框出现后输入标签
+  await new Promise(r => setTimeout(r, 1000));
+  const tagInput = document.querySelector('[placeholder*="标签"]') ||
+                   document.querySelector('[placeholder*="输入"]') ||
+                   document.querySelector('.tag-input input');
+  if (tagInput) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(tagInput, '标签内容');
+    tagInput.dispatchEvent(new Event('input', { bubbles: true }));
+    tagInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    return 'tag added';
+  }
+  return 'tag button clicked but no input found';
+}
+return 'no tag button found';
+```
+
+**注意**：标签不是必填项。如果找不到标签入口，跳过此步骤。
+
+### 第五步：草稿自动保存（无需手动操作）
+
+**重要发现（实测验证）**：头条号编辑器有**自动保存草稿**功能，不需要手动点击任何保存按钮！
+
+页面底部会显示自动保存状态，元素 class 为 `footer-tip footer-draft-save`，显示文本为"草稿已保存"和字数统计（如"共 970 字"）。
+
+页面底部按钮只有：预览、定时发布、预览并发布——**没有"保存草稿"按钮**，因为草稿是自动保存的。
+
+**操作方式**：填写完标题和正文后，等待 3 秒让编辑器自动保存即可。
+
+```javascript
+// 在browser_evaluate中执行 - 验证草稿已自动保存
+const draftTip = document.querySelector('.footer-draft-save') ||
+                 document.querySelector('[class*=draft-save]') ||
+                 document.querySelector('.footer-tip-save');
+if (draftTip) {
+  return 'auto-save status: ' + draftTip.textContent.trim();
+}
+// 备用：检查底部文本是否含"草稿已保存"
+const footer = document.querySelector('.publish-footer');
+if (footer && footer.textContent.includes('草稿已保存')) {
+  return 'draft auto-saved';
+}
+return 'auto-save status unknown';
+```
+
+### 第六步：确认保存成功
+
+草稿自动保存后，可通过以下方式确认：
+
+**方式A：检查页面底部提示（当前页面）**
+```javascript
+// 页面底部应显示"草稿已保存 共 N 字"
+const footer = document.querySelector('.publish-footer, .garr-footer-publish-content');
+return footer ? footer.textContent.trim().substring(0, 50) : 'no footer found';
+```
+
+**方式B：重新访问发布页查看草稿列表**
+重新导航到 `https://mp.toutiao.com/profile_v4/graphic/publish`，页面会显示草稿列表，包含已保存的草稿标题、"继续编辑"和"更多草稿"链接。
+
+```javascript
+// 检查草稿列表
+const draftSection = Array.from(document.querySelectorAll('*'))
+  .find(el => el.textContent.includes('继续编辑') && el.textContent.includes('草稿'));
+if (draftSection) {
+  return 'drafts visible: ' + draftSection.textContent.trim().substring(0, 100);
+}
+return 'no draft section found';
+```
+
+## Token优化策略
+
+### 单篇文章完整发布脚本模板
+
+将标题填写、正文粘贴、标签添加合并到一个evaluate中执行：
+
+```javascript
+// === 在browser_evaluate中一次性执行 ===
+const title = '文章标题';
+const html = '<p><strong>首句加粗</strong>，正文内容...</p>';
+
+// 1. 填写标题（标题是 TEXTAREA，必须用 HTMLTextAreaElement.prototype）
+const titleInput = document.querySelector('[placeholder*="标题"]');
+if (titleInput) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(titleInput, title.substring(0, 30));
+  titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// 2. 粘贴正文
+await new Promise(r => setTimeout(r, 500));
+const editor = document.querySelector('.ProseMirror') ||
+               document.querySelector('[contenteditable=true]');
+if (editor) {
+  editor.focus();
+  const cd = new DataTransfer();
+  cd.setData('text/html', html);
+  cd.setData('text/plain', html.replace(/<[^>]*>/g, ''));
+  editor.dispatchEvent(new ClipboardEvent('paste', {
+    bubbles: true, cancelable: true, clipboardData: cd
+  }));
+}
+
+// 3. 等待内容渲染后添加标签
+await new Promise(r => setTimeout(r, 1000));
+// 标签添加逻辑（如果有标签入口）
+
+// 4. 等待草稿自动保存（头条号编辑器自动保存，无需手动点击）
+await new Promise(r => setTimeout(r, 3000));
+const draftTip = document.querySelector('.footer-draft-save, .footer-tip-save');
+if (draftTip && draftTip.textContent.includes('草稿已保存')) {
+  return 'article auto-saved to draft: ' + draftTip.textContent.trim();
+}
+// 即使没找到提示元素，草稿也已自动保存
+return 'article filled, draft auto-saving';
+```
+
+## Markdown转HTML的方法
+
+### 方法一：使用排版工具（推荐）
+
+1. 在浏览器中打开排版工具：`https://shengmingzhishu.github.io/tools/wechat/editor-v1.html`
+2. 在排版工具标签页中执行evaluate，调用 `mdToHtml()` 函数：
+
+```javascript
+// 在排版工具标签页的browser_evaluate中执行
+const textarea = document.querySelector('textarea');
+textarea.value = markdownContent;
+textarea.dispatchEvent(new Event('input', { bubbles: true }));
+const html = mdToHtml(textarea.value);
+return html; // 返回HTML字符串
+```
+
+3. 获取到HTML后，在头条号标签页中通过ClipboardEvent粘贴
+
+### 方法二：简单转换
+
+如果不需要复杂格式，可以直接将Markdown转为简单HTML：
+
+```javascript
+function simpleMdToHtml(md) {
+  let html = md;
+  // 标题
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // 粗体
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // 引用
+  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+  // 列表
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>');
+  // 段落（把剩余的纯文本行包装成<p>）
+  html = html.split('\n\n').map(p => {
+    if (p.match(/^<(h|ul|ol|blockquote|table)/)) return p;
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+  return html;
+}
+```
+
+## 完整发布流程（从Markdown文件到草稿）
+
+1. 读取本地Markdown文件内容
+2. 打开排版工具标签页，将Markdown输入文本框，调用 `mdToHtml()` 获取HTML
+3. 打开头条号发布页 (`https://mp.toutiao.com/profile_v4/graphic/publish`)
+4. 等待页面加载，确认标题输入框和编辑器已出现
+5. 执行完整evaluate脚本：填写标题 + 粘贴正文 + 等待自动保存
+6. 等待3秒，通过页面底部"草稿已保存"提示确认保存成功
+7. 解锁浏览器，向用户报告结果
+
+## 批量发布流程
+
+如果需要发布多篇文章：
+
+1. 读取包含多篇文章的Markdown文件（如 `10篇拆书文章.md`）
+2. 按文章分隔符（如 `## 文章XX：标题`）拆分为单篇文章
+3. 对每篇文章执行上述完整发布流程
+4. 每篇之间等待5秒，避免频繁操作
+5. 记录每篇的发布结果，最后统一报告
+
+### 批量发布脚本结构
+
+```
+对每篇文章：
+  → 导航到 https://mp.toutiao.com/profile_v4/graphic/publish
+  → 等待2秒页面加载
+  → evaluate: 填写标题 + 粘贴正文 + 等待3秒自动保存
+  → 确认页面底部显示"草稿已保存"
+  → 记录结果
+  → 继续下一篇
+```
+
+## 重要注意事项
+
+1. **登录状态**：头条号页面如果跳转到登录页，说明登录已过期，需要提醒用户重新登录
+2. **标题输入框类型**：标题是 `TEXTAREA` 元素（不是 input），必须用 `HTMLTextAreaElement.prototype` 的 setter，否则报 "Illegal invocation" 错误
+3. **标题长度**：头条号标题建议30字以内，最长不超过64字（placeholder提示为"请输入文章标题（2～30个字）"）
+4. **首句加粗**：文章正文第一句必须用 `**...**` 加粗，提升开篇冲击力
+5. **正文格式**：头条号支持HTML粘贴，表格、引用块、标题、列表、粗体等格式全部保留（实测验证）
+6. **草稿自动保存**：头条号编辑器有自动保存功能，填写完内容后等待3秒即可，无需手动点击保存按钮
+7. **草稿位置**：头条号草稿保存在云端（与小红书不同），换设备登录也能看到。草稿列表在发布页(`publish`)右侧显示，不是单独的草稿箱页面
+8. **图片处理**：默认无图发布（选择"无封面"），如需配图可用固定网络图片 URL
+9. **发布频率**：批量发布时每篇间隔5秒以上，避免被平台限制
+10. **标签限制**：头条号标签通常限制5个以内，每个标签不超过10字
+11. **DOM变化**：头条号前端可能更新，如果选择器失效，需要重新snapshot探查页面结构
+
+## 实测验证的选择器（2026-07-17）
+
+| 元素 | 选择器 | 状态 |
+|------|--------|------|
+| 标题输入框 | `[placeholder*="标题"]` | ✅ 有效，元素类型为 `TEXTAREA`（placeholder: "请输入文章标题（2～30个字）"） |
+| 正文编辑器 | `.ProseMirror` 或 `[contenteditable=true]` | ✅ 有效（DIV 元素，contenteditable） |
+| 自动保存提示 | `.footer-draft-save` 或 `.footer-tip-save` | ✅ 有效（显示"草稿已保存"） |
+| 底部按钮区 | `.publish-footer` | ✅ 有效（含预览、定时发布、预览并发布） |
+| 无封面选项 | 页面中含"无封面"文本的元素 | ✅ 有效（默认无图发布时选择） |
+
+## 错误处理
+
+| 错误情况 | 处理方式 |
+|---------|---------|
+| 页面跳转到登录页 | 提醒用户登录头条号后重试 |
+| 标题输入框未找到 | snapshot探查页面，更新选择器 |
+| "Illegal invocation" 错误 | 标题是 textarea，需用 `HTMLTextAreaElement.prototype` 而非 `HTMLInputElement.prototype` |
+| 编辑器未找到 | 尝试 `.ProseMirror` 或 `[contenteditable=true]` |
+| 草稿未自动保存 | 等待更长时间（5秒），或检查网络连接 |
+| 内容粘贴失败 | 确认编辑器已 focus，重试 ClipboardEvent 粘贴 |
+
+## 输出报告格式
+
+发布完成后向用户报告：
+```
+头条号发布完成
+- 总计：N篇文章
+- 成功：M篇
+- 失败：K篇（列出失败的文章标题）
+- 全部已自动保存为草稿
+- 查看草稿：访问 https://mp.toutiao.com/profile_v4/graphic/publish ，页面右侧显示草稿列表
+```

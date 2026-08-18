@@ -1,551 +1,116 @@
 <!DOCTYPE html>
+<!-- ============================================================
+  墨韵 · 个人主页 v3.0（浅色清爽 · 个人主页式）
+  设计稿：docs/design/home-redesign.md ｜ 事务：TX-20260817-02
+  依赖：src/assets/css/core/theme.css（令牌） src/assets/css/pages/home.css（布局）
+        src/assets/js/core/logger.js（日志） src/assets/js/core/tools-data.js（数据） src/assets/js/pages/home.js（交互）
+============================================================ -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>墨韵 · 在线工具集</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap');
-
-*{margin:0;padding:0;box-sizing:border-box}
-
-body{
-  font-family:"Inter","Noto Serif SC","PingFang SC",sans-serif;
-  background:#f8f5f0;
-  color:#2c2c2c;
-  overflow-x:hidden;
-  line-height:1.6;
-}
-
-/* ===== HERO ===== */
-.hero{
-  position:relative;
-  height:520px;
-  overflow:hidden;
-  isolation:isolate;
-  background:linear-gradient(180deg,#fcfaf8 0%,#f5f0e8 100%);
-}
-
-/* 背景图 — 古风飞天 */
-.hero__bg{
-  position:absolute;
-  inset:0;
-  background-image:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 592"><defs><linearGradient id="g" x2="0" y2="1"><stop offset="0" stop-color="%23fcfaf8"/><stop offset="1" stop-color="%23f0e6d8"/></linearGradient></defs><rect fill="url(%23g)" width="1440" height="592"/><circle cx="300" cy="200" r="180" fill="%23c23a2b" opacity=".03"/><circle cx="1100" cy="180" r="140" fill="%23c23a2b" opacity=".025"/><circle cx="720" cy="350" r="200" fill="%23c23a2b" opacity=".035"/><circle cx="180" cy="400" r="100" fill="%23c23a2b" opacity=".02"/><circle cx="1200" cy="380" r="120" fill="%23c23a2b" opacity=".03"/></svg>');
-  background-size:1440px 520px;
-  background-position:bottom center;
-  background-repeat:no-repeat;
-  z-index:0;
-}
-
-/* Canvas 遮罩层 — 鼠标擦除露出背景 */
-.hero__mask{
-  position:absolute;
-  inset:0;
-  z-index:1;
-  pointer-events:none;
-  display:block;
-}
-
-/* 前景内容 */
-.hero__content{
-  position:relative;
-  z-index:2;
-  max-width:800px;
-  margin:0 auto;
-  padding-top:120px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:28px;
-  text-align:center;
-}
-
-.hero__title{margin:0;font-size:2.8rem;font-weight:700;color:#2c2c2c;letter-spacing:4px;font-family:"Noto Serif SC",serif}
-.hero__title span{color:#c23a2b}
-
-.hero__sub{margin:0;font-size:1rem;color:#8a7a6a;letter-spacing:6px}
-
-.hero-search{width:100%;max-width:480px;position:relative}
-.hero-search input{
-  width:100%;padding:14px 24px;border:1px solid #e0d5c4;border-radius:12px;
-  font-size:15px;outline:none;background:rgba(255,255,255,.7);backdrop-filter:blur(8px);
-  font-family:inherit;transition:all .3s;color:#2c2c2c;box-sizing:border-box
-}
-.hero-search input::placeholder{color:#b8aa92}
-.hero-search input:focus{border-color:#c23a2b;box-shadow:0 0 0 3px rgba(194,58,43,.1)}
-
-.categories{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
-.cat-btn{
-  padding:6px 18px;background:transparent;border:1px solid #d4c9b8;border-radius:20px;
-  font-size:13px;color:#7a6a5a;cursor:pointer;transition:all .25s;font-family:inherit;letter-spacing:1px
-}
-.cat-btn:hover,.cat-btn.active{
-  background:#c23a2b;color:#fff;border-color:#c23a2b;
-  box-shadow:0 4px 12px rgba(194,58,43,.2)
-}
-
-/* ===== 内容区 ===== */
-.container{
-  max-width:1320px;
-  margin:0 auto;
-  padding:40px 24px 20px;
-  position:relative;
-}
-.container::before{
-  content:'';
-  position:fixed;
-  top:0;left:0;width:100%;height:100%;
-  background-image:var(--bg-url, none);
-  background-size:cover;
-  background-position:top center;
-  background-attachment:fixed;
-  opacity:0;
-  transition:opacity 1s ease;
-  pointer-events:none;
-  z-index:-1;
-}
-.container.has-bg::before{opacity:0.5}
-
-.section-title{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-size:1.4rem;
-  font-weight:600;
-  color:#2c2c2c;
-  margin-bottom:20px;
-  padding-bottom:10px;
-  border-bottom:2px solid #ece4d8;
-  letter-spacing:2px;
-  font-family:"Noto Serif SC",serif;
-}
-.section-title::before{
-  content:'◆';
-  color:#c23a2b;
-  font-size:12px;
-}
-
-.tools-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
-  gap:20px;
-  margin-bottom:48px;
-}
-
-/* ===== 玻璃卡片 ===== */
-.tool-card{
-  position:relative;
-  background:rgba(255,255,255,.55);
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
-  border:1px solid rgba(255,255,255,.6);
-  border-radius:16px;
-  padding:24px 22px;
-  transition:all .35s cubic-bezier(.25,.46,.45,.94);
-  cursor:default;
-  display:flex;
-  flex-direction:column;
-  box-shadow:0 2px 12px rgba(0,0,0,.04);
-}
-
-.tool-card:hover{
-  transform:translateY(-8px);
-  background:rgba(255,255,255,.9);
-  border-color:rgba(194,58,43,.2);
-  box-shadow:
-    0 20px 40px rgba(0,0,0,.08),
-    0 0 0 1px rgba(194,58,43,.06);
-}
-
-.tool-card::after{
-  content:'';
-  position:absolute;
-  top:0;left:0;right:0;
-  height:3px;
-  background:linear-gradient(90deg,transparent,#c23a2b,transparent);
-  opacity:0;
-  transition:opacity .35s;
-  border-radius:16px 16px 0 0;
-}
-.tool-card:hover::after{opacity:1}
-
-.tool-icon{
-  font-size:2rem;
-  margin-bottom:12px;
-  text-align:left;
-}
-.tool-icon img{
-  width:56px;height:56px;
-  object-fit:contain;
-  border-radius:10px;
-  filter:drop-shadow(0 2px 4px rgba(0,0,0,.04));
-}
-
-.tool-name{
-  font-size:1.05rem;
-  font-weight:600;
-  margin-bottom:4px;
-  color:#1a1a1a;
-  letter-spacing:1px;
-}
-
-.tool-desc{
-  font-size:.82rem;
-  color:#8a7a6a;
-  margin-bottom:14px;
-  flex-grow:1;
-  line-height:1.6;
-}
-
-.tool-link{
-  display:inline-flex;
-  align-items:center;
-  gap:4px;
-  padding:6px 16px;
-  background:rgba(194,58,43,.06);
-  border:1px solid rgba(194,58,43,.12);
-  border-radius:20px;
-  color:#c23a2b;
-  text-decoration:none;
-  font-size:.8rem;
-  transition:all .25s;
-  align-self:flex-start;
-  font-weight:500;
-}
-.tool-link:hover{
-  background:#c23a2b;
-  color:#fff;
-  border-color:#c23a2b;
-  transform:translateY(-1px);
-  box-shadow:0 4px 12px rgba(194,58,43,.2);
-}
-
-/* ===== 页脚 ===== */
-.footer{
-  text-align:center;
-  padding:32px 20px;
-  color:#b8aa92;
-  font-size:.8rem;
-  background:#efe6d8;
-  letter-spacing:2px;
-  margin-top:20px;
-}
-
-/* 返回顶部 */
-.back-top{
-  position:fixed;
-  bottom:28px;right:28px;
-  width:42px;height:42px;
-  background:rgba(255,255,255,.8);
-  backdrop-filter:blur(8px);
-  border:1px solid #e0d5c4;
-  border-radius:12px;
-  display:flex;justify-content:center;align-items:center;
-  text-decoration:none;
-  color:#7a6a5a;
-  font-size:16px;
-  opacity:0;transform:translateY(12px);
-  transition:all .3s;
-  z-index:100;
-  box-shadow:0 2px 8px rgba(0,0,0,.04);
-}
-.back-top.visible{opacity:1;transform:translateY(0)}
-.back-top:hover{
-  background:#c23a2b;
-  color:#fff;
-  border-color:#c23a2b;
-  box-shadow:0 4px 16px rgba(194,58,43,.2);
-}
-
-/* ===== 响应式 ===== */
-@media (max-width:768px){
-  .hero{min-height:400px}
-  .hero h1{font-size:2rem;letter-spacing:2px}
-  .hero .sub{font-size:.9rem;letter-spacing:3px}
-  .tools-grid{grid-template-columns:1fr}
-  .tool-card{padding:18px}
-}
-</style>
+<meta name="description" content="墨韵 · 专注公众号 / 小红书创作的独立开发者：AI 写作、图文排版、海报生成、图片压缩等创作工具一站直达">
+<title>墨韵 · 个人主页与创作工具集</title>
+<link rel="stylesheet" href="src/assets/css/core/theme.css">
+<link rel="stylesheet" href="src/assets/css/pages/home.css">
 </head>
 <body>
 
-<div class="hero" id="hero">
-  <!-- 背景底图 -->
-  <div class="hero__bg"></div>
+<!-- ===== 导航 =====（全站统一导航由 js/site-nav.js 注入；首页/关于统一定位 #hero，「工具」为下拉入口） -->
+<script>
+  window.SITE_NAV = {
+    links: [
+      { href: '#hero', text: '首页' },
+      { href: '#hero', text: '关于' }
+    ]
+  };
+</script>
 
-  <!-- Canvas 遮罩 -->
+<!-- ===== Hero（个人介绍 · ≤50vh） ===== -->
+<header class="hero" id="hero">
+  <!-- 底层图案：鼠标擦除后露出（品牌蓝圆点纹理） -->
+  <div class="hero__pattern" aria-hidden="true"></div>
+  <!-- 遮罩 canvas：鼠标轨迹擦除层（js/hero-effect.js） -->
   <canvas class="hero__mask" id="heroMask" aria-hidden="true"></canvas>
+  <!-- 默认光泽晕染层：打开即有慢速流光 -->
+  <div class="hero__gloss" aria-hidden="true"></div>
 
-  <!-- 前景内容 -->
-  <div class="hero__content">
-    <h1 class="hero__title">墨<span>·</span>韵</h1>
-    <p class="hero__sub">雅致工具 · 随心所用</p>
-    <div class="hero-search">
-      <input type="text" id="searchInput" placeholder="搜 寻 工 具 ...">
-    </div>
-    <div class="categories" id="categories">
-      <button class="cat-btn active" data-cat="all">全 部</button>
-      <button class="cat-btn" data-cat="wechat">公众号</button>
-      <button class="cat-btn" data-cat="xiaohongshu">小红书</button>
-      <button class="cat-btn" data-cat="image">图片排版</button>
-      <button class="cat-btn" data-cat="layout">排版工具</button>
-      <button class="cat-btn" data-cat="markdown">Markdown</button>
-      <button class="cat-btn" data-cat="other">其 他</button>
+  <img class="hero__avatar" src="src/assets/image/tx/tx2.jpg" alt="墨韵头像">
+  <p class="hero__eyebrow">个人主页 · 创作工具集</p>
+  <h1 class="hero__title">你好，我是<span class="grad">墨韵</span></h1>
+  <p class="hero__sub">专注公众号 / 小红书创作的独立开发者<br>用代码，让创作更简单</p>
+  <div class="hero__cta">
+    <a class="btn btn--primary" href="#tools">进入工具集</a>
+    <a class="btn btn--ghost" href="#about">关于我</a>
+  </div>
+</header>
+
+<!-- ===== 关于我 ===== -->
+<section class="section" id="about">
+  <h2 class="section-title"><span class="sec-num">01</span>关于我<span class="sec-line"></span></h2>
+  <div class="about">
+    <p class="about__text">
+      我是墨韵，一名独立开发者，专注于内容创作方向的工具研发。
+      从公众号排版到小红书海报，我把自己创作中遇到的痛点，逐个打磨成顺手的小工具，
+      开源共享，让每一位创作者都能把时间花在内容本身。
+    </p>
+    <div class="about__skills" aria-label="技能清单">
+      <span class="skill-chip">HTML / CSS / JS</span>
+      <span class="skill-chip">公众号生态</span>
+      <span class="skill-chip">小红书创作</span>
+      <span class="skill-chip">图像处理</span>
+      <span class="skill-chip">AI 写作工作流</span>
     </div>
   </div>
-</div>
+</section>
 
-<div class="container" id="toolContainer">
-  <!-- 由 JS 动态渲染 -->
-</div>
+<!-- ===== 工具集 ===== -->
+<section class="section" id="tools">
+  <h2 class="section-title"><span class="sec-num">02</span>工具集<span class="sec-line"></span></h2>
 
-<footer class="footer"><p>© 2025 墨韵 · 在线工具集</p></footer>
-<a href="#" class="back-top" id="backTop">↑</a>
+  <div class="search-box">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="搜索工具，例如「海报」「MD」「压缩」…" autocomplete="off">
+    <span class="search-kbd"><kbd>⌘</kbd><kbd>K</kbd></span>
+  </div>
 
-<script>
-// ===== 工具数据 =====
-const TOOLS = [
-  {cat:'chuangzuo', name:'AI 文章智能写作', desc:'输入主题 → AI 分析关键词 → 搜索 → 生成优质公众号文章', icon:'D1.png', link:'tools/article/article-v3.html'},
-  {cat:'chuangzuo', name:'表情包制作 v9', desc:'多次上传网格图分别拆分 → 每个表情可单独删除 → 只留下你最满意的', icon:'D4.png', link:'tools/emoji/emoji-splitter-v11.html'},
-  {cat:'layout', name:'公众号编辑器', desc:'公众号图文编辑排版 · 多平台发布', icon:'C1.png', link:'tools/wechat/editor-v2.html'},
-  {cat:'layout', name:'小红书海报生成', desc:'MD 转小红书风格图片，支持图片拖拽、多模板', icon:'C2.png', link:'tools/xiaohongshu/poster-v6.html'},
-  {cat:'layout', name:'图文VIP排版', desc:'统一风格 · 图片链接双列排版', icon:'B1.png', link:'tools/image-layout/image-text-layout-v11.html'},
-  {cat:'layout', name:'图文VIP工具', desc:'文本转MD · MD预览 · 文章/图片URL提取 一站整合', icon:'D1.png', link:'tools/tuwen/vip_tuwen.html'},
-  {cat:'other', name:'批量图片压缩/裁切', desc:'多图上传 → 统一/单独裁切 → 缩放对齐 → 批量导出压缩包', icon:'B1.png', link:'tools/compress/compress.html'},
-  {cat:'other', name:'上上签', desc:'随机抽签小工具', icon:'', link:'tools/fun/fortune.html'},
-];
+  <div class="chips" id="chips">
+    <button class="chip is-active" data-cat="all">全部</button>
+    <button class="chip" data-cat="creation">创作</button>
+    <button class="chip" data-cat="layout">排版</button>
+    <button class="chip" data-cat="image">图片</button>
+    <button class="chip" data-cat="doc">文档</button>
+    <button class="chip" data-cat="fun">趣味</button>
+  </div>
 
-// ===== 分组 =====
-const GROUPS = [
-  {title:'创意写作', key:'chuangzuo'},
-  {title:'排版工具', key:'layout'},
-  {title:'公众号排版', key:'wechat'},
-  {title:'小红书作图', key:'xiaohongshu'},
-  {title:'图片排版', key:'image'},
-  {title:'Markdown 工具', key:'markdown'},
-  {title:'其他工具', key:'other'},
-];
+  <div id="toolContainer"></div>
+</section>
 
-// ===== 渲染工具卡片 =====
-function renderTools(filterCat, query){
-  const container = document.getElementById('toolContainer');
-  let html = '';
-  GROUPS.forEach(g=>{
-    const items = TOOLS.filter(t=>t.cat===g.key);
-    const filtered = items.filter(t=>{
-      const matchCat = filterCat==='all'||t.cat===filterCat;
-      const matchQ = !query||t.name.toLowerCase().includes(query)||t.desc.toLowerCase().includes(query);
-      return matchCat&&matchQ;
-    });
-    if(!filtered.length)return;
-    html += `<h2 class="section-title">${g.title}</h2><div class="tools-grid">`;
-    filtered.forEach(t=>{
-      const iconHtml = t.icon ? `<img src="assets/img/${t.icon}" alt="${t.name}">` : '🎨';
-      html += `<div class="tool-card" data-cat="${t.cat}">
-        <div class="tool-icon">${iconHtml}</div>
-        <div class="tool-name">${t.name}</div>
-        <div class="tool-desc">${t.desc}</div>
-        <a href="${t.link}" class="tool-link">使用 →</a>
-      </div>`;
-    });
-    html += '</div>';
-  });
-  container.innerHTML = html || '<div style="text-align:center;padding:60px 0;color:#b8aa92;font-size:15px">暂无匹配工具</div>';
-}
+<!-- ===== 联系我 ===== -->
+<section class="section section--contact" id="contact">
+  <h2 class="section-title"><span class="sec-num">03</span>联系我<span class="sec-line"></span></h2>
+  <div class="contact">
+    <a class="contact__link" href="https://github.com/" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
+      GitHub
+    </a>
+    <a class="contact__link" href="src/tools/skills/skill.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      技能文档
+    </a>
+  </div>
+</section>
 
-// ===== 搜索和筛选 =====
-let currentCat = 'all';
-let currentQuery = '';
+<!-- ===== 页脚 ===== -->
+<footer class="site-footer">© 2026 墨韵 · 纯 HTML + CSS · GitHub Pages 托管</footer>
 
-document.getElementById('searchInput').addEventListener('input', function(){
-  currentQuery = this.value.toLowerCase().trim();
-  renderTools(currentCat, currentQuery);
-});
+<!-- 返回顶部 -->
+<a href="#" class="back-top" id="backTop" aria-label="返回顶部">↑</a>
 
-document.querySelectorAll('.cat-btn').forEach(btn=>{
-  btn.addEventListener('click',function(){
-    document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
-    this.classList.add('active');
-    currentCat = this.dataset.cat;
-    renderTools(currentCat, currentQuery);
-  });
-});
-
-// ===== 返回顶部 =====
-const backTop = document.getElementById('backTop');
-window.addEventListener('scroll',()=>backTop.classList.toggle('visible',window.scrollY>300));
-backTop.addEventListener('click',e=>{e.preventDefault();window.scrollTo({top:0,behavior:'smooth'})});
-
-// ===== 初始渲染 =====
-renderTools('all','');
-
-// ===== Canvas 擦除遮罩效果（移植 MiMo Code） =====
-(function(){
-  const hero = document.getElementById('hero');
-  const canvas = document.getElementById('heroMask');
-  if(!hero || !canvas) return;
-
-  const canHover = window.matchMedia('(hover: hover)').matches;
-  if(!canHover) return;
-
-  const ctx = canvas.getContext('2d');
-  if(!ctx) return;
-
-  const MASK = '248, 245, 240';
-  const R_START = 8;
-  const R_END = 128;
-  const R_VARY = 0.45;
-  const LIFETIME = 520;
-  const STAMP_STEP = 12;
-  const MAX_STAMPS = 160;
-  const DPR = Math.min(window.devicePixelRatio || 1, 2);
-
-  let w = 0, h = 0;
-  function resize(){
-    const rect = hero.getBoundingClientRect();
-    w = rect.width;
-    h = rect.height;
-    canvas.width = Math.round(w * DPR);
-    canvas.height = Math.round(h * DPR);
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgb(' + MASK + ')';
-    ctx.fillRect(0, 0, w, h);
-  }
-  resize();
-  window.addEventListener('resize', resize);
-
-  const stamps = [];
-  let lastX = null, lastY = null;
-
-  function addStamp(x, y){
-    if(stamps.length >= MAX_STAMPS) stamps.shift();
-    stamps.push({
-      x, y,
-      born: performance.now(),
-      seed: Math.random() * Math.PI * 2,
-      rmax: R_END * (1 - R_VARY + Math.random() * R_VARY)
-    });
-  }
-
-  function stampAlong(x, y){
-    if(lastX === null){
-      addStamp(x, y);
-    }else{
-      const dx = x - lastX, dy = y - lastY;
-      const dist = Math.hypot(dx, dy);
-      const steps = Math.max(1, Math.ceil(dist / STAMP_STEP));
-      for(let i = 1; i <= steps; i++)
-        addStamp(lastX + (dx * i) / steps, lastY + (dy * i) / steps);
-    }
-    lastX = x; lastY = y;
-  }
-
-  function carveInk(x, y, r, alpha, seed){
-    const g = ctx.createRadialGradient(x, y, r * 0.25, x, y, r);
-    g.addColorStop(0, 'rgba(0,0,0,' + (0.95 * alpha) + ')');
-    g.addColorStop(0.55, 'rgba(0,0,0,' + (0.88 * alpha) + ')');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    const segs = 32;
-    for(let i = 0; i <= segs; i++){
-      const a = (i / segs) * Math.PI * 2;
-      const wob = 0.78 + 0.14 * Math.sin(a * 3 + seed) + 0.08 * Math.sin(a * 7 + seed * 2.1) + 0.05 * Math.sin(a * 13 + seed * 0.7);
-      const rr = r * wob;
-      const px = x + Math.cos(a) * rr;
-      const py = y + Math.sin(a) * rr;
-      if(i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  let running = false;
-  function loop(){
-    const now = performance.now();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgb(' + MASK + ')';
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.globalCompositeOperation = 'destination-out';
-    for(let i = stamps.length - 1; i >= 0; i--){
-      const t = (now - stamps[i].born) / LIFETIME;
-      if(t >= 1){ stamps.splice(i, 1); continue; }
-      const ease = 1 - Math.pow(1 - t, 3);
-      const r = R_START + (stamps[i].rmax - R_START) * ease;
-      const alpha = 1 - t * t;
-      carveInk(stamps[i].x, stamps[i].y, r, alpha, stamps[i].seed);
-    }
-
-    if(stamps.length) requestAnimationFrame(loop);
-    else running = false;
-  }
-
-  function start(){ if(!running){ running = true; requestAnimationFrame(loop); } }
-
-  hero.addEventListener('mouseenter', function(e){
-    const rect = hero.getBoundingClientRect();
-    lastX = e.clientX - rect.left;
-    lastY = e.clientY - rect.top;
-    stampAlong(lastX, lastY);
-    start();
-  });
-
-  hero.addEventListener('mousemove', function(e){
-    const rect = hero.getBoundingClientRect();
-    stampAlong(e.clientX - rect.left, e.clientY - rect.top);
-    start();
-  });
-
-  hero.addEventListener('mouseleave', function(){
-    lastX = null; lastY = null;
-    // 将擦除效果合成后同步到内容区背景
-    if(w > 0 && h > 0){
-      try {
-        // 用离屏 canvas 合成背景纹理 + 遮罩擦除效果
-        const off = document.createElement('canvas');
-        off.width = canvas.width;
-        off.height = canvas.height;
-        const offCtx = off.getContext('2d');
-        offCtx.scale(DPR, DPR);
-
-        // 1. 画背景纹理（与 hero__bg 一致）
-        offCtx.fillStyle = '#fcfaf8';
-        offCtx.fillRect(0, 0, w, h);
-        const dots = [
-          [0.15,0.2,0.25,'rgba(194,58,43,0.04)'],
-          [0.8,0.15,0.2,'rgba(194,58,43,0.03)'],
-          [0.5,0.7,0.3,'rgba(194,58,43,0.035)'],
-          [0.2,0.8,0.15,'rgba(194,58,43,0.025)'],
-          [0.85,0.55,0.18,'rgba(194,58,43,0.025)'],
-        ];
-        dots.forEach(([px,py,pr,pc]) => {
-          const g = offCtx.createRadialGradient(w*px,h*py,0,w*px,h*py,w*pr);
-          g.addColorStop(0, pc);
-          g.addColorStop(1, 'transparent');
-          offCtx.fillStyle = g;
-          offCtx.fillRect(0, 0, w, h);
-        });
-
-        // 2. 把主 canvas 的遮罩层以 destination-in 方式应用
-        offCtx.globalCompositeOperation = 'destination-in';
-        offCtx.drawImage(canvas, 0, 0);
-        offCtx.globalCompositeOperation = 'source-over';
-
-        const dataUrl = off.toDataURL('image/png');
-        const container = document.querySelector('.container');
-        if(container){
-          container.style.setProperty('--bg-url', 'url(' + dataUrl + ')');
-          container.classList.add('has-bg');
-        }
-      } catch(e) {/* ignore */}
-    }
-  });
-})();
-</script>
+<script src="src/assets/js/core/logger.js"></script>
+<script src="src/assets/js/core/tools-data.js"></script>
+<script src="src/assets/js/pages/home.js"></script>
+<script src="src/assets/js/pages/hero-effect.js"></script>
+<script src="src/assets/js/components/site-nav.js"></script>
 </body>
 </html>

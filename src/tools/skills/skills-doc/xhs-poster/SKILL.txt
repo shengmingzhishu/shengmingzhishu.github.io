@@ -1,0 +1,384 @@
+---
+name: xhs-poster
+description: "将Markdown内容转换为小红书风格排版图片并下载。通过浏览器自动化，在poster.html页面输入Markdown，自动生成封面/内容/尾页图片，打包ZIP下载到指定目录。适用于将文章内容生成小红书图文笔记图片的场景。"
+---
+
+# 小红书排版图片生成
+
+## 功能概述
+
+将Markdown格式的内容转换为小红书风格的排版图片（封面、内容页、尾页），打包为ZIP文件下载到指定目录。使用 html2canvas 截图，生成 2160×2880 高清PNG图片。
+
+## 触发条件
+
+当用户需要将内容生成小红书风格图片时调用此skill。典型场景：
+- 用户说"生成小红书图片"
+- 用户说"把这篇文章做成小红书图文"
+- 用户说"生成小红书排版图片"
+- 用户说"转换为小红书海报"
+
+## 前置条件
+
+1. **网络访问**：需要能访问 `https://shengmingzhishu.github.io/tools/xiaohongshu/poster.html`
+2. **Markdown内容**：需要转换为图片的Markdown格式内容
+3. **下载目录**：浏览器默认下载目录可用（通常为 `C:\Users\用户名\Downloads`）
+
+## Markdown格式规范
+
+poster.html 页面对Markdown有特殊的解析规则：
+
+```
+首行 = 封面大标题
+第二行 = 封面副标题
+--- = 分隔符（分隔封面和内容页，也分隔多个内容页）
+最后一行 = 尾页文案
+
+支持以下Markdown语法：
+# 标题 / ## 标题 / ### 标题
+**加粗文本**
+> 引用块
+- 列表项
+1. 有序列表
+`代码` / ```代码块```
+```
+
+**示例Markdown：**
+```markdown
+文章标题
+
+副标题或引导语
+
+---
+
+### 第一部分标题
+
+正文内容...
+
+**重点加粗内容**
+
+> 金句引用
+
+- 要点一
+- 要点二
+- 要点三
+
+---
+
+### 第二部分标题
+
+更多内容...
+
+---
+
+关注我，获取更多干货 ✨
+```
+
+## 核心流程
+
+### 第一步：导航到海报生成页面
+
+```
+URL: https://shengmingzhishu.github.io/tools/xiaohongshu/poster.html
+```
+
+等待页面加载完成，通过 `browser_snapshot` 确认页面已出现。
+
+### 第二步：设置作者名（可选）
+
+作者名用于生成文件名前缀。默认值是"北屿的蓝色"，建议修改为文章相关名称。
+
+```javascript
+// 在browser_evaluate中执行
+const authInput = document.getElementById('auth');
+if (authInput) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  setter.call(authInput, '作者名或文章名');
+  authInput.dispatchEvent(new Event('input', { bubbles: true }));
+  return 'auth set: ' + authInput.value;
+}
+return 'auth input not found';
+```
+
+### 第三步：输入Markdown内容（核心步骤）
+
+将Markdown内容输入到页面的文本框（id为 `mi`）。
+
+```javascript
+// 在browser_evaluate中执行
+const md = `文章标题
+
+副标题
+
+---
+
+### 内容标题
+
+正文内容...
+
+---
+
+关注我 ✨`;
+
+const textarea = document.getElementById('mi');
+if (textarea) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(textarea, md);
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  textarea.dispatchEvent(new Event('change', { bubbles: true }));
+  return 'markdown input set, length: ' + textarea.value.length;
+}
+return 'textarea not found';
+```
+
+### 第四步：等待预览渲染
+
+输入Markdown后，页面右侧会实时渲染预览。每张卡片是一个 class 为 `swp` 的元素。
+
+```javascript
+// 在browser_evaluate中执行 - 检查预览卡片数量
+await new Promise(r => setTimeout(r, 2000));
+const cards = document.querySelectorAll('.swp');
+return JSON.stringify({
+  cardCount: cards.length,
+  authValue: document.getElementById('auth') ? document.getElementById('auth').value : 'n/a'
+});
+```
+
+### 第五步：点击导出按钮
+
+点击"一键导出"按钮（id为 `dlBtn`），页面会使用 html2canvas 逐张截图，打包成ZIP下载。
+
+```javascript
+// 在browser_evaluate中执行
+const btn = document.getElementById('dlBtn');
+if (btn) {
+  btn.click();
+  return 'export button clicked';
+}
+return 'export button not found';
+```
+
+### 第六步：等待下载完成
+
+html2canvas 截图需要时间，每张卡片约2-3秒。3张卡片约需10秒。
+
+```javascript
+// 在browser_evaluate中执行 - 检查导出状态
+// dlBusy 是页面全局变量，true表示正在导出
+const busy = typeof dlBusy !== 'undefined' ? dlBusy : 'unknown';
+const btn = document.getElementById('dlBtn');
+return JSON.stringify({
+  dlBusy: busy,
+  btnDisabled: btn ? btn.disabled : 'n/a',
+  btnText: btn ? btn.textContent.trim().substring(0, 30) : 'n/a'
+});
+```
+
+当 `dlBusy` 为 `false` 且按钮恢复原文本时，表示导出完成。
+
+### 第七步：查找并解压ZIP文件
+
+ZIP文件会下载到浏览器默认下载目录（Windows: `C:\Users\用户名\Downloads`）。
+
+文件名格式：`时间戳_标题.zip`（如 `20260717_021127_认知觉醒读书笔记.zip`）
+
+使用 PowerShell 查找并解压到指定目录：
+
+```powershell
+# 查找最近5分钟内下载的ZIP文件
+$zipFile = Get-ChildItem -Path "$env:USERPROFILE\Downloads" -Filter "*.zip" |
+  Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-5) } |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1
+
+if ($zipFile) {
+  $destPath = "d:\目标目录"
+  if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force }
+  Expand-Archive -Path $zipFile.FullName -DestinationPath $destPath -Force
+  Write-Output "解压完成: $destPath"
+  Get-ChildItem -Path $destPath | Select-Object Name, Length
+}
+```
+
+## Token优化策略
+
+### 单次生成完整脚本模板
+
+将作者名设置、Markdown输入、预览检查合并到一个evaluate中执行：
+
+```javascript
+// === 在browser_evaluate中一次性执行 ===
+const authorName = '文章名';
+const md = `文章标题
+
+副标题
+
+---
+
+### 内容标题
+
+正文内容...
+
+---
+
+关注我 ✨`;
+
+// 1. 设置作者名
+const authInput = document.getElementById('auth');
+if (authInput) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  setter.call(authInput, authorName);
+  authInput.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// 2. 输入Markdown
+await new Promise(r => setTimeout(r, 300));
+const textarea = document.getElementById('mi');
+if (textarea) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(textarea, md);
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// 3. 等待预览渲染
+await new Promise(r => setTimeout(r, 2000));
+const cards = document.querySelectorAll('.swp');
+
+// 4. 点击导出按钮
+const btn = document.getElementById('dlBtn');
+if (btn) btn.click();
+
+return JSON.stringify({
+  authSet: authInput ? authInput.value : 'n/a',
+  mdLength: textarea ? textarea.value.length : 0,
+  cardCount: cards.length,
+  exportClicked: !!btn
+});
+```
+
+执行后等待10秒，然后用PowerShell查找并解压ZIP文件。
+
+### 完整生成流程（从内容到图片）
+
+1. 导航到 `https://shengmingzhishu.github.io/tools/xiaohongshu/poster.html`
+2. 等待页面加载
+3. 执行evaluate：设置作者名 + 输入Markdown + 等待渲染 + 点击导出
+4. 等待10秒让html2canvas截图并打包ZIP
+5. 检查 `dlBusy` 是否为 `false`（确认导出完成）
+6. 用PowerShell在下载目录查找ZIP文件（按时间过滤）
+7. 解压ZIP到指定目录
+8. 验证生成的PNG图片（检查文件大小和图片尺寸）
+9. 解锁浏览器，向用户报告结果
+
+## 批量生成流程
+
+如果需要为多篇文章生成小红书图片：
+
+1. 准备多篇文章的Markdown内容
+2. 对每篇文章执行上述完整生成流程
+3. 每篇之间等待15秒（确保前一篇的ZIP下载完成）
+4. 每篇解压到不同的子目录
+5. 记录每篇的生成结果，最后统一报告
+
+### 批量生成脚本结构
+
+```
+对每篇文章：
+  → 导航到 poster.html（或复用同一页面，清空重新输入）
+  → 等待2秒页面加载
+  → evaluate: 设置作者名 + 输入Markdown + 等待渲染 + 点击导出
+  → 等待10秒下载完成
+  → PowerShell: 查找最新ZIP并解压到指定子目录
+  → 验证图片
+  → 记录结果
+  → 继续下一篇
+```
+
+## 输出文件结构
+
+ZIP文件解压后包含以下文件：
+
+| 文件 | 说明 |
+|------|------|
+| `{作者名}_001_封面.png` | 封面图片（2160×2880） |
+| `{作者名}_002_内容.png` | 内容页图片（2160×2880） |
+| `{作者名}_003_尾页.png` | 尾页图片（2160×2880） |
+| `{作者名}_source_时间戳.md` | Markdown源文件 |
+| `README.txt` | 说明文件 |
+
+**注意**：内容页数量取决于Markdown内容长度和 `---` 分隔符，可能有多张内容页。
+
+## 实测验证的页面元素（2026-07-17）
+
+| 元素 | 选择器 | 状态 |
+|------|--------|------|
+| Markdown输入框 | `#mi` 或 `textarea` | ✅ 有效（TEXTAREA元素） |
+| 作者名输入框 | `#auth` | ✅ 有效（INPUT元素） |
+| 导出按钮 | `#dlBtn` 或 `.dlb` | ✅ 有效（onclick="dlA()"） |
+| 预览卡片 | `.swp` | ✅ 有效（每张代表一页） |
+| 导出状态变量 | `dlBusy`（全局变量） | ✅ 有效（true=导出中，false=完成） |
+| 场景元素 | `.scene`（卡片内） | ✅ 有效（缩放容器） |
+
+## 页面技术栈
+
+- **html2canvas 1.4.1**：用于将DOM元素截图为Canvas
+- **JSZip 3.10.1**：用于将多张图片打包为ZIP
+- 截图参数：`scale:2`（2倍清晰度），`allowTaint:true`，`backgroundColor:null`
+- 截图尺寸：每张卡片临时展开为 1080×1440，截图后为 2160×2880
+
+## 重要注意事项
+
+1. **下载目录**：ZIP文件默认下载到浏览器下载目录（`C:\Users\用户名\Downloads`），需用PowerShell查找并移动
+2. **导出时间**：每张卡片截图约2-3秒，3张卡片约需10秒，多张内容页需更长时间
+3. **文件名**：ZIP文件名格式为 `时间戳_标题.zip`，标题取自Markdown首行
+4. **图片尺寸**：所有图片都是 2160×2880 像素（小红书标准尺寸1080×1440的2倍高清）
+5. **Markdown格式**：首行是封面标题，第二行是副标题，`---`分隔页面，最后一行是尾页
+6. **作者名用途**：作者名作为ZIP内文件名前缀，建议设为文章相关名称
+7. **页面复用**：可以在同一页面中多次输入不同内容并导出，无需每次重新导航
+8. **字体加载**：页面首次加载时字体可能需要时间渲染，建议等待2秒再截图
+9. **内容长度**：内容过长会自动分页，生成多张内容页图片
+10. **网络依赖**：页面依赖CDN加载html2canvas和JSZip，需确保网络畅通
+
+## 错误处理
+
+| 错误情况 | 处理方式 |
+|---------|---------|
+| 页面加载失败 | 检查网络连接，重新导航 |
+| 文本框未找到 | 确认页面已完全加载，用 `#mi` 选择器 |
+| 预览卡片为0 | 检查Markdown格式是否正确，确认 `---` 分隔符 |
+| 导出按钮未响应 | 检查 `dlBusy` 是否为 true（正在导出中） |
+| ZIP文件未下载 | 等待更长时间（15秒），检查浏览器下载设置 |
+| ZIP文件未找到 | 扩大搜索时间范围，检查下载目录路径 |
+| 图片尺寸为0 | 检查html2canvas是否成功截图，查看浏览器控制台错误 |
+| 字体显示异常 | 等待页面字体加载完成再导出 |
+
+## 验证图片可用性
+
+使用PowerShell验证生成的PNG图片：
+
+```powershell
+Add-Type -AssemblyName System.Drawing
+$files = Get-ChildItem "目标目录\*.png"
+foreach ($f in $files) {
+  $img = [System.Drawing.Image]::FromFile($f.FullName)
+  Write-Output "$($f.Name) - Size: $($img.Width)x$($img.Height)"
+  $img.Dispose()
+}
+```
+
+正常图片应为 2160×2880 像素，PNG格式。
+
+## 输出报告格式
+
+生成完成后向用户报告：
+```
+小红书排版图片生成完成
+- 文章标题：XXX
+- 生成图片：N张（封面1张 + 内容X张 + 尾页1张）
+- 图片尺寸：2160×2880（高清）
+- 保存目录：d:\目标目录
+- 文件列表：
+  - XXX_001_封面.png (2.7MB)
+  - XXX_002_内容.png (528KB)
+  - XXX_003_尾页.png (617KB)
+```

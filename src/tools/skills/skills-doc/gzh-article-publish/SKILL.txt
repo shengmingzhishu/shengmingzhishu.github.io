@@ -1,0 +1,957 @@
+---
+name: gzh-article-publish
+description: "将文章发布到微信公众号草稿箱，支持文章来源（用户提供或AI拆书）、排版工具转换、封面图获取、自动填写标题/作者/摘要/正文/标签，保存为草稿。通过ProseMirror的pasteHTML方法插入带样式HTML，内容持久化不丢失。"
+---
+
+# 公众号文章发布技能
+
+## 功能概述
+
+将文章发布到微信公众号草稿箱，完整流程包含：
+1. **文章来源** — 用户提供文章 或 AI拆书生成文章
+2. **文章准备** — 标题、作者、内容、标签、摘要、封面图
+3. **排版转换** — 使用排版工具将Markdown转为公众号格式
+4. **发布到草稿箱** — 自动填写所有字段并保存
+
+## 触发条件
+
+当用户需要将文章发布到公众号时调用：
+- "发到公众号"
+- "把这篇文章发公众号"
+- "拆解《书名》发公众号"
+- "公众号发文章"
+- "帮我写篇拆书文章发公众号"
+
+---
+
+## 第一阶段：文章来源
+
+### 来源一：用户提供
+
+用户直接提供文章内容（Markdown或纯文本），直接进入第二阶段。
+
+### 来源二：AI拆书生成
+
+当用户给出书名和作者时，按以下流程生成文章：
+
+#### 步骤1：获取书名和作者
+- 用户提供书名和作者（如"拆解《原子习惯》，作者是詹姆斯·克利尔"）
+
+#### 步骤2：写抖音口播长文文案
+从用户角度写有价值、有质量的抖音口播长文文案：
+- 开头要有冲击力，3秒内抓住注意力
+- 用大白话讲解，避免学术腔
+- 有故事、有案例、有金句
+- 适合口播的短句和节奏
+- 长度：1500-2500字
+
+#### 步骤3：转化为公众号文章
+将口播文案转化为公众号文章格式：
+- **小段落标题**：用 `###` 标记每个核心观点
+- **关键字/句子加粗**：用 `**加粗**` 标记金句和核心概念
+- **引用块**：用 `>` 标记金句
+- **列表**：用 `-` 或 `1.` 标记要点
+- **表格**：对比内容用表格呈现
+- **首句加粗**：文章第一句必须加粗（`**首句内容**`）
+- **排版合理**：段落之间空行，层次清晰
+
+---
+
+## 第二阶段：文章准备
+
+发布前需要准备以下内容：
+
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| 标题 | 吸引点击，不超过64字 | 《原子习惯》：每天进步1%，一年后你会强大37倍 |
+| 作者 | 默认填 LGQ | LGQ |
+| 内容 | Markdown格式文章 | 见第一阶段 |
+| 摘要 | 50-120字，概括核心价值 | 詹姆斯·克利尔告诉你，真正的高手从不靠意志力硬撑... |
+| 标签 | 3-5个相关标签 | 拆书、原子习惯、习惯养成 |
+| 封面图 | 从封面图工具获取 | 见封面图获取流程 |
+
+---
+
+## 第三阶段：排版转换（获取带样式的HTML）
+
+**⚠️ 关键**：必须使用排版工具获取带样式（颜色、风格）的HTML，不能直接用mdToHtml()的纯HTML。
+排版工具会应用主题样式（字体、颜色、间距、装饰元素等），直接使用mdToHtml()只能得到无样式的裸HTML。
+
+### 排版工具地址
+`https://shengmingzhishu.github.io/tools/wechat/editor-v1.html`
+
+### 操作步骤
+
+1. **打开排版工具页面**
+2. **点击"Markdown"按钮**（页面左下角，id: `modeMd`，切换到Markdown模式）
+3. **将Markdown内容粘贴到编辑框**（textarea，id: `mdArea`）
+
+```javascript
+// 在排版工具页面的browser_evaluate中执行
+const md = `Markdown文章内容...`;
+const textarea = document.querySelector('textarea');
+const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+setter.call(textarea, md);
+textarea.dispatchEvent(new Event('input', { bubbles: true }));
+```
+
+4. **等待排版工具渲染完成**（预览区显示带样式的文章）
+
+### ⚠️ 获取带样式HTML的正确方法
+
+**使用 `getCleanArticleHTML()` 函数（唯一可靠方法）**
+
+排版工具提供了全局函数 `getCleanArticleHTML()`，返回带完整样式的HTML。
+预览区选择器是 `#previewBody`（不是 `.preview`）。
+
+```javascript
+// 在排版工具页面执行：获取带样式的HTML
+const html = getCleanArticleHTML();
+return JSON.stringify({
+  htmlLength: html.length,
+  htmlPreview: html.substring(0, 200),
+  hasSection: html.includes('<section'),
+  message: '获取到带样式的HTML'
+});
+```
+
+**返回的HTML结构**：
+```html
+<section style="...">
+  <p data-trae-ref="..."><strong>首句加粗</strong>，正文内容...</p>
+  <h3 data-trae-ref="..." style="color: rgb(254, 44, 85); font-weight: bold; ...">段落标题</h3>
+  <blockquote style="border-left:4px solid #fe2c55; ...">金句内容</blockquote>
+  ...
+</section>
+```
+
+### ⚠️ 关键：必须移除外层 `<section>` 包裹
+
+ProseMirror的schema不识别 `<section>` 标签，如果直接插入会导致所有内容被合并成一个段落。
+
+**必须移除外层 `<section>` 包裹，只使用内部的 `<p>`、`<h3>`、`<blockquote>` 等元素。**
+
+```javascript
+// 移除section包裹
+let html = getCleanArticleHTML();
+// 方法：用DOM解析提取内部HTML
+const temp = document.createElement('div');
+temp.innerHTML = html;
+const section = temp.querySelector('section');
+const innerHTML = section ? section.innerHTML : html;
+return innerHTML; // 这就是要插入的HTML
+```
+
+### 排版工具页面元素
+
+| 元素 | 选择器 | 说明 |
+|------|--------|------|
+| Markdown按钮 | `#modeMd` | 切换到Markdown模式 |
+| Markdown输入框 | `textarea#mdArea` 或 `textarea` | 粘贴Markdown内容 |
+| 预览区 | `#previewBody` | class: "preview-body t-xhs"，显示带样式预览 |
+| 获取HTML函数 | `getCleanArticleHTML()` | 全局函数，返回带样式HTML（含section包裹） |
+| mdToHtml函数 | `mdToHtml(md)` | 全局函数，Markdown转HTML（无样式，不用） |
+
+---
+
+## 第四阶段：跨标签页数据传输（CORS HTTP服务器）
+
+**⚠️ 关键技术**：排版工具和公众号编辑器在不同标签页，无法直接传递HTML。
+需要通过本地HTTP服务器（带CORS头）中转数据。
+
+### 步骤1：创建HTTP服务器
+
+在工作目录创建 `cors_server.py`：
+
+```python
+import http.server
+import socketserver
+import os
+
+PORT = 18888
+DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+
+class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=DIRECTORY, **kwargs)
+    
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        super().end_headers()
+
+    def do_GET(self):
+        if self.path == '/article':
+            self.path = '/article_html.txt'
+        super().do_GET()
+
+with socketserver.TCPServer(("127.0.0.1", PORT), CORSHTTPRequestHandler) as httpd:
+    print(f"Serving at port {PORT}")
+    httpd.serve_forever()
+```
+
+### 步骤2：将HTML写入文件
+
+```python
+# 将从排版工具获取的HTML（已移除section包裹）写入文件
+html_content = "<p>...</p><h3>...</h3><blockquote>...</blockquote>"
+with open('article_html.txt', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+```
+
+### 步骤3：启动服务器
+
+```bash
+python cors_server.py
+# 服务器运行在 http://127.0.0.1:18888
+# 访问 http://127.0.0.1:18888/article 获取HTML内容
+```
+
+---
+
+## 第五阶段：封面图准备
+
+### 封面图工具地址
+`https://shengmingzhishu.github.io/tools/image-layout/word-book-v1.html`
+
+### ⚠️ 封面图完整流程概述（重要！）
+
+封面图是文章的"门面"，必须按以下完整流程操作，缺一不可：
+
+1. **获取图片URL** — 从封面图工具页面获取一张图片的URL
+2. **插入图片到正文顶部** — 将图片上传到公众号，作为文章正文的第一张图
+3. **插入正文内容** — 在图片下方插入文章正文
+4. **首次保存草稿** — 保存包含图片+正文的草稿
+5. **从正文选择封面** — 点击"拖拽或选择封面" → "从正文选择" → 选中图片 → "下一步" → "确认"
+6. **再次保存草稿** — 保存包含封面设置的草稿
+
+**核心原则**：封面图必须先插入正文，再从正文中选择为封面。不能直接上传图片作为封面。
+
+### 步骤1：打开封面图工具页面并获取图片URL
+
+1. 导航到 `https://shengmingzhishu.github.io/tools/image-layout/word-book-v1.html`
+2. 等待页面加载完成（页面会显示多张排版好的图片）
+3. 获取页面中所有图片的URL：
+
+```javascript
+// 在封面图工具页面的browser_evaluate中执行
+const imgs = document.querySelectorAll('img');
+const imgUrls = Array.from(imgs)
+  .map(img => img.src)
+  .filter(url => url && !url.startsWith('data:')); // 过滤掉base64图片
+return JSON.stringify({ 
+  count: imgUrls.length, 
+  urls: imgUrls,
+  firstUrl: imgUrls[0] || '',
+  message: '获取到图片URL列表，选择第一张作为封面'
+});
+```
+
+4. **选择第一张图片URL作为封面**（通常第一张尺寸最合适）
+5. 公众号封面建议尺寸：900×383（2.35:1比例），微信支持裁剪
+
+### 步骤2：记录图片URL备用
+
+将获取到的图片URL（如 `https://tencentcdna.production.link3.cc/...`）记录下来，在第六阶段步骤3中会用到。
+
+---
+
+## 第六阶段：发布到草稿箱
+
+### 步骤1：获取token并导航到编辑页
+
+1. 导航到 `https://mp.weixin.qq.com/`
+2. 从跳转后的URL中提取 `token=XXXX`
+3. 导航到编辑页：
+   `https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit&action=edit&type=77&lang=zh_CN&token=YOUR_TOKEN`
+4. 等待页面加载完成
+
+### 步骤2：填写标题、作者、摘要
+
+```javascript
+// 在browser_evaluate中执行
+const title = '文章标题';
+const author = 'LGQ';
+const digest = '摘要内容（50-120字）';
+
+const titleInput = document.getElementById('title');
+const authorInput = document.querySelector('input[placeholder*="作者"]');
+const digestInput = document.querySelector('textarea[placeholder*="选填"]');
+
+const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+const inputSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+
+if (titleInput) {
+  setter.call(titleInput, title);
+  titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+  titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+}
+if (authorInput) {
+  inputSetter.call(authorInput, author);
+  authorInput.dispatchEvent(new Event('input', { bubbles: true }));
+  authorInput.dispatchEvent(new Event('change', { bubbles: true }));
+}
+if (digestInput) {
+  setter.call(digestInput, digest);
+  digestInput.dispatchEvent(new Event('input', { bubbles: true }));
+  digestInput.dispatchEvent(new Event('change', { bubbles: true }));
+}
+return JSON.stringify({ title: titleInput.value, author: authorInput.value, digest: digestInput.value.substring(0, 50) });
+```
+
+**注意**：标题是 `TEXTAREA` 元素（id为 `title`），必须用 `HTMLTextAreaElement.prototype`，否则报 "Illegal invocation"。
+
+### 步骤3：先插入封面图到正文顶部（重要！）
+
+**⚠️ 正确顺序**：先插入封面图 → 再插入正文内容 → 图片在上方，正文在下方
+
+**关键点**：
+1. 图片工具栏按钮选择器是 `li.jsInsertIcon`（第一个），不是 `.jsInsertIcon.img`
+2. 上传图片前，需要先将光标定位到正文编辑器的起始位置
+3. 使用 DataTransfer API 上传图片（fetch → blob → File → DataTransfer → input.files → change事件）
+
+#### 3.1 将光标定位到正文编辑器起始位置
+
+```javascript
+// 在browser_evaluate中执行
+const view = window.__mpBodyChecktextView;
+if (!view) return JSON.stringify({ error: 'EditorView not found' });
+
+// 聚焦编辑器
+view.focus();
+
+// 将光标定位到文档起始位置（位置0）
+const state = view.state;
+const tr = state.tr;
+const startSelection = state.selection.constructor.create(state.doc, 0, 0);
+tr.setSelection(startSelection);
+view.dispatch(tr);
+
+return JSON.stringify({ 
+  success: true, 
+  message: '光标已定位到正文起始位置，接下来上传封面图'
+});
+```
+
+#### 3.2 展开图片上传菜单并上传封面图
+
+```javascript
+// 在browser_evaluate中执行
+// 1. 展开图片上传菜单（使用 li.jsInsertIcon 选择器，第一个）
+const imgBtn = document.querySelector('li.jsInsertIcon');
+if (!imgBtn) return JSON.stringify({ error: '未找到图片工具栏按钮 li.jsInsertIcon' });
+imgBtn.click();
+await new Promise(r => setTimeout(r, 800)); // 等待下拉菜单展开
+
+// 2. fetch封面图并上传到正文顶部
+const coverUrl = '获取到的封面图URL'; // 从第五阶段获取的URL
+const resp = await fetch(coverUrl);
+const blob = await resp.blob();
+const file = new File([blob], 'cover.png', { type: blob.type || 'image/png' });
+
+// 3. 找到文件上传input并上传
+const fileInput = document.querySelector('input[type=file]');
+if (!fileInput) return JSON.stringify({ error: '未找到文件上传input' });
+
+const dt = new DataTransfer();
+dt.items.add(file);
+fileInput.files = dt.files;
+fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+// 4. 等待图片上传完成（微信服务器处理）
+await new Promise(r => setTimeout(r, 3000));
+
+// 5. 验证图片已插入到正文顶部
+const newState = view.state;
+const firstNode = newState.doc.child(0);
+const firstNodeName = firstNode ? firstNode.type.name : 'null';
+
+// 查找已上传到微信服务器的图片（src包含mmbiz）
+const bodyEditor = document.querySelectorAll('.ProseMirror')[1];
+const imgs = bodyEditor ? bodyEditor.querySelectorAll('img[src*="mmbiz"]') : [];
+
+return JSON.stringify({ 
+  coverInserted: imgs.length > 0, 
+  imgCount: imgs.length, 
+  firstNodeName: firstNodeName,
+  childCount: newState.doc.childCount,
+  imgSrc: imgs[0] ? imgs[0].src.substring(0, 80) : '',
+  message: imgs.length > 0 ? '封面图已插入正文顶部' : '图片上传可能失败，请检查'
+});
+```
+
+**验证标准**：
+- `coverInserted: true`
+- `imgCount > 0`
+- `firstNodeName` 可能是 `nodeleaf`（图片被包裹在 `<section style="text-align: center">` 中）或 `image`
+- `imgSrc` 应包含 `mmbiz.qpic.cn`（微信服务器域名）
+
+**注意**：图片上传后，ProseMirror 会将其包装在 `<section style="text-align: center">` 中，此时第一个节点的类型名是 `nodeleaf`，这是正常现象，不影响后续操作。
+
+### 步骤4：插入正文内容（pasteHTML方法）⭐ 核心步骤
+
+**⚠️ 这是整个流程最关键的一步！**
+
+**技术原理**：
+1. 公众号编辑器使用ProseMirror，全局变量 `window.__mpBodyChecktextView` 是EditorView实例
+2. `view.pasteHTML(html)` 方法通过ProseMirror的剪贴板解析器处理HTML，创建正确的文档节点
+3. 与 `execCommand('insertHTML')` 不同，`pasteHTML` 插入的内容**不会被ProseMirror重渲染清除**
+4. 内联样式会被保留：`<h3>` 的样式在 `attrs.attributes.style`，`<blockquote>` 的样式在 `attrs.style`
+
+**已验证成功的方法：pasteHTML + browser_click保存**
+
+#### 4.1 从HTTP服务器获取HTML并插入
+
+```javascript
+// 在公众号编辑页面的browser_evaluate中执行
+// 前提：已启动CORS HTTP服务器，HTML已写入article_html.txt
+
+// 1. 获取ProseMirror EditorView实例
+const view = window.__mpBodyChecktextView;
+if (!view) return JSON.stringify({ error: 'EditorView not found' });
+
+// 2. 聚焦编辑器并全选（替换现有内容）
+view.focus();
+const state = view.state;
+const tr = state.tr;
+const allSelection = state.selection.constructor.create(state.doc, 0, state.doc.content.size);
+tr.setSelection(allSelection);
+view.dispatch(tr);
+
+// 3. 从本地HTTP服务器获取HTML（已移除section包裹）
+const response = await fetch('http://127.0.0.1:18888/article');
+const html = await response.text();
+
+// 4. 使用pasteHTML插入HTML（核心方法！）
+const result = view.pasteHTML(html);
+
+// 5. 验证插入结果
+const newState = view.state;
+const nodeInfo = [];
+let headingCount = 0, paraCount = 0, bqCount = 0;
+for (let i = 0; i < newState.doc.childCount; i++) {
+  const node = newState.doc.child(i);
+  if (node.type.name === 'heading') headingCount++;
+  if (node.type.name === 'para') paraCount++;
+  if (node.type.name === 'blockquote') bqCount++;
+}
+
+return JSON.stringify({
+  pasteResult: result,
+  docSize: newState.doc.nodeSize,
+  childCount: newState.doc.childCount,
+  headingCount, paraCount, blockquoteCount: bqCount,
+  message: '内容插入成功，接下来需要用browser_click点击保存按钮'
+});
+```
+
+#### 4.2 保存草稿（使用browser_click工具，不能用JavaScript click！）
+
+**⚠️ 关键**：保存按钮必须通过 `browser_click` 工具点击（模拟真实鼠标点击），不能用 `element.click()` 或 jQuery `trigger('click')`。
+
+**JavaScript的click()和jQuery trigger('click')都不会触发保存API！**
+
+操作步骤：
+1. 调用 `browser_snapshot`（selector: `#js_button_area`，interactive: true）获取页面快照
+2. 在快照中找到 `role: button, name: 保存为草稿` 的元素及其 ref
+3. 调用 `browser_click` 工具，传入该 ref
+4. 等待3-5秒，保存按钮会短暂变为 disabled 状态
+5. 检查网络请求，确认有 `POST operate_appmsg?t=ajax-response&sub=update` 请求
+
+**验证保存成功**：
+```javascript
+// 保存后检查网络请求中是否有：
+// POST https://mp.weixin.qq.com/cgi-bin/operate_appmsg?t=ajax-response&sub=update&type=77
+// 如果有这个请求，说明保存成功
+```
+
+### 步骤5：验证保存结果（刷新页面验证持久化）
+
+**⚠️ 关键验证**：保存后刷新页面，检查内容是否持久化。
+
+```javascript
+// 刷新后执行：验证内容持久化
+const view = window.__mpBodyChecktextView;
+if (!view) return 'view not found';
+
+const state = view.state;
+const doc = state.doc;
+const results = [];
+results.push('docSize: ' + doc.nodeSize + ', childCount: ' + doc.childCount);
+
+let headingCount = 0, paraCount = 0, bqCount = 0;
+for (let i = 0; i < doc.childCount; i++) {
+  const node = doc.child(i);
+  if (node.type.name === 'heading') {
+    headingCount++;
+    const style = node.attrs.attributes && node.attrs.attributes.style ? 'has style' : 'no style';
+    results.push('heading[' + headingCount + ']: ' + node.textContent.substring(0, 30) + ' | ' + style);
+  }
+  if (node.type.name === 'para') paraCount++;
+  if (node.type.name === 'blockquote') {
+    bqCount++;
+    const style = node.attrs.style ? 'has style' : 'no style';
+    results.push('blockquote[' + bqCount + ']: ' + node.textContent.substring(0, 30) + ' | ' + style);
+  }
+}
+results.push('totals: heading=' + headingCount + ', para=' + paraCount + ', blockquote=' + bqCount);
+return results.join('\n');
+```
+
+**验证标准**：
+- childCount > 0（内容存在）
+- headingCount > 0（标题节点存在）
+- 样式保留（heading有 `attrs.attributes.style`，blockquote有 `attrs.style`）
+- 如果刷新后内容丢失，说明保存未成功
+
+### 步骤6：设置封面（从正文选择）⭐ 核心步骤
+
+**⚠️ 这是封面图设置的核心步骤！**
+
+**前提条件**：
+- 封面图已插入正文顶部（步骤3完成）
+- 正文内容已插入（步骤4完成）
+- 草稿已首次保存（步骤4.2完成）
+
+**用户要求的正确流程**：
+1. 点击"拖拽或选择封面"展开封面设置菜单
+2. 点击"从正文选择"打开图片选择对话框
+3. 在对话框中选中正文中的封面图
+4. 点击"下一步"进入封面裁剪页面
+5. 点击"确认"按钮完成封面设置（如果按钮在视口外，需要先滚动到可见区域）
+6. 验证封面已设置（`has_first_cover: true`）
+7. 再次保存草稿
+
+#### 6.1 点击"拖拽或选择封面"展开菜单
+
+```javascript
+// 在browser_evaluate中执行
+// 查找"拖拽或选择封面"按钮（SPAN.js_share_type_none_image，display: block 表示未设置封面）
+const coverTrigger = document.querySelector('SPAN.js_share_type_none_image');
+if (!coverTrigger) {
+  // 检查是否已自动设置封面
+  const appmsg = document.querySelector('.appmsg');
+  const hasAutoCover = appmsg ? appmsg.classList.contains('has_first_cover') : false;
+  return JSON.stringify({ 
+    error: '未找到封面设置按钮',
+    hasAutoCover: hasAutoCover,
+    message: hasAutoCover ? '封面已自动设置，跳过此步骤' : '页面结构可能变化，请检查'
+  });
+}
+
+// 点击展开封面设置菜单
+coverTrigger.click();
+await new Promise(r => setTimeout(r, 1000)); // 等待菜单展开
+
+return JSON.stringify({ 
+  success: true, 
+  message: '封面设置菜单已展开，接下来点击"从正文选择"'
+});
+```
+
+#### 6.2 点击"从正文选择"打开图片选择对话框
+
+```javascript
+// 在browser_evaluate中执行
+// 查找"从正文选择"链接（A.js_selectCoverFromContent）
+const selectFromContent = document.querySelector('A.js_selectCoverFromContent');
+if (!selectFromContent) {
+  return JSON.stringify({ 
+    error: '未找到"从正文选择"按钮',
+    message: '请确认封面设置菜单已展开'
+  });
+}
+
+// 点击"从正文选择"
+selectFromContent.click();
+await new Promise(r => setTimeout(r, 1500)); // 等待对话框加载
+
+// 验证对话框已出现
+const coverDialog = document.querySelector('.weui-desktop-dialog');
+const dialogTitle = coverDialog ? coverDialog.querySelector('.weui-desktop-dialog__title') : null;
+
+return JSON.stringify({ 
+  success: coverDialog ? true : false,
+  dialogTitle: dialogTitle ? dialogTitle.textContent.trim() : '',
+  message: coverDialog ? '图片选择对话框已打开' : '对话框未出现，请重试'
+});
+```
+
+**预期对话框内容**：
+- 标题："选择图片"
+- 说明："请从正文插入的图片和视频封面中选择封面"
+- 按钮："下一步"、"取消"
+
+#### 6.3 在对话框中选中封面图
+
+```javascript
+// 在browser_evaluate中执行
+// 查找对话框中的图片项（LI.appmsg_content_img_item）
+const coverDialog = document.querySelector('.weui-desktop-dialog');
+if (!coverDialog) {
+  return JSON.stringify({ error: '图片选择对话框未找到' });
+}
+
+// 查找图片项
+const imgItems = coverDialog.querySelectorAll('.appmsg_content_img_item');
+if (imgItems.length === 0) {
+  return JSON.stringify({ 
+    error: '对话框中未找到图片',
+    message: '请确认正文已插入图片并保存'
+  });
+}
+
+// 点击第一张图片（即正文顶部的封面图）
+const firstImg = imgItems[0];
+firstImg.click();
+await new Promise(r => setTimeout(r, 500)); // 等待选中状态更新
+
+// 验证图片已被选中（class应包含 selected）
+const isSelected = firstImg.classList.contains('selected');
+
+return JSON.stringify({ 
+  success: isSelected,
+  imgCount: imgItems.length,
+  isSelected: isSelected,
+  message: isSelected ? '封面图已选中，接下来点击"下一步"' : '选中状态未更新，请检查'
+});
+```
+
+**验证标准**：
+- `isSelected: true`
+- 点击后图片项的 class 会变为 `appmsg_content_img_item selected`
+
+#### 6.4 点击"下一步"按钮（使用browser_click工具）
+
+**⚠️ 关键**：对话框按钮必须通过 `browser_click` 工具点击，不能用 JavaScript click()。
+
+操作步骤：
+1. 调用 `browser_snapshot`（selector: `.weui-desktop-dialog`，interactive: true）获取对话框快照
+2. 在快照中找到 `role: button, name: 下一步` 的元素及其 ref
+3. 调用 `browser_click` 工具，传入该 ref
+4. 等待2秒，进入"编辑封面"页面
+
+**进入"编辑封面"页面后**：
+- 显示封面裁剪界面，包含 2.35:1 和 1:1 两种比例的预览
+- 底部有"上一步"、"确认"按钮
+
+#### 6.5 点击"确认"按钮完成封面设置（使用browser_click工具）
+
+**⚠️ 关键**："确认"按钮可能在视口外，需要先滚动到可见区域！
+
+操作步骤：
+1. 调用 `browser_snapshot`（selector: `.weui-desktop-dialog`，interactive: true）获取对话框快照
+2. 在快照中找到 `role: button, name: 确认` 的元素及其 ref
+3. **如果点击失败（"Click target intercepted" 或 "coordinates outside the visible viewport"）**：
+   - 调用 `browser_scroll` 工具，传入该 ref 和 `scrollIntoView: true`
+   - 等待1秒
+   - 重新调用 `browser_click` 工具点击该 ref
+4. 等待2秒，对话框关闭，封面设置完成
+
+**错误处理示例**：
+```
+错误：Click target intercepted - Click coordinates (546, 787) are outside the visible viewport
+解决：先调用 browser_scroll（ref: 确认按钮的ref, scrollIntoView: true），再调用 browser_click
+```
+
+#### 6.6 验证封面已设置
+
+```javascript
+// 在browser_evaluate中执行
+// 检查 .appmsg 元素的 classList 是否包含 has_first_cover
+const appmsg = document.querySelector('.appmsg');
+const hasFirstCover = appmsg ? appmsg.classList.contains('has_first_cover') : false;
+
+// 检查封面设置区域的显示状态
+const noneImageSpan = document.querySelector('SPAN.js_share_type_none_image');
+const imageSpan = document.querySelector('SPAN.js_share_type_image');
+const noneImageDisplay = noneImageSpan ? getComputedStyle(noneImageSpan).display : 'not found';
+const imageDisplay = imageSpan ? getComputedStyle(imageSpan).display : 'not found';
+
+return JSON.stringify({ 
+  hasFirstCover: hasFirstCover,
+  noneImageDisplay: noneImageDisplay, // 应为 'none'（"拖拽或选择封面"隐藏）
+  imageDisplay: imageDisplay,         // 应为 'block'（"默认首图为封面"显示）
+  message: hasFirstCover ? '✅ 封面设置成功！' : '❌ 封面可能未设置成功，请检查'
+});
+```
+
+**验证标准**：
+- `hasFirstCover: true` ✅
+- `noneImageDisplay: 'none'`（"拖拽或选择封面"按钮隐藏）
+- `imageDisplay: 'block'`（"默认首图为封面"显示）
+
+#### 6.7 再次保存草稿（使用browser_click工具）
+
+**⚠️ 关键**：封面设置完成后，必须再次保存草稿，否则封面设置不会持久化！
+
+操作步骤：
+1. 调用 `browser_snapshot`（selector: `#js_button_area`，interactive: true）获取页面快照
+2. 在快照中找到 `role: button, name: 保存为草稿` 的元素及其 ref
+3. 调用 `browser_click` 工具，传入该 ref
+4. 等待3-5秒，保存按钮会短暂变为 disabled 状态
+5. 检查网络请求，确认有 `POST operate_appmsg?t=ajax-response&sub=update` 请求
+
+**保存成功后**：封面图设置已持久化，草稿发布完成！
+
+---
+
+## 完整发布流程
+
+### 第一步：准备阶段
+1. 生成或获取文章内容（Markdown格式）
+2. 打开排版工具，粘贴Markdown，等待渲染
+3. 调用 `getCleanArticleHTML()` 获取带样式HTML
+4. 移除 `<section>` 包裹，只保留内部HTML
+5. 将HTML写入 `article_html.txt` 文件
+6. 启动CORS HTTP服务器（端口18888）
+
+### 第二步：发布阶段
+1. 获取封面图URL（从封面图工具页面 word-book-v1.html）
+2. 导航到公众号编辑页（需要token）
+3. 填写标题、作者、摘要
+4. 定位光标到正文起始位置（位置0）
+5. 插入封面图到正文顶部（展开 `li.jsInsertIcon` 菜单 → fetch上传 → 等待3秒）
+6. 执行 pasteHTML 插入正文内容（从HTTP服务器fetch HTML）
+7. 用 `browser_click` 工具点击"保存为草稿"按钮（首次保存：图片+正文）
+8. 等待5秒
+9. 刷新页面，验证内容持久化
+10. 设置封面（从正文选择）：
+    - 点击"拖拽或选择封面"（`SPAN.js_share_type_none_image`）
+    - 点击"从正文选择"（`A.js_selectCoverFromContent`）
+    - 选中对话框中的图片（`LI.appmsg_content_img_item` → 添加 `selected` class）
+    - 用 `browser_click` 点击"下一步"按钮
+    - 如"确认"按钮在视口外，先 `browser_scroll`（scrollIntoView: true）
+    - 用 `browser_click` 点击"确认"按钮
+11. 验证封面设置（`has_first_cover: true`）
+12. 用 `browser_click` 工具再次保存（保存封面设置）
+
+---
+
+## 实测验证的页面元素（2026-07-18）
+
+### 基础元素
+
+| 元素 | 选择器 | 状态 |
+|------|--------|------|
+| 标题输入框 | `#title` 或 `textarea#title` | ✅ TEXTAREA元素，placeholder: "请在这里输入标题" |
+| 作者输入框 | `input[placeholder*="作者"]` | ✅ placeholder: "请输入作者" |
+| 摘要输入框 | `textarea[placeholder*="选填"]` | ✅ placeholder: "选填，不填写则默认抓取正文开头部分文字..." |
+| **ProseMirror EditorView** | `window.__mpBodyChecktextView` | ✅ 全局变量，直接访问EditorView实例 |
+| **正文编辑器DOM** | `document.querySelectorAll('.ProseMirror')[1]` | ✅ 父元素class: `view rich_media_content autoTypeSetting24psection` |
+| 保存草稿按钮 | `#js_submit`（SPAN元素） | ✅ 在 `#js_button_area` 内，必须用browser_click点击 |
+| 发表按钮 | 文本含"发表" | ✅ 有效 |
+| 图片工具栏按钮 | `li.jsInsertIcon`（第一个） | ✅ class含 `tpl_item tpl_item_dropdown jsInsertIcon`，点击展开下拉菜单 |
+| 文件上传input | `input[type=file]` | ✅ multiple:true，accept:image/gif,image/jpeg,image/jpg,image/png,image/svg,image/webp |
+
+### 封面图设置相关元素（2026-07-18验证通过）
+
+| 元素 | 选择器 | 状态 |
+|------|--------|------|
+| "拖拽或选择封面"按钮 | `SPAN.js_share_type_none_image` | ✅ display:block（未设置封面时显示），点击展开菜单 |
+| "从正文选择"链接 | `A.js_selectCoverFromContent` | ✅ 点击打开图片选择对话框 |
+| "默认首图为封面" | `SPAN.js_share_type_image` | ✅ display:none（未设置封面时隐藏），设置后显示 |
+| 图片选择对话框 | `.weui-desktop-dialog` | ✅ 标题"选择图片"，说明"请从正文插入的图片和视频封面中选择封面" |
+| 对话框中的图片项 | `LI.appmsg_content_img_item` | ✅ 点击后class添加 `selected` |
+| "下一步"按钮 | `.weui-desktop-dialog` 内按钮 | ✅ 需用browser_click点击，进入裁剪页面 |
+| "确认"按钮 | `.weui-desktop-dialog` 内按钮 | ✅ 需用browser_click点击，可能在视口外需先scrollIntoView |
+| 封面设置验证 | `.appmsg` classList 含 `has_first_cover` | ✅ true表示封面已设置 |
+
+### ⚠️ 核心技术发现：pasteHTML方法（2026-07-18验证通过）
+
+**问题**：`execCommand('insertHTML')` 插入的内容会被ProseMirror在重渲染时清除，即使立即保存也会在刷新后丢失。
+
+**解决方案**：使用ProseMirror EditorView的 `pasteHTML()` 方法。
+
+```javascript
+const view = window.__mpBodyChecktextView;
+view.pasteHTML(html); // 通过ProseMirror剪贴板解析器处理HTML
+```
+
+**pasteHTML的优势**：
+1. 创建正确的ProseMirror文档节点（para, heading, blockquote等）
+2. 内容**不会被重渲染清除**，刷新后依然存在
+3. 内联样式被保留：`<h3>` 样式在 `attrs.attributes.style`，`<blockquote>` 样式在 `attrs.style`
+4. 支持的节点类型：para, heading, blockquote, listitem, list, code, codeblock, table, image, text
+
+**注意事项**：
+- 必须移除 `<section>` 包裹，否则所有内容会被合并成一个段落
+- 保存按钮必须用 `browser_click` 工具点击，JavaScript的click()无效
+
+### ProseMirror Schema节点类型
+
+| HTML标签 | ProseMirror节点 | 说明 |
+|----------|----------------|------|
+| `<p>` | `para` | 段落（注意不是paragraph） |
+| `<h3>` | `heading` | 标题，样式保留在 attrs.attributes.style |
+| `<blockquote>` | `blockquote` | 引用块，样式保留在 attrs.style |
+| `<ul>/<li>` | `list`/`listitem` | 列表 |
+| `<table>` | `table` | 表格（会被转换为DIV结构） |
+| `<img>` | `image` | 图片 |
+| `<strong>/<b>` | text mark | 加粗文本 |
+| `<section>` | ❌ 不支持 | 必须移除外层包裹 |
+
+### ⚠️ 保存按钮的正确点击方式
+
+**保存按钮是 SPAN 元素，id 为 `js_submit`，在 `#js_button_area` 内。**
+
+| 方法 | 是否有效 | 说明 |
+|------|---------|------|
+| `browser_click` 工具（用snapshot ref） | ✅ 有效 | 模拟真实鼠标点击，触发jQuery事件处理器 |
+| `element.click()` | ❌ 无效 | 不触发jQuery绑定的click事件 |
+| `$(el).trigger('click')` | ❌ 无效 | 触发了事件但未发起保存API请求 |
+| `document.execCommand('save')` | ❌ 无效 | 无此命令 |
+
+**保存API**：`POST https://mp.weixin.qq.com/cgi-bin/operate_appmsg?t=ajax-response&sub=update&type=77`
+保存成功后，按钮会短暂变为 disabled 状态，然后恢复。
+
+---
+
+## 排版工具页面元素
+
+| 元素 | 选择器 | 说明 |
+|------|--------|------|
+| Markdown按钮 | `#modeMd` | 切换到Markdown模式 |
+| Markdown输入框 | `textarea#mdArea` | 粘贴Markdown内容 |
+| 预览区 | `#previewBody` | class: "preview-body t-xhs" |
+| 获取HTML函数 | `getCleanArticleHTML()` | 返回带样式HTML（含section包裹，需移除） |
+| mdToHtml函数 | `mdToHtml(md)` | Markdown转HTML（无样式，不要使用） |
+
+排版工具地址：`https://shengmingzhishu.github.io/tools/wechat/editor-v1.html`
+
+## 封面图工具页面元素
+
+| 元素 | 选择器 | 说明 |
+|------|--------|------|
+| 图片列表 | `document.querySelectorAll('img')` | 页面上的排版图片 |
+
+封面图工具地址：`https://shengmingzhishu.github.io/tools/image-layout/word-book-v1.html`
+
+---
+
+## 重要注意事项
+
+1. **文章来源**：可以是用户提供，也可以是AI拆书生成（书名作者 → 抖音口播文案 → 公众号文章）
+2. **首句加粗**：文章第一句必须加粗（`**首句内容**`），提升开篇冲击力
+3. **段落标题**：用 `###` 标记核心观点，层次清晰
+4. **关键字加粗**：金句和核心概念用 `**加粗**` 标记
+5. **排版工具**：先点Markdown按钮，粘贴MD内容，等待渲染完成
+6. **获取HTML**：使用 `getCleanArticleHTML()` 函数获取带样式HTML
+7. **移除section**：必须移除外层 `<section>` 包裹，否则内容合并成一个段落
+8. **CORS服务器**：需要本地HTTP服务器中转HTML数据（端口18888）
+9. **pasteHTML方法**：使用 `window.__mpBodyChecktextView.pasteHTML(html)` 插入内容
+10. **保存按钮**：必须用 `browser_click` 工具点击，不能用JavaScript click()
+11. **标题类型**：标题是TEXTAREA，必须用 `HTMLTextAreaElement.prototype`
+12. **作者默认**：作者填 LGQ
+13. **封面图完整流程**（重要！）：
+    - 从 word-book-v1.html 获取封面图URL（步骤5）
+    - 定位光标到正文起始位置（步骤3.1）
+    - 将封面图插入文章正文顶部（步骤3.2，使用 `li.jsInsertIcon` + DataTransfer）
+    - 插入正文内容在图片下方（步骤4，使用 pasteHTML）
+    - 首次保存草稿（步骤4.2，用browser_click）
+    - 设置封面：点击"拖拽或选择封面" → "从正文选择" → 选中图片 → "下一步" → "确认"（步骤6）
+    - 验证封面设置（`has_first_cover: true`）
+    - 再次保存草稿（步骤6.7，用browser_click）
+14. **token有效期**：token有时效性，过期需从首页重新获取
+15. **草稿保存**：点击"保存为草稿"后URL变化（含 `appmsgid=XXXX`）
+16. **验证持久化**：保存后刷新页面，检查内容是否还在（防止保存失败）
+17. **"确认"按钮可能不在视口内**：点击"确认"时如报"Click target intercepted"，需先用 `browser_scroll`（scrollIntoView: true）滚动到按钮位置
+
+---
+
+## 错误处理
+
+| 错误情况 | 处理方式 |
+|---------|---------|
+| 页面跳转到登录页 | 提醒用户登录公众号后重试 |
+| 标题填写失败 | 确认用HTMLTextAreaElement.prototype（不是HTMLInputElement） |
+| `__mpBodyChecktextView` 未找到 | 确认页面已完全加载，或刷新页面重试 |
+| pasteHTML后内容为空 | 检查HTML是否含 `<section>` 包裹（需移除） |
+| 保存按钮点击无效 | 必须用 `browser_click` 工具，不能用JavaScript click() |
+| 刷新后内容丢失 | 说明保存未成功，检查网络请求是否有 `sub=update` 的POST请求 |
+| token过期 | 重新导航到首页获取新token |
+| 查询到错误的ProseMirror | 用 `window.__mpBodyChecktextView` 而非DOM查询 |
+| 排版工具获取HTML失败 | 确认已切换到Markdown模式并粘贴内容，使用 `getCleanArticleHTML()` |
+| CORS服务器未启动 | 检查 `cors_server.py` 是否运行在端口18888 |
+| fetch HTML失败 | 检查 `article_html.txt` 文件是否存在，服务器是否正常 |
+| 封面图上传失败 | 检查封面图URL是否可访问，重试fetch；确认使用 `li.jsInsertIcon` 选择器 |
+| "拖拽或选择封面"未找到 | 检查 `SPAN.js_share_type_none_image` 是否存在；可能已自动设置封面（检查 `has_first_cover`） |
+| "从正文选择"未找到 | 确认 `A.js_selectCoverFromContent` 存在；确认封面菜单已展开（先点击"拖拽或选择封面"） |
+| 对话框中未找到图片 | 确认正文已插入图片并首次保存；检查 `LI.appmsg_content_img_item` 是否存在 |
+| 图片选中状态未更新 | 点击后检查 class 是否包含 `selected`；可能需要等待500ms |
+| "下一步"按钮点击无效 | 必须用 `browser_click` 工具点击，不能用JS click() |
+| "确认"按钮点击报错"Click target intercepted" | 先用 `browser_scroll`（scrollIntoView: true）滚动到按钮，再 `browser_click` |
+| 封面设置后未保存 | 确保用 `browser_click` 工具点击最终保存按钮（步骤6.7） |
+| `has_first_cover` 为 false | 封面未设置成功，重新执行步骤6.1-6.7 |
+| 光标定位失败 | 使用 `view.focus()` + `state.selection.constructor.create(state.doc, 0, 0)` 定位到起始位置 |
+
+---
+
+## 输出报告格式
+
+```
+公众号文章发布完成
+- 标题：文章标题
+- 作者：LGQ
+- 摘要：摘要内容...
+- 正文：N个节点（heading=X, para=X, blockquote=X），样式保留
+- 封面：已设置 / 未设置（草稿可后续补充）
+- 草稿ID：appmsgid=XXXXXXX
+- 持久化验证：刷新后内容完整保留 ✅
+- 查看草稿：访问 https://mp.weixin.qq.com/ 首页"近期草稿"区域
+```
+
+---
+
+## 批量发布流程
+
+1. 准备多篇文章（用户提供或AI拆书生成）
+2. 对每篇：
+   - 排版工具转换Markdown → `getCleanArticleHTML()` 获取HTML
+   - 移除section包裹，写入article_html.txt
+   - 启动CORS服务器
+   - 从 word-book-v1.html 获取封面图URL
+   - 导航到编辑页，填写标题、作者、摘要
+   - 定位光标到正文起始位置
+   - 插入封面图到正文顶部（`li.jsInsertIcon` → DataTransfer上传）
+   - 执行 pasteHTML 插入正文内容
+   - 用 `browser_click` 工具点击保存（首次保存：图片+正文）
+   - 等待5秒，刷新验证持久化
+   - 设置封面（从正文选择）：
+     - 点击"拖拽或选择封面"（`SPAN.js_share_type_none_image`）
+     - 点击"从正文选择"（`A.js_selectCoverFromContent`）
+     - 选中图片（`LI.appmsg_content_img_item`）
+     - 用 `browser_click` 点击"下一步"
+     - 如需要，先 `browser_scroll`（scrollIntoView: true）再点击"确认"
+     - 用 `browser_click` 点击"确认"
+   - 验证封面设置（`has_first_cover: true`）
+   - 用 `browser_click` 工具再次保存（保存封面设置）
+3. 每篇间隔5秒
+4. 报告发布结果
+
+---
+
+## 完整流程速查表
+
+| 步骤 | 操作 | 关键点 |
+|------|------|--------|
+| 1. 文章来源 | 用户提供或AI拆书 | 首句加粗，段落标题用### |
+| 2. 文章准备 | 标题/作者(LGQ)/摘要/标签/封面图 | 摘要50-120字 |
+| 3. 排版转换 | 排版工具Markdown模式 → `getCleanArticleHTML()` | 移除section包裹 |
+| 4. 数据传输 | HTML写入文件 → 启动CORS服务器 | 端口18888 |
+| 5. 封面图准备 | 从word-book-v1.html获取图片URL | 过滤base64，选第一张 |
+| 6. 导航编辑页 | 获取token → 导航到编辑页URL | token从跳转URL提取 |
+| 7. 填写字段 | 标题(TEXTAREA)/作者(INPUT)/摘要 | 用对应的prototype |
+| 8. 定位光标 | `view.focus()` + 定位到位置0 | 光标在正文起始位置 |
+| 9. 插入封面图 | `li.jsInsertIcon` → DataTransfer上传 → 等待3秒 | 图片在正文顶部 |
+| 10. 插入正文 | `view.pasteHTML(html)` 从HTTP服务器fetch | **核心方法** |
+| 11. 首次保存 | `browser_click` 工具点击"保存为草稿" | **不能用JS click()** |
+| 12. 验证持久化 | 刷新页面，检查节点数和样式 | 确认内容不丢失 |
+| 13. 展开封面菜单 | 点击"拖拽或选择封面"（`SPAN.js_share_type_none_image`） | 等待1秒菜单展开 |
+| 14. 从正文选择 | 点击"从正文选择"（`A.js_selectCoverFromContent`） | 等待1.5秒对话框加载 |
+| 15. 选中封面图 | 点击 `LI.appmsg_content_img_item` | class添加 `selected` |
+| 16. 点击下一步 | `browser_click` 点击"下一步"按钮 | 进入裁剪页面 |
+| 17. 点击确认 | 如需先 `browser_scroll`（scrollIntoView）→ `browser_click` 点击"确认" | **可能需要先滚动** |
+| 18. 验证封面 | 检查 `has_first_cover: true` | 确认封面已设置 |
+| 19. 再次保存 | `browser_click` 工具点击"保存为草稿" | **保存封面设置** |

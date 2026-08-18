@@ -1,0 +1,288 @@
+---
+name: xhs-batch-upload
+description: "批量上传本地目录下的图片到小红书图文草稿箱。通过浏览器自动化操作，将指定目录中每个子文件夹的图片按顺序上传为小红书图文笔记，自动填写标题和正文，保存为草稿。适用于多篇文章批量发布到小红书的场景。"
+---
+
+# 小红书批量图文上传
+
+## 功能概述
+
+将本地某个目录下的多个子文件夹（每个子文件夹代表一篇文章）中的图片，批量上传到小红书创作者中心的图文草稿箱。
+
+## 触发条件
+
+当用户需要将本地图片批量上传到小红书时调用此skill。典型场景：
+- 用户说"上传图片到小红书"
+- 用户说"把xxx目录的文章发到小红书"
+- 用户说"批量上传小红书图文"
+
+## 前置条件
+
+1. **已登录小红书**：用户需在浏览器中已登录小红书创作者中心 (creator.xiaohongshu.com)
+2. **图片目录结构**：指定目录下有多个子文件夹，每个子文件夹内含按顺序编号的图片文件（如 01.png, 02.png, ...），代表一篇文章的页面（封面→内容页→尾页）
+3. **本地文件服务器**：需要启动一个本地HTTP服务器来提供图片URL（小红书网页端只接受URL上传，不支持直接读取本地文件路径）
+
+## 核心流程
+
+### 第一步：启动本地文件服务器
+
+在临时工作目录创建一个Python文件服务器脚本，将图片根目录暴露为HTTP服务：
+
+```python
+# file_server.py - 放在临时工作目录
+import http.server, os, sys
+
+PORT = 18888
+DIRECTORY = sys.argv[1]  # 图片根目录路径
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=DIRECTORY, **kwargs)
+
+httpd = http.server.HTTPServer(("127.0.0.1", PORT), Handler)
+print(f"Serving {DIRECTORY} on port {PORT}")
+httpd.serve_forever()
+```
+
+运行方式（在临时工作目录中执行）：
+```bash
+python file_server.py "D:\图片根目录路径"
+```
+
+**注意**：此命令需以 `blocking: false` 方式运行（长驻进程），完成后需要手动终止。
+
+### 第二步：扫描目录结构
+
+读取指定目录下的所有子文件夹，每个子文件夹代表一篇文章：
+- 子文件夹名 = 文章标题（需去除emoji字符）
+- 子文件夹内的图片按文件名排序 = 文章页面顺序
+
+### 第三步：逐篇文章上传
+
+对每个子文件夹执行以下操作（使用integrated_browser的MCP工具）：
+
+#### 3.1 导航到发布页并切换到图文tab
+
+```
+URL: https://creator.xiaohongshu.com/publish/publish
+```
+
+**重要**：页面默认显示"上传视频"tab，需要切换到"上传图文"tab：
+
+```javascript
+// 在browser_evaluate中执行
+const tabs = document.querySelectorAll('.creator-tab');
+for (const t of tabs) {
+  if (t.textContent.includes('上传图文')) { t.click(); break; }
+}
+return 'switched to 上传图文';
+```
+
+等待2秒让页面加载完成。
+
+#### 3.2 上传图片（关键步骤 - 使用evaluate减少token消耗）
+
+小红书图片上传有两种方式，优先使用方式A：
+
+**方式A：通过input[type=file]直接设置文件（推荐，但浏览器MCP可能不支持）**
+
+```javascript
+// 在evaluate中执行
+const fileInput = document.querySelector('input[type=file]');
+// 注意：由于安全限制，通常无法直接设置input.files
+// 需要使用DataTransfer API
+const dt = new DataTransfer();
+// 此方式在大多数浏览器中受限，建议使用方式B
+```
+
+**方式B：通过本地URL上传（可靠方案）**
+
+1. 对每张图片，构造本地URL：`http://127.0.0.1:18888/子文件夹名/图片文件名`
+2. 使用fetch获取图片为Blob
+3. 通过DataTransfer API构造File对象
+4. 设置到input[type=file]元素上并触发change事件
+
+```javascript
+// 单张图片上传的核心JS（在browser_evaluate中执行）
+async function uploadImage(imageUrl) {
+  const response = await fetch(imageUrl);
+  const blob = await response.blob();
+  const fileName = imageUrl.split('/').pop();
+  const file = new File([blob], fileName, { type: blob.type });
+  
+  const fileInput = document.querySelector('input[type=file]');
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  fileInput.files = dt.files;
+  fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+  return 'uploaded: ' + fileName;
+}
+```
+
+**方式C：逐张上传（最可靠，但token消耗较多）**
+
+如果方式B在evaluate中受限，则：
+1. 使用 `browser_snapshot` 获取图片上传input的ref
+2. 逐张图片使用 `browser_evaluate` 执行fetch+DataTransfer上传
+3. 每张上传后等待2秒让页面处理
+4. 使用 `browser_snapshot` 确认上传成功
+
+#### 3.3 填写标题
+
+标题 = 子文件夹名（去除emoji和特殊字符），限制在20字以内。
+
+```javascript
+// 在browser_evaluate中执行
+const titleInput = document.querySelector('#title-textarea') || 
+                   document.querySelector('[placeholder*="标题"]');
+// 设置值并触发React/Vue响应
+const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+  window.HTMLInputElement.prototype, 'value'
+).set;
+nativeInputValueSetter.call(titleInput, '文章标题');
+titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+```
+
+**注意**：小红书标题限制20字，如果文件夹名过长需截断。
+
+#### 3.4 填写正文
+
+正文格式：
+```
+{标题}
+
+{引导语}
+
+#公众号运营 #软文写作 #内容营销
+```
+
+默认引导语：`这篇图文详细分享了实操经验，希望对你有帮助～`
+
+```javascript
+// 在browser_evaluate中执行
+const descInput = document.querySelector('#post-textarea') || 
+                  document.querySelector('[placeholder*="描述"]') ||
+                  document.querySelector('.content-input');
+const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+  window.HTMLTextAreaElement.prototype, 'value'
+).set;
+nativeInputValueSetter.call(descInput, fullText);
+descInput.dispatchEvent(new Event('input', { bubbles: true }));
+```
+
+#### 3.5 保存为草稿
+
+**重要**：新版小红书没有"暂存离开"按钮。点击"发布笔记"按钮会将内容保存到草稿箱（不会直接发布）。
+
+```javascript
+// 在browser_evaluate中执行 - 触发完整鼠标事件序列点击发布按钮
+const btnInner = document.querySelector('.btn-inner');
+if (btnInner) {
+  const events = ['mousedown', 'mouseup', 'click'];
+  for (const ev of events) {
+    btnInner.dispatchEvent(new MouseEvent(ev, {bubbles: true, cancelable: true, view: window}));
+  }
+  return 'publish button clicked (saves to draft)';
+}
+return 'no publish button found';
+```
+
+点击后等待5秒，确认页面URL发生变化（跳转回发布首页），且侧边栏显示"草稿箱(N+1)"即表示保存成功。
+
+#### 3.6 单篇上传完成后的处理
+
+- 使用 `browser_snapshot` 确认已保存成功（页面应跳转回发布管理页或显示成功提示）
+- 继续下一篇
+
+### 第四步：清理
+
+1. 终止本地文件服务器进程
+2. 解锁浏览器（`browser_unlock`）
+3. 向用户报告上传结果
+
+## Token优化策略（核心）
+
+1. **合并evaluate调用**：将上传图片、填写标题、填写正文合并到一个evaluate脚本中执行，而非分步调用
+2. **减少snapshot次数**：只在关键节点（页面加载后、上传完成后、保存后）做snapshot，中间步骤用evaluate返回值判断状态
+3. **批量图片上传**：在单个evaluate中循环上传所有图片，而非逐张调用
+4. **避免重复探索DOM**：将选择器固化在此skill中，不需要每次都snapshot探索
+
+### 单篇文章的完整evaluate脚本模板
+
+```javascript
+// === 在browser_evaluate中一次性执行 ===
+// 1. 上传所有图片
+const folderName = '文章文件夹名';
+const imageFiles = ['01.png', '02.png', '03.png']; // 从目录扫描获得
+const baseUrl = 'http://127.0.0.1:18888';
+
+async function uploadAll() {
+  for (const img of imageFiles) {
+    const url = `${baseUrl}/${encodeURIComponent(folderName)}/${img}`;
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    const file = new File([blob], img, { type: blob.type });
+    const input = document.querySelector('input[type=file]');
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 2000)); // 等待上传处理
+  }
+  return 'all images uploaded';
+}
+
+await uploadAll();
+
+// 2. 填写标题和正文
+await new Promise(r => setTimeout(r, 1000));
+const title = '清理后的标题';
+const content = title + '\n\n这篇图文详细分享了实操经验，希望对你有帮助～\n\n#公众号运营 #软文写作 #内容营销';
+
+const titleEl = document.querySelector('#title-textarea') || document.querySelector('[placeholder*="标题"]');
+const descEl = document.querySelector('#post-textarea') || document.querySelector('[placeholder*="描述"]');
+
+if (titleEl) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  setter.call(titleEl, title);
+  titleEl.dispatchEvent(new Event('input', { bubbles: true }));
+}
+if (descEl) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(descEl, content);
+  descEl.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// 3. 等待并保存草稿（新版小红书点击"发布笔记"会保存到草稿箱）
+await new Promise(r => setTimeout(r, 2000));
+const btnInner = document.querySelector('.btn-inner');
+if (btnInner) {
+  const events = ['mousedown', 'mouseup', 'click'];
+  for (const ev of events) {
+    btnInner.dispatchEvent(new MouseEvent(ev, {bubbles: true, cancelable: true, view: window}));
+  }
+  return 'article uploaded + saved to draft';
+}
+return 'uploaded but no publish button found';
+```
+
+## 重要注意事项
+
+1. **上传间隔**：每张图片上传后等待2秒，避免上传过快导致失败
+2. **保存等待**：点击暂存后等待3秒再确认，确保数据保存成功
+3. **错误处理**：如果某篇文章上传失败，记录错误并继续下一篇，不要中断整个流程
+4. **emoji清理**：文件夹名可能含emoji字符，需用正则去除：`name.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]/gu, '').trim()`
+5. **标题长度**：小红书标题限制20字，超长需截断
+6. **图片格式**：支持png/jpg/jpeg/webp，按文件名自然排序
+7. **文件服务器端口**：默认使用18888，如被占用可更换
+
+## 输出报告格式
+
+上传完成后向用户报告：
+```
+小红书批量上传完成 ✅
+- 总计：N篇文章
+- 成功：M篇
+- 失败：K篇（列出失败的文件夹名）
+- 全部已保存为草稿，请在小红书创作者中心草稿箱中查看
+```

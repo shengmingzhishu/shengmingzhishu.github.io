@@ -1,0 +1,370 @@
+---
+name: gzh-batch-publish
+description: "将用户提供的Markdown文章批量发布到微信公众号草稿箱。支持排版转换、封面图插入、互动语清理、ensure_ascii=False防乱码发布。"
+---
+
+# 公众号文章批量发布技能
+
+## 功能概述
+
+将用户提供的 Markdown 文章批量发布到微信公众号草稿箱，完整流程包含：
+
+1. **文章来源** — 用户指定 `.md` 文件所在目录
+2. **内容清理** — 删除互动引导句、关注提醒等不合规内容
+3. **排版转换** — Markdown 转 HTML，应用小红书/精读蓝等模板样式
+4. **封面图插入** — 在正文顶部插入封面图片
+5. **防乱码发布** — 使用 `ensure_ascii=False` 方式调用微信 API
+
+## 触发条件
+
+当用户需要将本地的 Markdown 文章批量发布到公众号时调用：
+- "把这个目录的文章发到公众号"
+- "批量发布这些 md 文件"
+- "把这 100 篇文章发到草稿箱"
+
+---
+
+## 第一阶段：文章来源
+
+### 用户提供文章目录
+
+用户指定一个目录路径，该目录下包含 `.md` 格式的文章文件。
+
+文件格式示例：
+```markdown
+---
+title: 《未来简史2.0》深度拆解
+author: 尤瓦尔·赫拉利
+category: 社会科学
+book_id: 1
+---
+
+**首句加粗**，正文内容...
+
+### 小段落标题
+
+正文内容...
+```
+
+每篇文章包含：
+- **YAML 前置元数据**（frontmatter）：`title`、`author`、`category`、`book_id`
+- **正文**：Markdown 格式，包含 `**加粗**`、`### 标题`、`> 引用`、`- 列表`、`--- 分割线` 等
+
+### 文件命名规则
+
+`序号_书名.md`，例如：
+- `001_未来简史2.0.md`
+- `002_原子习惯.md`
+
+---
+
+## 第二阶段：文章准备与清理
+
+### 解析文件
+
+```python
+import re
+
+def parse_md_file(filepath):
+    """Parse a markdown article file"""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # 从 frontmatter 提取标题
+    title_match = re.search(r'title:\s*(.+?)$', content, re.MULTILINE)
+    title = title_match.group(1).strip() if title_match else os.path.splitext(os.path.basename(filepath))[0]
+    
+    # 提取摘要
+    digest_match = re.search(r'description:\s*(.+?)$', content, re.MULTILINE)
+    digest = digest_match.group(1).strip() if digest_match else ""
+    
+    # 移除 frontmatter
+    body = re.sub(r'^---\n.*?\n---\n', '', content, flags=re.DOTALL)
+    
+    return title, digest, body
+```
+
+### 内容清理（去除互动引导和关注提醒）
+
+```python
+def clean_article(content):
+    """Remove ALL interactive questions, follow reminders, and guiding sentences"""
+    patterns = [
+        # 评论区互动引导
+        r'你在.*?最[戳打].*?的[瞬间画面].*?是[什么哪].*?[？?]',
+        r'你[最近上次].*?有没有.*?(?:的[经历故事时刻]|[吗？?])',
+        r'你有没有过.*?(?:的时刻|的经历|的感觉|被.*?[吗？?])',
+        r'(?:欢迎|快来).*?在.*?(?:评论区|留言区|下方).*?(?:留言|评论|分享|告诉我|聊聊).*',
+        r'在.*?(?:评论区|留言区|下方).*?(?:留言|评论|分享|聊聊|告诉我|说说).*',
+        r'(?:分享|说说|聊聊).*?你的.*?(?:想法|看法|故事|经历|答案).*[。.！!]?$',
+        r'你对.*?怎么[看看想].*[？?]',
+        r'你觉得.*?(?:呢|吗|？|\\?)',
+        r'你[认同同意]吗[？?]',
+        r'说说你的看法[。.]?$',
+        r'你准备好.*?了吗[？?]',
+        
+        # 关注/点赞/在看提醒
+        r'关注我[们]?[，,。.！!]?.*?(?:获取|收看|收到|不错过|一起|更多)',
+        r'(?:记得|不要忘了|别忘了|不要忘记).*?(?:点赞|在看|关注|转发|分享|收藏)',
+        r'(?:点击|点个).*?(?:关注|在看|赞|收藏)',
+        r'(?:长按|扫码|扫描).*?(?:关注|二维码|识别)',
+        r'(?:如果你喜欢|如果觉得不错|喜欢的话).*?(?:分享|点赞|关注|转发)',
+        
+        # 下期预告/抽奖/送书
+        r'抽[1-9]位.*?(?:送出|赠送|送).*',
+        r'我们下期(?:再见|见|分享|更新|继续聊).*',
+        r'下期[再见见].*',
+        r'关注我们.*下期.*',
+        
+        # 感谢/结尾套话
+        r'感谢.*?(?:阅读|观看|收看|聆听).*?(?:我们下期|下次|再见)',
+        r'感谢大家的.*?(?:阅读|观看|收看|支持).*',
+        
+        # 其他互动引导
+        r'最后想[问问问问聊].*',
+        r'你最近一次.*是[什么哪].*[？?]',
+        r'你上次在.*是.*[？?]',
+        r'你.*时候.*开始.*[？?]',
+        r'你在.*有没有.*[？?]',
+        r'说说你的.*[。.！!]?$',
+        r'欢迎.*告诉我.*[。.！!]?$',
+    ]
+    for p in patterns:
+        content = re.sub(p, '', content, flags=re.MULTILINE)
+    return content.strip()
+```
+
+---
+
+## 第三阶段：排版转换（带样式的 HTML）
+
+### 小红书模板样式
+
+```python
+TEMPLATE = {
+    'body': 'color:#333333;background:#ffffff;line-height:1.75;font-size:16px;letter-spacing:1px;',
+    'h1': 'color:#fe2c55;font-weight:bold;text-align:center;margin:28px 0 14px;border-bottom:2px solid #fe2c55;padding-bottom:8px;letter-spacing:2px;',
+    'h2': 'color:#ffffff;font-weight:bold;margin:24px 0 12px;background:#fe2c55;padding:6px 16px;border-radius:20px;display:inline-block;',
+    'h3': 'color:#fe2c55;font-weight:bold;margin:20px 0 8px;border-left:4px solid #fe2c55;padding:3px 0 3px 10px;',
+    'blockquote': 'border-left:4px solid #fe2c55;color:#555;background:#fff5f7;margin:14px 0;padding:8px 14px;border-radius:0 8px 8px 0;',
+    'hr': 'border:none;border-top:1px dashed #ffb3c1;margin:20px 0;',
+    'a': 'color:#fe2c55;text-decoration:none;border-bottom:1px solid #fe2c55;',
+    'code': 'background:#fff0f2;color:#fe2c55;padding:2px 6px;border-radius:3px;font-size:90%;',
+    'pre': 'background:#fff5f7;padding:12px;border-radius:8px;overflow:auto;border:1px solid #ffe0e6;'
+}
+```
+
+### Markdown 转 HTML（带样式）
+
+```python
+def md_to_styled_html(md_text):
+    """Convert markdown to HTML with inline styles (小红书模板)"""
+    lines = md_text.split('\n')
+    html_parts = []
+    in_ul = False
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            if in_ul: html_parts.append('</ul>'); in_ul = False
+            continue
+        
+        # Headings
+        h = re.match(r'^(#{1,6})\s+(.+)$', stripped)
+        if h:
+            if in_ul: html_parts.append('</ul>'); in_ul = False
+            level = len(h.group(1))
+            text = inline_format(h.group(2))
+            tag = f'h{level}'
+            style = TEMPLATE.get(tag, '')
+            html_parts.append(f'<{tag} style="{style}">{text}</{tag}>')
+            continue
+        
+        # Blockquote
+        if stripped.startswith('> '):
+            if in_ul: html_parts.append('</ul>'); in_ul = False
+            text = inline_format(stripped[2:])
+            html_parts.append(f'<blockquote style="{TEMPLATE["blockquote"]}">{text}</blockquote>')
+            continue
+        
+        # HR
+        if re.match(r'^[-*_]{3,}$', stripped):
+            if in_ul: html_parts.append('</ul>'); in_ul = False
+            html_parts.append(f'<hr style="{TEMPLATE["hr"]}">')
+            continue
+        
+        # List
+        if re.match(r'^[-*+]\s+', stripped):
+            text = inline_format(re.sub(r'^[-*+]\s+', '', stripped))
+            if not in_ul: html_parts.append('<ul>'); in_ul = True
+            html_parts.append(f'<li>{text}</li>')
+            continue
+        
+        # Paragraph
+        if in_ul: html_parts.append('</ul>'); in_ul = False
+        text = inline_format(stripped)
+        html_parts.append(f'<p style="margin:8px 0;">{text}</p>')
+    
+    if in_ul: html_parts.append('</ul>')
+    return '\n'.join(html_parts)
+
+def inline_format(text):
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    text = re.sub(r'`(.+?)`', rf'<code style="{TEMPLATE["code"]}">\1</code>', text)
+    return text
+```
+
+---
+
+## 第四阶段：发布到草稿箱（防乱码）
+
+### 核心：使用 ensure_ascii=False
+
+**这是解决乱码问题的关键！** 微信 API 的部分后端服务器对 JSON 中 `\uXXXX` Unicode 转义码处理不正确，会二次转义导致乱码。
+
+解决方案：发送时用 `ensure_ascii=False`，让中文以 **UTF-8 原始字节** 形式出现在 JSON 中，而非 `\uXXXX` 转义序列。
+
+```python
+# ✅ 正确方式（防乱码）
+body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+resp = requests.post(
+    url,
+    data=body,
+    headers={'Content-Type': 'application/json; charset=utf-8'},
+    timeout=30
+)
+
+# ❌ 错误方式（可能导致乱码）
+resp = requests.post(url, json=payload)  # 内部使用 ensure_ascii=True
+```
+
+### 完整发布函数
+
+```python
+def publish_article(token, title, styled_html, digest=""):
+    """Publish article to WeChat draft with styled HTML"""
+    # 1. 封面图插入正文顶部
+    img_tag = f'<p style="text-align:center;margin:0 0 16px 0;">' \
+              f'<img src="{CONTENT_IMG_URL}" alt="" style="max-width:100%;height:auto;' \
+              f'border-radius:6px;display:block;margin:0 auto;" /></p>'
+    full_html = img_tag + '\n' + styled_html
+    
+    # 2. 清理互动引导
+    full_html = clean_article(full_html)
+    
+    # 3. 用 section 包裹并应用 body 样式
+    full_html = f'<section style="{TEMPLATE["body"]}">\n{full_html}\n</section>'
+    
+    # 4. 构建请求
+    payload = {
+        "articles": [{
+            "title": title,
+            "author": AUTHOR,
+            "digest": digest[:120] if digest else title,
+            "content": full_html,
+            "content_source_url": "",
+            "thumb_media_id": COVER_MEDIA_ID,
+            "need_open_comment": 0,
+            "only_fans_can_comment": 0
+        }]
+    }
+    
+    # 5. 防乱码发送
+    body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    resp = requests.post(
+        f'https://api.weixin.qq.com/cgi-bin/draft/add?access_token={token}',
+        data=body,
+        headers={'Content-Type': 'application/json; charset=utf-8'},
+        timeout=30
+    )
+    result = resp.json()
+    
+    if 'media_id' in result:
+        return result['media_id']
+    return None
+```
+
+### 封面图准备
+
+```python
+# 上传封面图到微信素材库
+curl -s -F "media=@cover.jpg" \
+  "https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${TOKEN}&type=image"
+# 返回: {"media_id": "xxx", "url": "http://mmbiz.qpic.cn/..."}
+
+# 上传正文可用的图片
+curl -s -F "media=@cover.jpg" \
+  "https://api.weixin.qq.com/cgi-bin/media/uploadimg?access_token=${TOKEN}"
+# 返回: {"url": "http://mmbiz.qpic.cn/..."}
+```
+
+---
+
+## 第五阶段：批量运行
+
+### 后台运行
+
+```bash
+cd /home/ubuntu && python3 /tmp/batch_publish_styled_v2.py
+```
+
+使用 `background=true` + `notify_on_complete=true` 后台运行，完成后自动通知。
+
+### 完整脚本结构
+
+```python
+#!/usr/bin/env python3
+"""
+批量发布书籍拆解文章到公众号草稿箱
+"""
+import json, re, os, time, requests
+
+# === 配置 ===
+APPID = "用户AppID"
+APPSECRET = "用户AppSecret"
+AUTHOR = "屿蓝"  # 公众号作者名（2个中文字以内）
+COVER_MEDIA_ID = "上传后获取的永久media_id"
+CONTENT_IMG_URL = "上传后获取的图片URL"
+ARTICLES_DIR = "/path/to/articles"  # 用户提供的 .md 文件目录
+
+# === 主流程 ===
+def main():
+    token = get_token()
+    files = sorted([f for f in os.listdir(ARTICLES_DIR) if f.endswith('.md')])
+    
+    for fname in files:
+        # 1. 解析文件
+        # 2. 清理内容
+        # 3. 排版转换
+        # 4. 发布到草稿箱
+        # 5. 间隔0.5秒
+        pass
+    
+    print(f"完成: {success}篇成功, {failed}篇失败")
+```
+
+---
+
+## 注意事项与已知问题
+
+### 🚫 绝对禁止：删除草稿箱内容
+**永远不要删除用户公众号草稿箱中的已有草稿。** 即使用户要求"清理"或"重置"，也不要调用 `draft/delete` API。如果用户提到需要清理旧草稿，告知用户手动在公众号后台操作。此规则不可覆盖。
+
+### ⚠️ 作者名字节限制
+微信 API 的 `author` 字段限制 **8 个字节**。中文 UTF-8 编码每字 3 字节，所以最多 **2 个中文字**。
+
+### ⚠️ API 编码不一致
+微信 `draft/add` API 存在后端负载均衡问题，部分服务器正确解析 Unicode，部分服务器二次转义。使用 `ensure_ascii=False` + `data=` 方式发送，成功率 100%。
+
+---
+
+## 参考文件
+
+- `references/wx-api-encoding-deep-dive.md` — 微信API编码问题深度分析（ensure_ascii=False 原理、根因、验证方法）
+- `references/wechat-api-key-points.md` — 微信API Key配置要点
+
+## 完整脚本文件
+
+本 skill 引用的完整发布脚本位于：
+- `/tmp/batch_publish_styled_v2.py` — 批量发布脚本（排版 + 防乱码）

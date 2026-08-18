@@ -1,0 +1,543 @@
+---
+name: gzh-image-publish
+description: "将本地图片目录批量上传到微信公众号草稿箱（贴图模式）。从草稿箱→新的创作→贴图入口进入，按首页→内容页→尾页顺序逐张上传，自动填写标题和描述，保存为草稿。通过CORS文件服务器+DataTransfer API实现浏览器自动化上传。"
+---
+
+# 公众号贴图发布技能
+
+## 功能概述
+
+将本地图片目录批量上传到微信公众号草稿箱（贴图模式），适合小红书风格图片发布。
+- **正确入口**：草稿箱 → 新的创作 → 贴图（下拉菜单第3项）
+- 按文件名排序自动确定上传顺序：`00_cover` → `01_content` → ... → `0X_end`（首页→内容页→尾页）
+- 自动填写标题（取自文件夹名，选填）和描述（摘要）
+- 第一张图片自动成为封面
+- 保存为草稿，不自动发表
+
+## 触发条件
+
+当用户需要将图片批量上传到公众号时调用：
+- "把xxx目录的图片发到公众号"
+- "上传贴图到公众号草稿"
+- "批量上传公众号图文"
+- "公众号发贴图"
+
+## 前置条件
+
+1. **已登录公众号**：用户需在浏览器中已登录微信公众平台 (mp.weixin.qq.com)
+2. **图片目录**：指定目录下含有图片文件（png/jpg/jpeg/gif/webp），文件名以数字前缀排序
+3. **CORS文件服务器**：需启动支持CORS的本地HTTP服务器（端口18889）
+
+## 图片目录结构要求
+
+```
+指定目录/
+├── 文章标题1/
+│   ├── 00_cover.png      ← 首页（自动成为封面）
+│   ├── 01_content.png    ← 内容页1
+│   ├── 02_content.png    ← 内容页2
+│   ├── 03_content.png    ← 内容页3
+│   └── 04_end.png        ← 尾页
+├── 文章标题2/
+│   ├── 00_cover.png
+│   ├── 01_content.png
+│   ├── 02_content.png
+│   └── 03_end.png
+```
+
+**排序规则**：按文件名数字前缀升序排列（00 → 01 → 02 → ...），确保首页在前、尾页在后。
+**标题来源**：文件夹名即为文章标题（可去除emoji后缀）。
+
+---
+
+## 完整流程
+
+### 第一步：启动CORS文件服务器
+
+将以下脚本保存为 `file_server_cors.py`：
+
+```python
+import http.server, sys
+
+PORT = 18889
+DIRECTORY = sys.argv[1] if len(sys.argv) > 1 else "."
+
+class CORSHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=DIRECTORY, **kwargs)
+
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.end_headers()
+
+httpd = http.server.HTTPServer(("127.0.0.1", PORT), CORSHandler)
+print(f"Serving {DIRECTORY} on port {PORT} with CORS")
+httpd.serve_forever()
+```
+
+运行方式（blocking: false，长驻进程）：
+```bash
+python file_server_cors.py "D:\图片目录路径"
+```
+
+**关键**：必须添加CORS头，否则公众号页面（HTTPS）无法fetch localhost。
+
+### 第二步：扫描图片目录
+
+```powershell
+# 列出目录下所有图片文件（按名称排序）
+Get-ChildItem -Path "D:\图片目录\文章标题" -Include *.png,*.jpg,*.jpeg,*.gif,*.webp -File | Sort-Object Name | Select-Object Name
+```
+
+确认图片列表和排序顺序。文件名应形如 `00_cover.png`, `01_content.png`, ..., `0X_end.png`。
+
+### 第三步：导航到草稿箱并进入贴图编辑页（⚠️ 正确入口）
+
+**⚠️ 关键：必须从草稿箱→新的创作→贴图入口进入，不能直接导航到编辑页URL！**
+
+#### 3.1 导航到公众号首页
+
+```
+导航到 https://mp.weixin.qq.com/
+```
+
+#### 3.2 进入草稿箱
+
+用 `browser_snapshot` 获取页面元素，找到"全部草稿"按钮并点击：
+- 按钮名称：`全部草稿`
+- 点击后会打开新标签页，URL格式：`https://mp.weixin.qq.com/cgi-bin/appmsg?begin=0&count=10&type=77&action=list_card&token=XXXX&lang=zh_CN`
+
+#### 3.3 点击"新的创作"按钮
+
+在草稿箱页面，用 `browser_snapshot` 找到"新的创作"按钮：
+- 按钮名称：`新的创作`
+- 位置：页面右侧
+
+用 `browser_click` 工具点击该按钮（不要用JavaScript click()）。
+
+#### 3.4 选择"贴图"选项
+
+点击"新的创作"后，会展开下拉菜单，包含以下选项：
+1. 文章
+2. 选择已有内容
+3. **贴图** ← 第3个选项，这就是我们要的！
+4. 视频
+5. 播客
+6. 转载
+
+用 `browser_snapshot` 找到"贴图"选项，用 `browser_click` 工具点击。
+
+#### 3.5 确认进入贴图编辑页
+
+点击贴图后会打开新标签页，URL格式：
+```
+https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&createType=8&token=XXXX&lang=zh_CN&timestamp=XXXX
+```
+
+**关键参数**：
+- `type=10`（贴图类型，不同于普通文章的type=77）
+- `createType=8`（贴图创建类型）
+- `isNew=1`（新建）
+
+等待页面加载完成，用 `browser_snapshot` 确认看到以下元素：
+- 图片上传区域："选择或拖拽图片到此处"
+- 标题输入框（placeholder: "请在这里输入标题（选填）"）
+- 描述输入框（placeholder: "选填，不填写则默认抓取正文开头部分文字..."）
+- "保存为草稿"按钮
+
+### 第四步：填写标题和描述
+
+```javascript
+// 在browser_evaluate中执行
+const results = {};
+
+// 1. 设置标题（选填）
+const titleInput = document.getElementById('title');
+if (titleInput) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(titleInput, '文章标题');
+  titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+  titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+  results.title = titleInput.value;
+}
+
+// 2. 设置描述/摘要（选填）
+const descInput = document.getElementById('js_description');
+if (descInput) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(descInput, '描述内容...');
+  descInput.dispatchEvent(new Event('input', { bubbles: true }));
+  descInput.dispatchEvent(new Event('change', { bubbles: true }));
+  results.description = descInput.value.substring(0, 50) + '...';
+}
+
+return JSON.stringify(results);
+```
+
+**注意**：
+- 标题是 `TEXTAREA` 元素（id为 `title`），必须用 `HTMLTextAreaElement.prototype`，否则报 "Illegal invocation" 错误
+- 标题是**选填**的（placeholder含"选填"字样）
+- 描述框id为 `js_description`，用于填写摘要内容
+
+### 第五步：逐张上传图片（核心步骤）
+
+**⚠️ 关键要点**：
+1. **第一张图片**：使用 `.image-selector__add` 区域的 file input（主上传区域）
+2. **后续图片**：使用 `.image-selector__bottom-add` 区域的 file input（底部添加区域，第一张上传后出现）
+3. **不需要展开下拉菜单**：直接通过DataTransfer API设置file input
+4. 每张图片上传后等待4秒，确保上传完成
+
+#### 5.1 上传第一张图片（封面）
+
+```javascript
+// 在browser_evaluate中执行
+const imageUrl = 'http://127.0.0.1:18889/00_cover.png';
+
+async function uploadFirstImage() {
+  try {
+    // 1. 从CORS服务器获取图片
+    const resp = await fetch(imageUrl);
+    if (!resp.ok) return 'fetch failed: ' + resp.status;
+    const blob = await resp.blob();
+    const fileName = imageUrl.split('/').pop();
+    const file = new File([blob], fileName, { type: blob.type });
+    
+    // 2. 找到主上传区域的file input
+    // 主上传区域：.image-selector__add
+    const addArea = document.querySelector('.image-selector__add');
+    if (!addArea) return 'main upload area not found';
+    
+    const fileInput = addArea.querySelector('input[type=file]');
+    if (!fileInput) return 'file input not found in main area';
+    
+    // 3. 通过DataTransfer API设置文件
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // 4. 等待上传完成
+    await new Promise(r => setTimeout(r, 4000));
+    
+    // 5. 验证上传结果
+    const mmbizImgs = document.querySelectorAll('img[src*="mmbiz"]');
+    const cardThumbs = document.querySelectorAll('.card_img_thumb');
+    const bottomAdd = document.querySelector('.image-selector__bottom-add');
+    
+    return JSON.stringify({
+      success: true,
+      fileName: fileName,
+      fileSize: blob.size,
+      mmbizImgCount: mmbizImgs.length,
+      cardThumbCount: cardThumbs.length,
+      bottomAddAppeared: !!bottomAdd
+    });
+  } catch (e) {
+    return 'error: ' + e.message;
+  }
+}
+
+return await uploadFirstImage();
+```
+
+#### 5.2 上传后续图片（内容页和尾页）
+
+```javascript
+// 在browser_evaluate中执行（第2张及之后的图片）
+const imageUrl = 'http://127.0.0.1:18889/01_content.png';
+
+async function uploadSubsequentImage() {
+  try {
+    const resp = await fetch(imageUrl);
+    if (!resp.ok) return 'fetch failed: ' + resp.status;
+    const blob = await resp.blob();
+    const fileName = imageUrl.split('/').pop();
+    const file = new File([blob], fileName, { type: blob.type });
+    
+    // ⚠️ 关键：后续图片使用底部添加区域的file input
+    const bottomAdd = document.querySelector('.image-selector__bottom-add');
+    if (!bottomAdd) return 'bottom add area not found';
+    
+    const fileInput = bottomAdd.querySelector('input[type=file]');
+    if (!fileInput) return 'file input not found in bottom add';
+    
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // 等待上传完成
+    await new Promise(r => setTimeout(r, 4000));
+    
+    // 验证
+    const cardThumbs = document.querySelectorAll('.card_img_thumb');
+    return JSON.stringify({
+      success: true,
+      fileName: fileName,
+      cardThumbCount: cardThumbs.length
+    });
+  } catch (e) {
+    return 'error: ' + e.message;
+  }
+}
+
+return await uploadSubsequentImage();
+```
+
+#### 5.3 批量上传完整脚本（推荐）
+
+```javascript
+// === 在browser_evaluate中一次性执行 ===
+// 前置条件：CORS文件服务器已在端口18889运行，指向图片目录
+
+const images = [
+  'http://127.0.0.1:18889/00_cover.png',
+  'http://127.0.0.1:18889/01_content.png',
+  'http://127.0.0.1:18889/02_content.png',
+  'http://127.0.0.1:18889/03_content.png',
+  'http://127.0.0.1:18889/04_end.png'
+];
+
+// 上传第一张图片（使用主上传区域）
+async function uploadFirstImage(imgUrl) {
+  const resp = await fetch(imgUrl);
+  const blob = await resp.blob();
+  const fileName = imgUrl.split('/').pop();
+  const file = new File([blob], fileName, { type: blob.type });
+  
+  const addArea = document.querySelector('.image-selector__add');
+  const fileInput = addArea.querySelector('input[type=file]');
+  
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  fileInput.files = dt.files;
+  fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+  
+  await new Promise(r => setTimeout(r, 4000));
+  return { fileName, size: blob.size };
+}
+
+// 上传后续图片（使用底部添加区域）
+async function uploadSubsequentImage(imgUrl) {
+  const resp = await fetch(imgUrl);
+  const blob = await resp.blob();
+  const fileName = imgUrl.split('/').pop();
+  const file = new File([blob], fileName, { type: blob.type });
+  
+  // 等待底部添加区域出现
+  let bottomAdd = document.querySelector('.image-selector__bottom-add');
+  if (!bottomAdd) {
+    await new Promise(r => setTimeout(r, 1000));
+    bottomAdd = document.querySelector('.image-selector__bottom-add');
+  }
+  
+  const fileInput = bottomAdd.querySelector('input[type=file]');
+  
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  fileInput.files = dt.files;
+  fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+  
+  await new Promise(r => setTimeout(r, 4000));
+  return { fileName, size: blob.size };
+}
+
+// 逐张上传图片
+const uploadResults = [];
+
+// 第一张：使用主上传区域
+uploadResults.push(await uploadFirstImage(images[0]));
+
+// 后续图片：使用底部添加区域
+for (let i = 1; i < images.length; i++) {
+  uploadResults.push(await uploadSubsequentImage(images[i]));
+}
+
+return JSON.stringify({
+  success: true,
+  imagesUploaded: uploadResults.length,
+  uploadDetails: uploadResults
+});
+```
+
+### 第六步：保存为草稿
+
+**⚠️ 关键：必须用 `browser_click` 工具点击保存按钮，不能用JavaScript click()！**
+
+#### 6.1 获取页面快照
+
+```
+用 browser_snapshot（interactive: true）获取页面元素
+找到"保存为草稿"按钮的 ref
+```
+
+#### 6.2 点击保存按钮
+
+```
+用 browser_click 工具点击保存按钮
+element: "保存为草稿按钮"
+ref: 从快照中获取的 ref 值
+```
+
+**不能用以下方式**（均无效）：
+- `document.getElementById('js_submit').click()` ❌
+- `jQuery trigger('click')` ❌
+- `evaluate中的 saveBtn.click()` ❌
+
+### 第七步：确认保存成功
+
+```javascript
+// 在browser_evaluate中执行
+await new Promise(r => setTimeout(r, 3000));
+
+// 检查URL变化
+const results = {
+  url: location.href,
+  hasAppMsgId: location.href.includes('appmsgid='),
+  appMsgId: (location.href.match(/appmsgid=(\d+)/) || [])[1]
+};
+
+// 检查分页指示器（确认图片数量）
+const previewCenter = document.querySelector('.image-selector__preview-center');
+if (previewCenter) {
+  const text = (previewCenter.textContent || '').trim();
+  // 分页格式如 "1/4" 表示第1页共4页
+  const match = text.match(/(\d+)\/(\d+)/);
+  if (match) {
+    results.currentPage = match[1];
+    results.totalPages = match[2];
+  }
+}
+
+return JSON.stringify(results, null, 2);
+```
+
+**保存成功的标志**：
+- URL从 `type=10&createType=8` 变为 `type=77&appmsgid=XXXX`
+- URL包含 `appmsgid=数字`
+
+### 第八步：刷新验证（可选但推荐）
+
+```
+用 browser_navigate 重新导航到保存后的URL
+用 browser_evaluate 检查：
+- 标题是否保存
+- 分页指示器是否显示正确的图片数量
+```
+
+---
+
+## 实测验证的页面元素（2026-07-18）
+
+### 入口页面元素
+
+| 元素 | 选择器/位置 | 状态 |
+|------|--------|------|
+| 全部草稿按钮 | 首页"全部草稿"button | ✅ 点击后打开草稿箱新标签页 |
+| 草稿箱页面 | URL含 `action=list_card` | ✅ 显示草稿列表 |
+| 新的创作按钮 | 草稿箱页面右侧button | ✅ 点击展开下拉菜单 |
+| 贴图选项 | 下拉菜单第3项 | ✅ 点击后打开贴图编辑页新标签页 |
+
+### 贴图编辑页元素
+
+| 元素 | 选择器 | 状态 |
+|------|--------|------|
+| 编辑页URL | `type=10&createType=8` | ✅ 贴图类型标识 |
+| 标题输入框 | `#title` 或 `textarea#title` | ✅ TEXTAREA元素，placeholder: "请在这里输入标题（选填）" |
+| 描述/摘要框 | `#js_description` | ✅ TEXTAREA元素，placeholder: "选填，不填写则默认抓取正文开头部分文字..." |
+| 主图片上传区域 | `.image-selector__add` | ✅ 包含file input，文本"选择或拖拽图片到此处" |
+| 底部添加区域 | `.image-selector__bottom-add` | ✅ 第一张上传后出现，用于添加后续图片 |
+| 主上传file input | `.image-selector__add input[type=file]` | ✅ multiple:true |
+| 底部添加file input | `.image-selector__bottom-add input[type=file]` | ✅ multiple:true |
+| 图片预览区 | `.image-selector__preview-center-img` | ✅ 显示当前选中图片 |
+| 卡片缩略图 | `.card_img_thumb` | ✅ 每张图片一个缩略图，使用background-image |
+| 分页指示器 | `.image-selector__preview-center` 文本 | ✅ 格式如"1/4"表示第1页共4页 |
+| 保存草稿按钮 | `SPAN#js_submit` 或 button文本"保存为草稿" | ✅ 必须用browser_click工具点击 |
+| 发表按钮 | button文本"发表" | ✅ 有效 |
+| 预览按钮 | button文本"预览" | ✅ 有效 |
+
+### 上传选项（主上传区域和底部添加区域都有）
+
+| 选项 | 说明 |
+|------|------|
+| 本地上传 | 通过file input上传本地图片 |
+| 从图片库选择 | 从微信图片库选择 |
+| 微信扫码上传 | 手机扫码上传 |
+| AI 配图 | AI生成图片 |
+| 文字海报 | 生成文字海报 |
+
+---
+
+## ⚠️ 关键区别：贴图 vs 普通文章
+
+| 方面 | 贴图模式 | 普通文章模式 |
+|------|---------|------------|
+| **入口** | 草稿箱→新的创作→贴图 | 草稿箱→新的创作→文章 |
+| **URL参数** | `type=10&createType=8` | `type=77` |
+| **编辑器** | 无ProseMirror，用image-selector | 有ProseMirror正文编辑器 |
+| **图片上传** | 主上传区域file input | 工具栏下拉菜单 |
+| **标题** | 选填 | 必填 |
+| **内容** | 描述框 `#js_description`（摘要） | ProseMirror正文编辑器 |
+| **保存后URL** | 变为 `type=77&appmsgid=XXXX` | 保持 `type=77&appmsgid=XXXX` |
+
+---
+
+## 重要注意事项
+
+1. **正确入口**：必须从草稿箱→新的创作→贴图进入，不能直接导航到编辑页URL
+2. **CORS必须**：文件服务器必须添加 `Access-Control-Allow-Origin: *` 头，否则HTTPS页面无法fetch localhost
+3. **两个上传区域**：第一张图片用 `.image-selector__add`，后续图片用 `.image-selector__bottom-add`
+4. **不需要展开下拉菜单**：直接通过DataTransfer API设置file input，不需要点击展开任何菜单
+5. **标题类型**：标题是 `TEXTAREA`（id为 `title`），必须用 `HTMLTextAreaElement.prototype`，否则报 "Illegal invocation"
+6. **保存按钮**：必须用 `browser_click` 工具点击，不能用JavaScript click()或jQuery trigger
+7. **草稿保存**：点击"保存为草稿"后URL变化（含 `appmsgid=XXXX`），type从10变为77
+8. **token有效期**：token有时效性，过期需从首页重新获取
+9. **上传间隔**：每张图片上传后等待4秒，确保上传完成再上传下一张
+10. **上传顺序**：按文件名排序（00→01→02→...），确保首页在前、尾页在后
+11. **图片上传到微信CDN**：上传后图片URL变为 `mmbiz.qpic.cn` 域名
+12. **分页指示器**：上传后可通过 `.image-selector__preview-center` 的文本确认图片数量（如"1/4"）
+
+---
+
+## 错误处理
+
+| 错误情况 | 处理方式 |
+|---------|---------|
+| 页面跳转到登录页 | 提醒用户登录公众号后重试 |
+| "Failed to fetch"错误 | 检查CORS文件服务器是否运行（端口18889） |
+| 找不到"新的创作"按钮 | 确认已进入草稿箱页面（URL含 `action=list_card`） |
+| 找不到"贴图"选项 | 确认已点击"新的创作"展开下拉菜单 |
+| 主上传区域file input未找到 | 确认页面已完全加载，用 `.image-selector__add input[type=file]` |
+| 底部添加区域未出现 | 第一张图片可能未上传成功，检查mmbiz图片是否存在 |
+| 标题填写失败 | 确认用HTMLTextAreaElement.prototype（不是HTMLInputElement） |
+| 保存按钮点击失败 | 必须用browser_click工具，不能用JavaScript click() |
+| 保存后URL无appmsgid | 检查网络请求，确认保存API被调用 |
+| token过期 | 重新导航到首页获取新token |
+| 上传后图片数量不对 | 检查分页指示器 `.image-selector__preview-center` 的文本 |
+
+---
+
+## 清理步骤
+
+1. 终止CORS文件服务器进程
+2. 解锁浏览器（`browser_unlock`）
+3. 向用户报告结果
+
+## 输出报告格式
+
+```
+公众号贴图发布完成
+- 标题：文章标题
+- 描述：描述内容摘要
+- 图片数量：N张（首页1 + 内容页M + 尾页1）
+- 上传成功：N张
+- 封面：已自动设置（首页图）
+- 草稿ID：appmsgid=XXXXXXX
+- 查看草稿：访问 https://mp.weixin.qq.com/ 草稿箱
+```
