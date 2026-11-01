@@ -40,7 +40,9 @@
     doc:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
     compress: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
     fortune:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M17.66 6.34l-2.83 2.83"/><path d="M20 12h-4"/><path d="M17.66 17.66l-2.83-2.83"/><path d="M12 20v-4"/><path d="M6.34 17.66l2.83-2.83"/><path d="M4 12h4"/><path d="M6.34 6.34l2.83 2.83"/></svg>',
-    book:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+    book:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    code:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    gauge:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0-9-9"/><path d="M3 12h2"/><path d="M12 3v2"/><path d="M12 12l4.5-4.5"/></svg>'
   };
 
   /** 工具清单：{id, cat, name, desc, icon, link} */
@@ -54,6 +56,8 @@
     { id: 'doc-manager', cat: 'doc',      name: '文档管理器',        desc: '结构化设计文档，缩进层级 + 树形预览 + 撤销导出', icon: 'doc', link: 'src/tools/docx/doc-manager.html' },
     { id: 'img-compress',cat: 'image',    name: '批量图片压缩',     desc: '多图上传统一裁切缩放，批量导出压缩包',     icon: 'compress', link: 'src/tools/compress/compress.html' },
     { id: 'skills-doc',  cat: 'doc',      name: 'Skills 技能文档',  desc: 'AI 写作工作流与多平台发布技能完整文档',     icon: 'book',     link: 'src/tools/skills/skill.html' },
+    { id: 'java-chapters', cat: 'doc',    name: 'Java 面试资料',    desc: '18 章拆解 JVM 内存、GC、并发、分布式与架构方法论', icon: 'code',  link: 'src/tools/notes/java-interview-chapters/index.html' },
+    { id: 'jvm-case-lab', cat: 'doc',     name: 'JVM 调优案例实验室', desc: '三个线上故障复盘：OOMKilled、Metaspace 泄漏与晋升失败', icon: 'gauge', link: 'src/tools/notes/java-jvm-tuning-case-lab/java-jvm-tuning-case-lab.html' },
     { id: 'fortune',     cat: 'fun',      name: '上上签',           desc: '随机抽签小工具，给你一个好彩头',           icon: 'fortune',  link: 'src/tools/fun/fortune.html' }
   ];
 
