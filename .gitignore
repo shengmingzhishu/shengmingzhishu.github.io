@@ -11,3 +11,6 @@ Thumbs.db
 
 # 日志
 *.log
+
+# IDE 生成的 HTML 分享压缩包
+.trae-html-share-packages/
