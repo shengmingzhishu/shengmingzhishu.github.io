@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JVM 运行机制与内存原理 · 一次讲透</title>
+  <meta name="description" content="Java 进程运行原理系统讲解：内存分布与比例、Metaspace、-Xmx/-Xms 参数体系、启动参数设置、堆外内存与 OOMKilled、RSS 与容器内存规划、Linux 排查命令、Kubernetes 机制、NMT 工具手册，以及 22 题面试自测清单与专业答案。">
+  <link rel="stylesheet" href="./_shared/css/guide.css">
+</head>
+<body>
+  <article class="page">
+    <header class="report-intro">
+      <div class="report-intro__surface">
+        <div class="report-intro__content">
+          <h1>JVM 运行机制与内存原理 · 一次讲透</h1>
+          <p class="report-intro__summary">这份文档不讲「八股」，只回答一个问题：<strong>一个 Java 进程从启动到被 OOMKill，中间到底发生了什么</strong>。全部内容围绕一条主线展开——内存被谁用掉、谁在管、管不住的时候谁先死、怎么用命令把证据挖出来。适合初中级工程师系统补齐内存这块认知，也适合作为高级工程师面试前的自查手册。</p>
+          <div class="report-intro__meta">
+            <span><b>章节数</b> 17 章</span>
+            <span><b>自测题</b> 22 题（三档）</span>
+            <span><b>可执行实验</b> 线程风暴程序</span>
+            <span><b>工具链</b> jcmd · jstat · jmap · NMT · top · free</span>
+            <span><b>版本基线</b> JDK 17 / 21 / 25 · G1 / ZGC</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="page__content">
+      <div class="layout">
+        <nav class="toc" aria-label="目录">
+          <p class="toc__title">目录</p>
+          <ol>
+            <li><a href="#ch-00"><span class="toc__num">00</span>这份文档怎么用</a></li>
+            <li><a href="#ch-01"><span class="toc__num">01</span>JVM 是什么：结构与运行链路</a></li>
+            <li><a href="#ch-02"><span class="toc__num">02</span>内存分布：线程私有与线程共享</a></li>
+            <li><a href="#ch-03"><span class="toc__num">03</span>内存比例：到底该怎么分</a></li>
+            <li><a href="#ch-04"><span class="toc__num">04</span>Metaspace 到底是什么</a></li>
+            <li><a href="#ch-05"><span class="toc__num">05</span>堆的内部结构与分配机制</a></li>
+            <li><a href="#ch-06"><span class="toc__num">06</span>参数体系：-Xmx / -Xms / -Xss 全解</a></li>
+            <li><a href="#ch-07"><span class="toc__num">07</span>启动参数怎么设：三种环境</a></li>
+            <li><a href="#ch-08"><span class="toc__num">08</span>实战：线程风暴实验</a></li>
+            <li><a href="#ch-09"><span class="toc__num">09</span>外部 OOM vs 内部 OOM</a></li>
+            <li><a href="#ch-10"><span class="toc__num">10</span>内存、堆内存与 RSS 的关系</a></li>
+            <li><a href="#ch-11"><span class="toc__num">11</span>线程数与内存的关系</a></li>
+            <li><a href="#ch-12"><span class="toc__num">12</span>Linux 排查命令与 PID</a></li>
+            <li><a href="#ch-13"><span class="toc__num">13</span>Kubernetes 是什么</a></li>
+            <li><a href="#ch-14"><span class="toc__num">14</span>容器内存规划：堆内 + 堆外</a></li>
+            <li><a href="#ch-15"><span class="toc__num">15</span>NMT：原生内存追踪完全手册</a></li>
+            <li><a href="#ch-16"><span class="toc__num">16</span>自测清单：22 题与标准答案</a></li>
+          </ol>
+        </nav>
+
+        <main>
+          <!-- ==================== 00 ==================== -->
+          <section class="chapter" id="ch-00">
+            <span class="chapter__kicker">CHAPTER 00</span>
+            <h2>这份文档怎么用</h2>
+            <p class="lede">很多人学 JVM 的方式是背名词：堆分新生代老年代、Metaspace 替代永久代、-Xmx 设最大堆。说的时候都对，但一旦线上告警「容器被 OOMKilled」，就完全不知道从哪下手。这份文档的目标是给你一条完整的因果链。</p>
+
+            <h3>先建立三个认知层次</h3>
+            <div class="mnem">
+              <div class="mnem__card">
+                <div class="mnem__t">层次一 · 结构</div>
+                <div class="mnem__v">内存被分成哪几块</div>
+                <div class="mnem__d">每块的归属（线程私有 / 共享）、存什么、谁来回收、满了报什么错。这一层是骨架。</div>
+              </div>
+              <div class="mnem__card">
+                <div class="mnem__t">层次二 · 参数</div>
+                <div class="mnem__v">每个参数控制哪一块</div>
+                <div class="mnem__d">-Xmx 只管堆、-Xss 只管线程栈、堆外参数在别处。参数记错，等于调了个寂寞。</div>
+              </div>
+              <div class="mnem__card">
+                <div class="mnem__t">层次三 · 机制</div>
+                <div class="mnem__v">出问题时谁先死</div>
+                <div class="mnem__d">堆涨满是 Java OOM，容器涨满是 OOMKilled；两者根因不同、证据不同、处置不同。</div>
+              </div>
+            </div>
+
+            <h3>一条主线贯穿全文</h3>
+            <div class="script">
+              <p class="script__label">主线</p>
+              <p>Java 进程启动 → JVM 划分内存区域 → 业务代码不断分配对象 → 对象在堆里出生、晋升、老死 → 同时还有堆外的线程栈、直接内存、Metaspace 在增长 → 某一块先撞到天花板 → JVM 抛 <code>OutOfMemoryError</code>，或者整个进程超过容器 limit 被内核杀掉（<code>OOMKilled</code>）→ 你需要用命令区分是哪一种，然后定位到具体区域。</p>
+            </div>
+
+            <div class="figure-box">
+              <div class="mermaid-box">
+                <pre class="mermaid">
+flowchart TB
+  subgraph P["Java 进程"]
+    JVM["JVM 运行时"]
+    subgraph H1["线程私有区"]
+      PC["程序计数器"]
+      VS["虚拟机栈"]
+      NS["本地方法栈"]
+    end
+    subgraph H2["线程共享区 · JVM 管理"]
+      HEAP["堆 Heap<br/>-Xmx"]
+      META["Metaspace<br/>-XX:MaxMetaspaceSize"]
+    end
+    subgraph H3["线程共享区 · JVM 之外"]
+      OFF["直接内存 / 线程栈 / CodeCache / GC 结构"]
+    end
+    JVM --> H1
+    JVM --> H2
+    JVM --> H3
+  end
+  CGROUP["容器 cgroup limit"] -->|内核强制约束| P
+  H3 -->|超出 limit| OOMK["进程被 kill<br/>OOMKilled"]
+  H2 -->|区域自身满| OOME["OutOfMemoryError"]
+                </pre>
+              </div>
+              <figcaption><strong>图 0-1</strong>　一个 Java 进程在容器里的完整内存全景：JVM 管理的区域满了抛异常，JVM 管不到的区域（主要是线程栈和直接内存）满了，容器超限就整个被杀。</figcaption>
+            </div>
+
+            <div class="callout callout--info">
+              <p class="callout__label">阅读约定</p>
+              <p>文中所有命令默认在容器内执行（Debian/Ubuntu 基础镜像自带 <code>jcmd</code>/<code>jstat</code>）；若是精简镜像（alpine / distroless / <code>jre</code> slim），需要额外挂载 JDK 工具或使用 <code>jattach</code>。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 01 ==================== -->
+          <section class="chapter" id="ch-01">
+            <span class="chapter__kicker">CHAPTER 01</span>
+            <h2>JVM 是什么：结构与运行链路</h2>
+            <p class="lede">先纠正一个常见误解：JVM 不只是「一个 Java 虚拟机」，它是一套规范加上至少一个实现。面试时如果说「JVM 就是 HotSpot」，会被认为概念混淆。</p>
+
+            <h3>JVM 是规范，HotSpot 是实现</h3>
+            <ul class="flist">
+              <li><span class="flist__t">JVM 规范（JVM Specification）</span><span class="flist__d">Oracle 定义的语言无关虚拟机行为标准：<code>.class</code> 文件格式、字节码指令集、运行时数据区布局、类加载与链接规则、线程模型。HotSpot、OpenJ9、GraalVM、Azul Zing 都实现了这份规范。</span></li>
+              <li><span class="flist__t">HotSpot（OpenJDK 默认实现）</span><span class="flist__d">目前的事实标准。面试默认讨论的就是它。</span></li>
+              <li><span class="flist__t">GraalVM</span><span class="flist__d">含 Graal 编译器（更快启动、更好的峰值性能）与 LLVM 语言的提前编译能力。</span></li>
+              <li><span class="flist__t">OpenJ9 / Zing</span><span class="flist__d">低内存占用场景常见，容器冷启动比 HotSpot 更快。</span></li>
+            </ul>
+
+            <h3>四大子系统</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>子系统</th><th>职责</th><th>出问题时</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">类加载子系统</th>
+                    <td data-label="职责">读取 <code>.class</code> → 校验 → 解析 → 初始化；双亲委派模型决定类从哪个 ClassLoader 加载</td>
+                    <td data-label="出问题时"><code>ClassNotFoundException</code>、<code>NoClassDefFoundError</code>、Metaspace 泄漏</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">运行时数据区</th>
+                    <td data-label="职责">内存分区：堆、方法区、虚拟机栈、本地方法栈、程序计数器</td>
+                    <td data-label="出问题时"><code>OutOfMemoryError</code>、<code>StackOverflowError</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">执行引擎</th>
+                    <td data-label="职责">解释器 + JIT 编译器（C1/C2）+ 垃圾回收器</td>
+                    <td data-label="出问题时">GC 频繁、长尾毛刺、CPU 飙高</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">本地接口（JNI）</th>
+                    <td data-label="职责">加载本地动态库，<code>System.loadLibrary</code> 走这里</td>
+                    <td data-label="出问题时">native 方法段错误、<code>unable to create native thread</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>从 <code>main</code> 方法到字节码执行</h3>
+            <ol class="timeline">
+              <li>
+                <span class="timeline__time">STEP 1</span>
+                <span class="timeline__t">启动与初始化</span>
+                <span class="timeline__d">JVM 进程启动，读取 <code>JAVA_HOME</code>、解析命令行参数、创建类加载器。此时 JVM 还没有加载任何业务类。</span>
+              </li>
+              <li>
+                <span class="timeline__time">STEP 2</span>
+                <span class="timeline__t">内存区域就位</span>
+                <span class="timeline__d">按 <code>-Xms</code> 预分配堆、创建 Metaspace、CodeCache、线程栈等结构。这一步决定了后续的内存上限。</span>
+              </li>
+              <li>
+                <span class="timeline__time">STEP 3</span>
+                <span class="timeline__t">加载 <code>main</code> 类</span>
+                <span class="timeline__d">AppClassLoader 按双亲委派加载 <code>com.example.Main</code>，链接（验证→准备→解析）后初始化静态字段与静态代码块。</span>
+              </li>
+              <li>
+                <span class="timeline__time">STEP 4</span>
+                <span class="timeline__t">创建主线程</span>
+                <span class="timeline__d">为 main 线程分配 <code>Thread</code> 对象、虚拟机栈、程序计数器，栈上压入 <code>main()</code> 的栈帧。</span>
+              </li>
+              <li>
+                <span class="timeline__time">STEP 5</span>
+                <span class="timeline__t">解释执行 + JIT 编译</span>
+                <span class="timeline__d">字节码先由解释器执行，热点方法（默认调用 2000 次或循环回边 15000 次）被 C1/C2 编译成本地代码，后续直接执行本地代码。</span>
+              </li>
+              <li>
+                <span class="timeline__time">STEP 6</span>
+                <span class="timeline__t">GC 介入</span>
+                <span class="timeline__d">分配速率超过回收能力时触发 GC。G1 优先在新生代回收，必要时才做 Mixed GC 回收老年代。</span>
+              </li>
+            </ol>
+
+            <div class="callout callout--warn">
+              <p class="callout__label">常见误区</p>
+              <p>「Java 是解释执行所以慢」——只对了一半。现代 JVM 默认开启分层编译（Tiered Compilation），启动阶段用解释器 + C1 快速编译保证启动速度，热点方法交给 C2 做激进优化。真正纯解释执行只在 <code>-Xint</code> 或早期版本出现。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 02 ==================== -->
+          <section class="chapter" id="ch-02">
+            <span class="chapter__kicker">CHAPTER 02</span>
+            <h2>内存分布：线程私有与线程共享</h2>
+            <p class="lede">这是整份文档最该背下来的表。所有内存问题，追根溯源都是「这张表里的某一行被填满了」。</p>
+
+            <h3>运行时数据区全景表</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr>
+                    <th>区域</th><th>归属</th><th>存什么</th><th>回收方式</th><th>满了报什么错</th><th>相关参数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">程序计数器<br/>PC Register</th>
+                    <td data-label="归属">线程私有</td>
+                    <td data-label="存什么">当前线程正在执行的字节码行号</td>
+                    <td data-label="回收方式">不回收（随线程销毁）</td>
+                    <td data-label="满了报什么错">不会 OOM</td>
+                    <td data-label="相关参数">无</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">虚拟机栈<br/>VM Stack</th>
+                    <td data-label="归属">线程私有</td>
+                    <td data-label="存什么">栈帧：局部变量表、操作数栈、动态链接、方法返回地址</td>
+                    <td data-label="回收方式">方法返回即出栈，不需 GC</td>
+                    <td data-label="满了报什么错"><code>StackOverflowError</code>（栈深超限）<br/><code>OutOfMemoryError: unable to create new native thread</code>（线程数过多）</td>
+                    <td data-label="相关参数"><code>-Xss</code> / <code>-XX:ThreadStackSize</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">本地方法栈</th>
+                    <td data-label="归属">线程私有</td>
+                    <td data-label="存什么">Native 方法（JNI）的调用状态</td>
+                    <td data-label="回收方式">随线程销毁</td>
+                    <td data-label="满了报什么错">同虚拟机栈</td>
+                    <td data-label="相关参数">与 <code>-Xss</code> 共享</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">堆<br/>Heap</th>
+                    <td data-label="归属">线程共享</td>
+                    <td data-label="存什么">几乎所有 Java 对象实例、数组</td>
+                    <td data-label="回收方式"><strong>GC 主战场</strong></td>
+                    <td data-label="满了报什么错"><code>OutOfMemoryError: Java heap space</code></td>
+                    <td data-label="相关参数"><code>-Xms</code> <code>-Xmx</code> <code>-Xmn</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Metaspace<br/>（方法区实现）</th>
+                    <td data-label="归属">线程共享</td>
+                    <td data-label="存什么">类元数据、运行时常量池、字符串常量池（8u 前）、方法字节码</td>
+                    <td data-label="回收方式">类加载器卸载时释放（<strong>不走常规 GC</strong>）</td>
+                    <td data-label="满了报什么错"><code>OutOfMemoryError: Metaspace</code></td>
+                    <td data-label="相关参数"><code>-XX:MaxMetaspaceSize</code> <code>-XX:MetaspaceSize</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">直接内存<br/>Direct Memory</th>
+                    <td data-label="归属">线程共享</td>
+                    <td data-label="存什么"><code>ByteBuffer.allocateDirect()</code>、NIO 缓冲区</td>
+                    <td data-label="回收方式">由 <code>Cleaner</code> 延迟回收，受 <code>MaxDirectMemorySize</code> 约束</td>
+                    <td data-label="满了报什么错"><code>OutOfMemoryError: Direct buffer memory</code></td>
+                    <td data-label="相关参数"><code>-XX:MaxDirectMemorySize</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Code Cache</th>
+                    <td data-label="归属">线程共享</td>
+                    <td data-label="存什么">JIT 编译后的本地代码</td>
+                    <td data-label="回收方式">CodeCache 满了自动 flush（除非禁用）</td>
+                    <td data-label="满了报什么错">内部错误或 JIT 编译失败</td>
+                    <td data-label="相关参数"><code>-XX:ReservedCodeCacheSize</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>「只有堆和 Metaspace 有 GC」这句话的准确含义</h3>
+            <p>这句话是对面试标准答案的精炼，但表述有点粗糙。严谨的说法是：</p>
+            <ul>
+              <li><strong>GC 只管理堆里的对象</strong>。JVM 的垃圾收集器（Serial / Parallel / G1 / ZGC）只扫描堆，判断哪些对象不可达并回收。</li>
+              <li><strong>Metaspace 没有专门的 GC</strong>，但它的回收由「类加载器卸载」触发。当一个 ClassLoader 加载的所有类都不再被引用、且该 ClassLoader 本身也不可达时，它对应的 Metaspace 内存被释放。这个过程由 JVM 在特定时机（如 Full GC、类卸载检查）执行。</li>
+              <li><strong>栈不需要 GC</strong>，因为栈帧的生命周期是确定的：方法进入时压栈，方法返回时出栈。栈上的局部变量表指向堆对象的引用，堆对象被回收后，这些引用自然变成 null，栈帧本身也随之销毁。这是「确定性的生命周期」，不需要也不能用 tracing GC 管理。</li>
+            </ul>
+
+            <div class="decision">
+              <p class="decision__q">为什么栈不能用 GC？</p>
+              <p class="decision__a">GC 的前提是「无法静态判断一个对象是否还活着」，需要从 GC Roots 做可达性分析。栈上的对象是<strong>确定性的</strong>——方法返回必然销毁。用 GC 扫栈既没意义也会带来巨大开销。JVM 的取舍是：栈上只放引用和基本类型（原始类型直接存值，不指向堆），栈帧结构由编译器静态确定，可以像函数调用一样精确管理。</p>
+            </div>
+
+            <h3>GC Roots 到底有哪些</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead><tr><th>GC Root 类型</th><th>说明</th><th>典型泄漏场景</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">JVM 内部引用</th><td data-label="说明">系统类加载器、线程对象持有的 <code>ThreadLocal</code>、JVM 内部结构</td><td data-label="典型泄漏场景"><code>ThreadLocal</code> 未 <code>remove()</code> 导致业务对象被 Thread 引用</td></tr>
+                  <tr><th scope="row">静态字段</th><td data-label="说明">类的 <code>static</code> 字段</td><td data-label="典型泄漏场景">静态 Map 无限增长</td></tr>
+                  <tr><th scope="row">JNI 引用</th><td data-label="说明">JNI <code>Global</code> 引用</td><td data-label="典型泄漏场景">native 层未释放</td></tr>
+                  <tr><th scope="row">Java 线程</th><td data-label="说明">活着的 <code>Thread</code> 对象引用的栈帧</td><td data-label="典型泄漏场景">线程池里的任务持有大对象</td></tr>
+                  <tr><th scope="row">同步锁</th><td data-label="说明">持有 <code>Monitor</code> 的对象</td><td data-label="典型泄漏场景">锁持有者线程挂死</td></tr>
+                  <tr><th scope="row">本地方法栈</th><td data-label="说明">native 方法中 JNI 栈引用</td><td data-label="典型泄漏场景">较少见</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>排查内存泄漏时，<strong>这六类 Roots 就是排查清单</strong>：dump 出来之后逐个排除，就能定位到是谁没放手。</p>
+          </section>
+
+          <!-- ==================== 03 ==================== -->
+          <section class="chapter" id="ch-03">
+            <span class="chapter__kicker">CHAPTER 03</span>
+            <h2>内存比例：到底该怎么分</h2>
+            <p class="lede">「每个分布都是什么比例」这个问题，没有标准答案——因为它取决于容器 limit、业务类型和 GC 选型。但有可用的经验基线和计算方法，这比背一个固定百分比有用得多。</p>
+
+            <h3>先看默认值：JVM 自己会怎么猜</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>区域</th><th>未显式配置时的默认行为</th><th>版本差异 / 坑</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">堆最大容量</th>
+                    <td data-label="默认行为"><code>-Xmx</code> 默认 = 物理内存的 <strong>1/4</strong></td>
+                    <td data-label="版本差异 / 坑">JDK 8u191+ 与 JDK 10+ 引入了容器感知（<code>UseContainerSupport</code>），会读 cgroup limit 重新计算；<strong>但 cgroup v2 的嵌套层级需取所有父级 limit 的最小值</strong>，多层限制环境仍可能算错</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">堆初始容量</th>
+                    <td data-label="默认行为"><code>-Xms</code> 默认约物理内存的 <strong>1/64</strong></td>
+                    <td data-label="版本差异 / 坑">与最大堆差距过大时，堆会反复扩缩容，影响延迟稳定性</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Metaspace</th>
+                    <td data-label="默认行为"><strong>无上限</strong>（受物理内存限制），初始高水位约 21MB</td>
+                    <td data-label="版本差异 / 坑">这是最危险的默认值。泄漏时不会自己停，会一路吃到把容器撑爆，最后表现为 <code>OOMKilled</code> 而不是 <code>OutOfMemoryError</code>，丢失排查线索</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">直接内存</th>
+                    <td data-label="默认行为">JDK 8u 默认 = <code>-Xmx</code>；JDK 9+ 默认 = <code>-Xmx</code> + 堆外余量</td>
+                    <td data-label="版本差异 / 坑">等于把堆外的安全边际也吃掉了，容易在容器里直接超限</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">线程栈</th>
+                    <td data-label="默认行为"><code>-Xss</code> 默认 1MB（64 位平台）</td>
+                    <td data-label="版本差异 / 坑">默认线程数上限约 300~500 就能吃掉 300~500MB，与 <code>-Xmx</code> 完全独立</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Code Cache</th>
+                    <td data-label="默认行为">默认 240MB（分层编译）</td>
+                    <td data-label="版本差异 / 坑">大量动态代理 / Lambda 会撑大 CodeCache</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">重点提醒</p>
+              <p><strong>Metaspace 默认为无上限</strong>是容器时代最常见的坑之一。很多团队的 OOMKilled 事故，根因是 Metaspace 泄漏而非堆溢出——因为 JVM 从不主动说「我 Metaspace 满了」，它只会一直要内存，最后被内核杀掉，日志里什么异常栈都没有。</p>
+            </div>
+
+            <h3>经验比例：以 16GB 容器为例</h3>
+            <div class="figure-box">
+              <div class="chart-box" id="chart-memory-split"></div>
+              <figcaption><strong>图 3-1</strong>　同一个 16GB 容器，显式设置 <code>-Xmx8g</code> 与依赖默认推断的内存分布对比。默认推断把 13GB 全给了堆，堆外几乎没有缓冲，任意一点堆外增长都会导致 OOMKilled。</figcaption>
+            </div>
+
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>区域</th><th>推荐比例</th><th>16GB 容器建议值</th><th>依据</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Java 堆</th>
+                    <td data-label="推荐比例"><strong>50% ~ 60%</strong></td>
+                    <td data-label="16GB 容器建议值"><code>-Xmx8g -Xms8g</code></td>
+                    <td data-label="依据">堆是 GC 能管控的部分，给足才有 GC 腾挪空间；堆占比过小会导致 GC 过于频繁</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">直接内存</th>
+                    <td data-label="推荐比例">5% ~ 10%</td>
+                    <td data-label="16GB 容器建议值"><code>-XX:MaxDirectMemorySize=1g</code></td>
+                    <td data-label="依据">Netty / NIO / 堆外缓存按业务量估；必须显式设上限</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">线程栈</th>
+                    <td data-label="推荐比例">3% ~ 5%</td>
+                    <td data-label="16GB 容器建议值"><code>-Xss1m</code> + 线程数 ≤ 500 → 0.5GB</td>
+                    <td data-label="依据"><code>线程数 × -Xss</code>。Netty 场景通常 <code>-Xss512k</code> 即可</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Metaspace</th>
+                    <td data-label="推荐比例">5% 左右</td>
+                    <td data-label="16GB 容器建议值"><code>-XX:MaxMetaspaceSize=512m</code></td>
+                    <td data-label="依据">常规 Spring Boot 应用 150~300MB 足够；设上限是为了让泄漏「早暴露」</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Code Cache</th>
+                    <td data-label="推荐比例">2% ~ 3%</td>
+                    <td data-label="16GB 容器建议值"><code>-XX:ReservedCodeCacheSize=256m</code></td>
+                    <td data-label="依据">默认 240MB 通常够用，显式设置避免动态编译撑爆</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">GC 自身结构</th>
+                    <td data-label="推荐比例">2% ~ 5%</td>
+                    <td data-label="16GB 容器建议值">预留 ~500MB</td>
+                    <td data-label="依据">G1 的 Remembered Set、Humongous 分配器等；并发标记线程栈也在这</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">安全缓冲</th>
+                    <td data-label="推荐比例"><strong>≥ 10%</strong></td>
+                    <td data-label="16GB 容器建议值">≥ 1.6GB</td>
+                    <td data-label="依据">malloc arena、glibc 碎片、JVM 内部未统计结构、瞬时峰值</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>堆内比例：新生代 vs 老年代</h3>
+            <p>堆内部的比例由两个参数控制：<code>-XX:NewRatio</code>（新生代 : 老年代）和 <code>-XX:SurvivorRatio</code>（Eden : S0 : S1）。</p>
+            <div class="figure-box">
+              <div class="chart-box" id="chart-generations"></div>
+              <figcaption><strong>图 3-2</strong>　G1 默认的堆分代比例：新生代占 70%（Eden 60% + Survivor 10%），老年代 30%。G1 会动态调整新生代大小以满足暂停时间目标，这张图只是初始划分。</figcaption>
+            </div>
+            <ul>
+              <li><code>-XX:NewRatio=2</code>（默认）→ 新生代 : 老年代 = 1 : 2，即新生代占堆的 1/3，老年代 2/3。</li>
+              <li>短生命周期对象为主的服务（Web、RPC、网关）：<code>-XX:NewRatio=1</code>（各半）能显著降低老年代压力。</li>
+              <li>长生命周期对象为主（缓存、大对象）：保持默认或调大老年代比例。</li>
+              <li>现代 G1 / ZGC 下，<code>NewRatio</code> 的影响被削弱——G1 会自适应调整，ZGC 基本不需要分代参数。</li>
+            </ul>
+
+            <div class="callout callout--warn">
+              <p class="callout__label">别踩这个坑</p>
+              <p>很多团队为了「让老年代大一点」设 <code>-Xmn</code>。但 G1 下 <code>-Xmn</code> 会<strong>禁用新生代自适应</strong>，G1 无法再根据回收压力调整新生代大小，反而常常导致更频繁的 Full GC。G1 下建议用 <code>-XX:NewRatio</code> 而非 <code>-Xmn</code>，或者干脆交给默认值。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 04 ==================== -->
+          <section class="chapter" id="ch-04">
+            <span class="chapter__kicker">CHAPTER 04</span>
+            <h2>Metaspace 到底是什么</h2>
+            <p class="lede">Metaspace 这个名字容易误导人——它不是「元数据空间」的堆外版本，它仍然<strong>在堆外</strong>，但由 JVM 自己管理。理解这一点，后面的排查逻辑就顺了。</p>
+
+            <h3>从永久代到 Metaspace</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>维度</th><th>永久代（PermGen，JDK 7 及以前）</th><th>Metaspace（JDK 8 起）</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">位置</th><td data-label="位置">堆的一部分</td><td data-label="位置"><strong>本地内存（堆外）</strong></td></tr>
+                  <tr><th scope="row">大小控制</th><td data-label="大小控制"><code>-XX:PermSize</code> / <code>-XX:MaxPermSize</code></td><td data-label="大小控制"><code>-XX:MetaspaceSize</code>（初始高水位）/ <code>-XX:MaxMetaspaceSize</code>（上限，默认无限制）</td></tr>
+                  <tr><th scope="row">字符串常量池</th><td data-label="字符串常量池">在永久代</td><td data-label="字符串常量池">在堆中（<code>-XX:+StringTable</code> 相关）</td></tr>
+                  <tr><th scope="row">典型异常</th><td data-label="典型异常"><code>PermGen space</code> OOM</td><td data-label="典型异常"><code>Metaspace</code> OOM</td></tr>
+                  <tr><th scope="row">OOM 时的现象</th><td data-label="OOM 时的现象">堆和永久代互相挤占，容易误判</td><td data-label="OOM 时的现象">堆正常，Metaspace 单独爆掉，定位清晰</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Metaspace 里到底装了什么</h3>
+            <ul class="flist">
+              <li><span class="flist__t">类的元数据（Class Metadata）</span><span class="flist__d">类的结构信息：字段表、方法表、方法字节码、注解、常量池引用、继承关系、接口列表。这是主体。</span></li>
+              <li><span class="flist__t">运行时常量池（Runtime Constant Pool）</span><span class="flist__d">类的编译期常量池在运行时的表示，包含字面量与符号引用。</span></li>
+              <li><span class="flist__t">方法字节码与 JIT 相关元数据</span><span class="flist__d">方法的 Code 属性、异常表、局部变量表（LocalVariableTable）——后者是调试信息，很占空间。</span></li>
+              <li><span class="flist__t">MethodHandle / Lambda 相关</span><span class="flist__d">每个 lambda 表达式首次执行时会生成一个隐藏类（hidden class），其元数据进入 Metaspace。</span></li>
+              <li><span class="flist__t">压缩类空间（Compressed Class Space）</span><span class="flist__d">存放类对象（<code>java.lang.Class</code> 实例）的元数据部分，与普通 Metaspace 分开管理，默认上限 1GB。</span></li>
+            </ul>
+
+            <div class="figure-box">
+              <div class="mermaid-box">
+                <pre class="mermaid">
+flowchart LR
+  subgraph MS["Metaspace 空间"]
+    MC["Metaspace Chunk<br/>-XX:MaxMetaspaceSize"]
+    CC["Compressed Class Space<br/>-XX:CompressedClassSpaceSize<br/>默认上限 1GB"]
+  end
+  MC --> C1["类元数据"]
+  MC --> C2["方法字节码"]
+  MC --> C3["运行时常量池"]
+  MC --> C4["Lambda 隐藏类"]
+  CC --> C5["java.lang.Class 对象的<br/>镜像元数据"]
+                </pre>
+              </div>
+              <figcaption><strong>图 4-1</strong>　Metaspace 内部实际上分成两块独立管理的空间：普通 Metaspace 和 Compressed Class Space。后者有自己的 1GB 默认上限，是容易遗漏的排查盲点。</figcaption>
+            </div>
+
+            <h3>为什么 Metaspace 不做常规 GC</h3>
+            <p>因为类加载和卸载的频率极低（通常只有几百上千个类），而 tracing GC 的成本与之不成比例。Metaspace 采用的是「<strong>按 Chunk 分配、类加载器卸载时整块释放</strong>」的策略：</p>
+            <ol>
+              <li>类加载时从 Metaspace 分配一个 Chunk（默认 21MB 的 metaspace chunk，或按需扩展）。</li>
+              <li>ClassLoader 加载的所有类都不再可达、且 ClassLoader 本身也不可达时，该 ClassLoader 的所有 Metaspace 内存被释放。</li>
+              <li>释放的触发时机是 Full GC 或 Metaspace 压力触发的检查。</li>
+            </ol>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">这就是「类加载器泄漏」在容器里最致命的原因</p>
+              <p>如果 ClassLoader 一直被某个静态引用链吊住（比如动态代理持有、ThreadLocal 持有、JDBC 驱动注册表持有），它加载的所有类的元数据就永远无法释放。表现出来是：<strong>堆看起来正常（只涨了 5%），但 Metaspace 一路涨到容器上限，进程被 OOMKilled</strong>。这类问题不设 <code>-XX:MaxMetaspaceSize</code> 就完全无法察觉。</p>
+            </div>
+
+            <h3>Metaspace 泄漏的四个常见来源</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>来源</th><th>机制</th><th>识别特征</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">动态代理 / CGLIB</th>
+                    <td data-label="机制">每次 <code>new Proxy()</code> 都生成一个新的 Class + 一个新的 ClassLoader</td>
+                    <td data-label="识别特征"><code>LoadedClassCount</code> 单调递增；<code>jcmd GC.class_histogram</code> 里代理类数量暴涨</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">频繁热部署 / DevTools 重启</th>
+                    <td data-label="机制">每次重启新建 WebAppClassLoader，旧的不卸载</td>
+                    <td data-label="识别特征">类数量阶梯式增长，伴随 <code>Metaspace</code> 阶梯式上涨</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Lambda 表达式过多</th>
+                    <td data-label="机制">每个 lambda 首次执行生成隐藏类</td>
+                    <td data-label="识别特征">类名形如 <code>Foo$$Lambda$123/0x0000...</code> 数量大</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">JDBC 驱动 / 插件动态注册</th>
+                    <td data-label="机制">驱动被注册进全局 DriverManager，持有定义它的 ClassLoader</td>
+                    <td data-label="识别特征"><code>jcmd VM.classloaders</code> 看到大量 ClassLoader 且无对应 class</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Metaspace 排查命令</h3>
+            <div class="script">
+              <p class="script__label">排查步骤</p>
+              <p><strong>1）看趋势</strong>　<code>jcmd &lt;pid&gt; GC.heap_info</code> 里的 Metaspace used，或监控 <code>jvm_memory_bytes_used{area="nonheap"}</code>。</p>
+              <p><strong>2）看类数量（最灵敏的指标）</strong></p>
+              <pre><code>jcmd &lt;pid&gt; VM.classloader_stats        # 各 ClassLoader 加载的类数量
+jcmd &lt;pid&gt; VM.classloaders             # ClassLoader 实例列表 + 是否存活
+jcmd &lt;pid&gt; GC.class_histogram | head -30</code></pre>
+              <p><strong>3）看谁在加载</strong>　<code>jcmd &lt;pid&gt; VM.class_hierarchy &lt;classname&gt;</code> 可以追溯类的加载链。</p>
+              <p><strong>4）算「应该释放但没释放」的量</strong>　对比 <code>GC.class_histogram</code> 里的类总数与 <code>LoadedClassCount</code>，或用 <code>jcmd &lt;pid&gt; VM.native_memory summary</code>（NMT，见第 15 章）看 Class 段占用。</p>
+            </div>
+
+            <div class="callout callout--info">
+              <p class="callout__label">经验值</p>
+              <p>普通 Spring Boot 应用稳定态 Metaspace 约 100~250MB。如果 1 小时内从 200MB 涨到 800MB，一定有泄漏。给 <code>-XX:MaxMetaspaceSize=256m</code> 后，泄漏会在几分钟内以 <code>OutOfMemoryError: Metaspace</code> 的形式暴露——<strong>这比被 OOMKill 好得多，因为有堆栈、有 dump。</strong></p>
+            </div>
+          </section>
+
+          <!-- ==================== 05 ==================== -->
+          <section class="chapter" id="ch-05">
+            <span class="chapter__kicker">CHAPTER 05</span>
+            <h2>堆的内部结构与分配机制</h2>
+            <p class="lede">「堆是在内存中如何分配的」——这个问题要拆成三层回答：空间怎么划分、对象怎么落到具体区域、什么时候被回收。</p>
+
+            <h3>第一层：空间怎么划分</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>分代</th><th>包含区域</th><th>默认占比</th><th>特点</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">新生代<br/>Young Gen</th>
+                    <td data-label="包含区域">Eden（ Eden Space ）<br/>Survivor S0 / S1</td>
+                    <td data-label="默认占比">约 1/3（<code>NewRatio=2</code>）</td>
+                    <td data-label="特点">绝大多数对象「朝生夕死」，Minor GC 频繁但每次回收代价极低（只扫幸存对象）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">老年代<br/>Old Gen</th>
+                    <td data-label="包含区域">Tenured Space</td>
+                    <td data-label="默认占比">约 2/3</td>
+                    <td data-label="特点">存活下来的对象进入这里；回收代价高（G1 用 Mixed GC / ZGC 用并发标记）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">大对象区<br/>Humongous</th>
+                    <td data-label="包含区域">G1 专有：≥ Region 一半的对象直接分配在连续 Region</td>
+                    <td data-label="默认占比">不固定</td>
+                    <td data-label="特点">Huge 数组、大 byte[] 会走这里；容易触发并发失败，是 Full GC 的常见诱因</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="tcap"><strong>Humongous 阈值怎么算</strong>：G1 把堆切成 Region（默认 1MB ~ 32MB，由 <code>-XX:G1HeapRegionSize</code> 决定，取 1 的幂且不超过堆的 1/2048）。<strong>对象大小 ≥ Region 大小的一半</strong> 就是 Humongous 对象。例如 Region = 8MB，则 ≥ 4MB 的对象算 Humongous。</p>
+
+            <h3>第二层：对象怎么落到具体区域</h3>
+            <div class="figure-box">
+              <div class="mermaid-box">
+                <pre class="mermaid">
+flowchart TB
+  NEW["new 一个对象"] --> Q{"对象大小 ≥ Region/2 ?"}
+  Q -->|是| HUM["分配到 Humongous Region<br/>（连续 Region）"]
+  Q -->|否| TLB{"TLAB 有空间 ?"}
+  TLB -->|有| T["在当前线程的 TLAB 里<br/>指针碰撞 / 空闲指针"]
+  TLB -->|没有| EDEN["分配到共享 Eden<br/>（CAS 竞争）"]
+  T --> EDEN
+  EDEN --> GC{"Minor GC 触发"}
+  GC -->|"年龄 ≤ 阈值<br/>且 Survivor 放得下"| SURV["复制到 Survivor S0/S1<br/>年龄 +1"]
+  GC -->|"年龄 ≥ MaxTenuringThreshold<br/>或 Survivor 放不下"| OLD["晋升老年代"]
+  GC -->|"对象过大"| OLD
+                </pre>
+              </div>
+              <figcaption><strong>图 5-1</strong>　对象分配的完整路径。TLAB（Thread Local Allocation Buffer）是每个线程在 Eden 里的私有分配区，避免了 CAS 竞争，是分配吞吐的关键。</figcaption>
+            </div>
+
+            <h4>TLAB：为什么需要它</h4>
+            <p>多线程并发分配对象时，如果直接操作 Eden 的指针会产生 CAS 竞争，吞吐急剧下降。JVM 的解法是：每个线程预先从 Eden 划走一块私有区域（TLAB），分配时只需移动线程私有指针，完全无锁。TLAB 用满了再申请新的一块。TLAB 剩余空间不足分配的对象，会被分配在<strong>堆外</strong>（Eden 之外），这是「明明堆还有空间却 OOM」的少见原因之一。</p>
+
+            <h4>晋升老年代的四条路径</h4>
+            <ol>
+              <li><strong>年龄达标</strong>：对象在 Survivor 区每熬过一次 Minor GC 年龄 +1，达到 <code>-XX:MaxTenuringThreshold</code>（默认 15，G1 下默认 15）后晋升。</li>
+              <li><strong>Survivor 放不下</strong>：大对象或同年龄对象过多时，直接进老年代。</li>
+              <li><strong>大对象</strong>：超过 <code>-XX:PretenureSizeThreshold</code>（Serial/Parnew 有效，G1 下不适用）直接进老年代。</li>
+              <li><strong>动态年龄判定</strong>：Survivor 中同龄对象总和超过一半空间时，该年龄及以上的对象全部晋升（防止 Survivor 被撑爆）。</li>
+            </ol>
+
+            <h3>第三层：什么时候被回收</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>GC 类型</th><th>触发时机</th><th>回收范围</th><th>典型耗时（G1，8GB 堆）</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Minor GC / Young GC</th>
+                    <td data-label="触发时机">Eden 空间不足</td>
+                    <td data-label="回收范围">新生代 + 部分晋升</td>
+                    <td data-label="典型耗时">10 ~ 100 ms</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Mixed GC</th>
+                    <td data-label="触发时机">G1 老年代占用超过 <code>InitiatingHeapOccupancyPercent</code>（默认 45%）且回收空间足够</td>
+                    <td data-label="回收范围">新生代 + 一部分老年代</td>
+                    <td data-label="典型耗时">50 ~ 500 ms</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Concurrent Mark Cycle</th>
+                    <td data-label="触发时机">Mixed GC 的并发标记阶段，与业务线程并发</td>
+                    <td data-label="回收范围">只做标记，不回收</td>
+                    <td data-label="典型耗时">与堆大小相关，可能秒级</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Full GC</th>
+                    <td data-label="触发时机">晋升失败、Humongous 分配失败、元数据不足、<code>System.gc()</code></td>
+                    <td data-label="回收范围">整堆（+ Metaspace）</td>
+                    <td data-label="典型耗时"><strong>秒级到分钟级</strong>，是延迟毛刺的头号元凶</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">晋升失败的真正含义</p>
+              <p><strong>晋升失败（Promotion Failure）</strong>不是「对象太大」，而是：Minor GC 结束时，Survivor 区放不下需要晋升的对象，或并发标记阶段结束后老年代没有足够空间容纳存活对象。这会触发 Full GC。<br/>后果链条是：<strong>晋升失败 → Full GC → 回收后仍放不下 → 堆重构（Heap Retrashing）→ CPU 飙升 + 停顿数秒 → 请求堆积 → 雪崩</strong>。这是「明明堆内存够却频繁 Full GC」的典型解释。</p>
+            </div>
+
+            <h3>第四层：一个普通 Java 对象占多少字节</h3>
+            <div class="figure-box">
+              <div class="chart-box" id="chart-object-size"></div>
+              <figcaption><strong>图 5-2</strong>　对象大小 = 对象头 + 字段数据 + 对齐填充。开启压缩指针（<code>-XX:+UseCompressedOops</code>，默认开启）后，引用占 4 字节而非 8 字节。填充是为了让对象大小是 8 字节的整数倍。</figcaption>
+            </div>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>组成</th><th>64 位 JVM（压缩指针开启）</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">对象头（Mark Word）</th><td data-label="大小">12 字节</td><td data-label="说明">64 位下 Mark Word 8 字节 + 类型指针 4 字节（压缩指针）</td></tr>
+                  <tr><th scope="row">对象头（无压缩指针）</th><td data-label="大小">16 字节</td><td data-label="说明">Mark Word 8 + 类型指针 8</td></tr>
+                  <tr><th scope="row">字段数据</th><td data-label="大小">按字段累加</td><td data-label="说明"><code>boolean/byte</code> 1 字节，<code>char/short</code> 2 字节，<code>int/float</code> 4 字节，<code>long/double</code> 8 字节</td></tr>
+                  <tr><th scope="row">对齐填充</th><td data-label="大小">0 ~ 7 字节</td><td data-label="说明">补齐到 8 字节整数倍（<code>-XX:ObjectAlignmentInBytes</code>，默认 8）</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="flist">
+              <li><span class="flist__t">new Object()</span><span class="flist__d">12 + 0 + 4（填充） = <strong>16 字节</strong>。空对象不是 0 字节。</span></li>
+              <li><span class="flist__t">带 1 个 int 字段的对象</span><span class="flist__d">12 + 4 = 16 字节，正好对齐，无需填充。</span></li>
+              <li><span class="flist__t">带 1 个 long 字段的对象</span><span class="flist__d">12 + 8 = 20 字节 → 填充 4 字节 → <strong>24 字节</strong>。这就是「为什么要考虑对齐填充」。</span></li>
+              <li><span class="flist__t">数组对象</span><span class="flist__d">额外有 16 字节的对象头（记录 length），即 12 + 4 + 16 = 32 字节 + 元素区。</span></li>
+              <li><span class="flist__t">Integer 缓存</span><span class="flist__d"><code>Integer.valueOf()</code> 对 -128~127 有缓存，这些对象不占新堆空间。这是老代码里省内存的常见技巧。</span></li>
+            </ul>
+
+            <div class="callout callout--warn">
+              <p class="callout__label">实际影响</p>
+              <p>100 万个 24 字节的对象 ≈ 24MB 堆；同样的数据如果用 <code>HashMap&lt;Integer, Integer&gt;</code> 存储，每个 Entry 是 32 字节 + Integer 对象 16 字节 + 数组槽位 4 字节，实际占用是裸数据的 3~4 倍。这就是「为什么集合框架这么吃内存」的答案。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 06 ==================== -->
+          <section class="chapter" id="ch-06">
+            <span class="chapter__kicker">CHAPTER 06</span>
+            <h2>参数体系：-Xmx / -Xms / -Xss 全解</h2>
+            <p class="lede">JVM 参数有几百个，但真正需要你在生产环境亲手调过的不超过二十个。这章把它们按「控制哪个区域」归类，面试和实战都用得上。</p>
+
+            <h3>堆相关</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>参数</th><th>含义</th><th>默认值</th><th>怎么用</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row"><code>-Xms</code></th>
+                    <td data-label="含义">初始堆大小（<strong>committed</strong>）</td>
+                    <td data-label="默认值">约物理内存 1/64</td>
+                    <td data-label="怎么用">与 <code>-Xmx</code> 设成一样，避免运行期反复扩缩容</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-Xmx</code></th>
+                    <td data-label="含义">最大堆大小（<strong>上限</strong>）</td>
+                    <td data-label="默认值">物理内存 1/4（容器感知后会重算）</td>
+                    <td data-label="怎么用"><strong>必须显式设置</strong>。容器里这是最重要的一个参数</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-Xmn</code></th>
+                    <td data-label="含义">新生代大小</td>
+                    <td data-label="默认值">随 <code>NewRatio</code> 推导</td>
+                    <td data-label="怎么用"><strong>G1 下慎用</strong>，会禁用新生代自适应</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-XX:NewRatio</code></th>
+                    <td data-label="含义">新生代 : 老年代</td>
+                    <td data-label="默认值">2（新生代占 1/3）</td>
+                    <td data-label="怎么用">短生命周期对象为主时设 1</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-XX:SurvivorRatio</code></th>
+                    <td data-label="含义">Eden : S0 : S1</td>
+                    <td data-label="默认值">8（8:1:1）</td>
+                    <td data-label="怎么用">晋升过快时调大 Survivor（如 10）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-XX:MaxTenuringThreshold</code></th>
+                    <td data-label="含义">对象最大晋升年龄</td>
+                    <td data-label="默认值">15</td>
+                    <td data-label="怎么用">大对象多时可调到 6~8，配合 Survivor 调大</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--info">
+              <p class="callout__label">为什么建议 -Xms = -Xmx</p>
+              <p>因为 <code>-Xms</code> 是「操作系统已经为进程预留并映射的物理页」，<code>-Xmx</code> 只是「JVM 允许增长的上限」。如果 <code>-Xms</code> 小于 <code>-Xmx</code>：</p>
+              <ul>
+                <li>堆需要扩容时，JVM 必须向操作系统<strong>申请新内存并逐页 touch</strong>，这个过程是 STW 的，会造成延迟毛刺；</li>
+                <li>堆缩容时，JVM 归还内存给操作系统，导致 RSS 下降，下一次扩容又要重新申请，<strong>RSS 曲线会出现锯齿</strong>；</li>
+                <li>在容器里，频繁申请/释放会让 <code>oom_score</code> 变化，可能导致<strong>还没到 limit 就被提前 OOMKill</strong>。</li>
+              </ul>
+              <p>所以生产环境一律 <code>-Xms = -Xmx</code>。唯一例外是某些需要「快速失败」的场景——设置很小的 <code>-Xmx</code> 让 OOM 尽早暴露，属于特殊用途。</p>
+            </div>
+
+            <h3>Metaspace 相关</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>参数</th><th>含义</th><th>默认值</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row"><code>-XX:MetaspaceSize</code></th><td data-label="含义">Metaspace 首次触发 Full GC 的高水位（不是初始大小）</td><td data-label="默认值">约 21MB</td></tr>
+                  <tr><th scope="row"><code>-XX:MaxMetaspaceSize</code></th><td data-label="含义">Metaspace 上限</td><td data-label="默认值"><strong>无限制</strong>（危险）</td></tr>
+                  <tr><th scope="row"><code>-XX:CompressedClassSpaceSize</code></th><td data-label="含义">压缩类空间上限</td><td data-label="默认值">1GB</td></tr>
+                  <tr><th scope="row"><code>-XX:MinMetaspaceFreeRatio</code> / <code>MaxMetaspaceFreeRatio</code></th><td data-label="含义">GC 后 Metaspace 空闲比的高/低水位，决定是否触发类卸载</td><td data-label="默认值">40 / 70</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>线程栈相关</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>参数</th><th>含义</th><th>默认值</th><th>怎么用</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row"><code>-Xss</code> / <code>-XX:ThreadStackSize</code></th><td data-label="含义">单线程栈大小</td><td data-label="默认值">1MB（64 位）</td><td data-label="怎么用">Netty / 高并发 IO 线程用 512k；需要深递归的业务用 1m~2m</td></tr>
+                  <tr><th scope="row"><code>-XX:MaxDirectMemorySize</code></th><td data-label="含义">直接内存上限</td><td data-label="默认值">≈ <code>-Xmx</code>（JDK 9+ 略有不同）</td><td data-label="怎么用">容器里必须显式设，否则堆涨满时直接内存还有一倍空间</td></tr>
+                  <tr><th scope="row"><code>-XX:ReservedCodeCacheSize</code></th><td data-label="含义">Code Cache 大小</td><td data-label="默认值">240MB</td><td data-label="怎么用">一般不用改</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>GC 相关（按收集器）</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>收集器</th><th>启用参数</th><th>适用场景</th><th>关键调优参数</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">G1</th>
+                    <td data-label="启用参数"><code>-XX:+UseG1GC</code>（JDK 9+ 默认）</td>
+                    <td data-label="适用场景">通用默认选择。堆 4GB ~ 64GB，延迟要求中等，业务延迟敏感</td>
+                    <td data-label="关键调优参数"><code>-XX:MaxGCPauseMillis</code>（默认 200ms）、<code>-XX:G1HeapRegionSize</code>、<code>-XX:InitiatingHeapOccupancyPercent</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">ZGC</th>
+                    <td data-label="启用参数"><code>-XX:+UseZGC</code></<br/>（JDK 17 生产可用，21+ 为主推）</td>
+                    <td data-label="适用场景">大堆（&gt; 100GB）、超低延迟要求（亚毫秒级停顿）、内存占用高的容器</td>
+                    <td data-label="关键调优参数"><code>-XX:MaxGCPauseMillis</code>（默认 10ms）、<code>-XX:SoftMaxHeapSize</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Parallel GC</th>
+                    <td data-label="启用参数"><code>-XX:+UseParallelGC</code></td>
+                    <td data-label="适用场景">批处理、离线任务、吞吐优先、延迟不敏感</td>
+                    <td data-label="关键调优参数"><code>-XX:ParallelGCThreads</code>、<code>-XX:MaxGCPauseMillis</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Shenandoah</th>
+                    <td data-label="启用参数"><code>-XX:+UseShenandoahGC</code></td>
+                    <td data-label="适用场景">超低延迟，停顿时长与堆大小无关</td>
+                    <td data-label="关键调优参数">较少调</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">CMS</th>
+                    <td data-label="启用参数"><code>-XX:+UseConcMarkSweepGC</code></td>
+                    <td data-label="适用场景"><strong>已废弃</strong></td>
+                    <td data-label="关键调优参数">JDK 14 弃用，<strong>JDK 17 已移除</strong>，无法启用</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">CMS 为什么被移除</p>
+              <p>三个原因叠加：</p>
+              <ol>
+                <li><strong>碎片化</strong>：CMS 是标记-清除算法，不整理内存。并发标记期间新对象不断分配，可能触发「promotion failed」，被迫做 Full GC（而且是单线程压缩式 Full GC，停顿极长）。</li>
+                <li><strong>浮动垃圾</strong>：CMS 只能清除「已标记」的对象，标记阶段刚结束进入并发清扫的对象会一直堆积到下次 GC，内存占用会先涨后降。</li>
+                <li><strong>维护成本高</strong>：CMS 有大量调优参数（<code>CMSInitiatingOccupancyFraction</code>、<code>CMSFullGCsBeforeCompaction</code>…），且与 G1/ZGC 的实现差异大，代码里散落的 CMS 参数无法平滑迁移到新收集器。</li>
+              </ol>
+              <p>OpenJDK 团队在 JDK 8 时代就开始用「<strong>CMS + Parallel Old 的组合作为 G1 的对照基准</strong>」，G1 的目标就是全面取代它。JDK 9 弃用、JDK 14 正式弃用、JDK 17 移除，是这条路径的终点。</p>
+            </div>
+
+            <h3>诊断与应急类参数</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>参数</th><th>作用</th><th>什么时候用</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row"><code>-XX:+HeapDumpOnOutOfMemoryError</code></th><td data-label="作用">OOM 时自动 dump 堆快照</td><td data-label="什么时候用"><strong>生产必开。</strong>没有 dump 的 OOM 事故等于没有事故</td></tr>
+                  <tr><th scope="row"><code>-XX:HeapDumpPath</code></th><td data-label="作用">dump 输出路径</td><td data-label="什么时候用">指向挂载的持久卷；容器本地盘会随 Pod 一起消失</td></tr>
+                  <tr><th scope="row"><code>-XX:+ExitOnOutOfMemoryError</code></th><td data-label="作用">OOM 后立即退出进程</td><td data-label="什么时候用">无状态服务：让 K8s 重建 Pod，比半死不活地服务好</td></tr>
+                  <tr><th scope="row"><code>-XX:+PrintFlagsFinal</code></th><td data-label="作用">打印所有参数的最终生效值</td><td data-label="什么时候用"><strong>排查参数是否被覆盖</strong>的终极手段</td></tr>
+                  <tr><th scope="row"><code>-XX:NativeMemoryTracking</code></th><td data-label="作用">启用 NMT</td><td data-label="什么时候用">排查堆外内存（第 15 章）</td></tr>
+                  <tr><th scope="row"><code>-XX:MaxRAMPercentage</code></th><td data-label="作用">堆最大容量占容器 limit 的百分比</td><td data-label="什么时候用">容器场景可用，但显式 <code>-Xmx</code> 更清晰</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="script">
+              <p class="script__label">查参数最终生效值</p>
+              <p>参数被多层环境变量覆盖时，最常见的问题是「我明明在 Dockerfile 里设了 <code>-Xmx4g</code>，但实际生效的不是」。用这条命令一锤定音：</p>
+              <pre><code>java -XX:+PrintFlagsFinal -version 2&gt;/dev/null | grep -E 'MaxHeapSize|InitialHeapSize|ThreadStackSize|MaxMetaspaceSize'</code></pre>
+              <p>或者在运行中的进程上查（JDK 9+ 不需要 attach）：</p>
+              <pre><code>jcmd &lt;pid&gt; VM.flags
+# 输出里 -XX:MaxHeapSize=4294967296 表示 -Xmx4g 已生效</code></pre>
+            </div>
+          </section>
+
+          <!-- ==================== 07 ==================== -->
+          <section class="chapter" id="ch-07">
+            <span class="chapter__kicker">CHAPTER 07</span>
+            <h2>启动参数怎么设：三种环境</h2>
+            <p class="lede">「参数设在哪里」比「参数设什么」更容易出错。Spring Boot 尤其坑：<code>-jar</code> 后面的参数<strong>不是</strong> JVM 参数，而是传给 <code>main</code> 的应用参数。</p>
+
+            <h3>三种环境的设置方式</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>环境</th><th>写法</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">直接运行</th>
+                    <td data-label="写法"><code>java -Xmx2g -Xms2g -jar app.jar</code></td>
+                    <td data-label="说明">JVM 参数必须在 <code>-jar</code> <strong>之前</strong></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Shell 脚本</th>
+                    <td data-label="写法"><code>export JAVA_OPTS="-Xmx2g -Xms2g -XX:+HeapDumpOnOutOfMemoryError"<br/>java $JAVA_OPTS -jar app.jar</code></td>
+                    <td data-label="说明">注意必须放在 <code>-jar</code> 前，否则会被当作应用参数</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Spring Boot 可执行 jar</th>
+                    <td data-label="写法">用 <code>JAVA_TOOL_OPTIONS</code> 环境变量</td>
+                    <td data-label="说明"><code>-jar</code> 位置无法插入参数；<code>JAVA_TOOL_OPTIONS</code> 会被 JVM 自动读取，是唯一可靠的注入点</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Docker</th>
+                    <td data-label="写法"><code>ENV JAVA_OPTS="-Xmx2g"<br/>ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]</code></td>
+                    <td data-label="说明">必须用 <code>sh -c</code> 做变量展开；exec 形式（<code>["java",...]</code>）无法展开变量</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Kubernetes</th>
+                    <td data-label="写法"><code>env:</code> 里设 <code>JAVA_TOOL_OPTIONS</code>，或 <code>args:</code> 直接写 JVM 参数</td>
+                    <td data-label="说明">见第 13、14 章的 Deployment 示例</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">最经典的两个坑</p>
+              <p><strong>坑 1：<code>-jar</code> 位置错误</strong><br/>
+              <code>java -jar app.jar -Xmx2g</code> → <code>-Xmx2g</code> 成了 <code>main(String[] args)</code> 的第一个参数，<strong>JVM 完全没收到堆参数</strong>。Spring Boot 会把它当作配置项忽略掉，一切「看起来正常」，但堆用的是默认值。</p>
+              <p><strong>坑 2：exec 形式无法展开变量</strong><br/>
+              <code>ENTRYPOINT ["java", "-jar", "app.jar"]</code> + <code>ENV JAVA_OPTS=...</code> → 环境变量根本没用上。必须改成 <code>["sh","-c","java $JAVA_OPTS -jar app.jar"]</code>。</p>
+            </div>
+
+            <h3>Spring Boot 3 下的推荐写法</h3>
+            <div class="script">
+              <p class="script__label">Deployment 片段</p>
+              <pre><code>env:
+  - name: JAVA_TOOL_OPTIONS
+    value: &gt;-
+      -Xms2g -Xmx2g
+      -XX:+UseG1GC
+      -XX:MaxGCPauseMillis=200
+      -XX:MaxMetaspaceSize=512m
+      -XX:MaxDirectMemorySize=512m
+      -Xss512k
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:HeapDumpPath=/data/dump
+      -XX:+ExitOnOutOfMemoryError
+      -XX:NativeMemoryTracking=summary</code></pre>
+              <p><code>JAVA_TOOL_OPTIONS</code> 会被 JVM 打印一行「Picked up JAVA_TOOL_OPTIONS: ...」到 stderr——这不是错误，但会污染日志，可以接受。</p>
+            </div>
+
+            <div class="callout callout--info">
+              <p class="callout__label">为什么不推荐 JVM 参数写在 application.yml</p>
+              <p>Spring Boot 的 <code>spring.aot.*</code>、Actuator、某些 APM agent 都可能需要 JVM 层面的协作；而更关键的是，<strong>JVM 参数必须在 JVM 启动时生效，Spring Boot 的配置在 JVM 启动之后才加载</strong>。把 <code>-Xmx</code> 放进 yml 是无效的——这是很多人「配了但不生效」的原因。</p>
+            </div>
+
+            <h3>「能不能直接用默认值」</h3>
+            <div class="decision">
+              <p class="decision__q">生产环境能不能不设这些参数，全用默认值？</p>
+              <p class="decision__a"><strong>不能，而且是很危险的做法。</strong>理由有四：</p>
+              <ol>
+                <li><strong>默认值是按「物理机」设计的，不是按「容器」设计的。</strong>JDK 8 时代 JVM 看到的是宿主机内存（可能 64GB），算出的堆上限远超容器 limit——这是 OOMKilled 的头号来源。虽然 JDK 10+ 有容器感知，但 cgroup v2 嵌套场景仍会算错。</li>
+                <li><strong>Metaspace 默认无上限。</strong>泄漏时不会自己报错，一路吃到容器上限被 OOMKill，连异常栈都没有。</li>
+                <li><strong>直接内存默认 ≈ -Xmx。</strong>等于把堆外安全边际完全放弃，堆涨满时直接内存还有同等空间。</li>
+                <li><strong>默认的 <code>-Xms</code> 远小于 <code>-Xmx</code>。</strong>堆反复扩缩容带来延迟毛刺和 RSS 锯齿。</li>
+              </ol>
+              <p>结论：<strong>至少必须显式设置 <code>-Xmx</code>、<code>-Xms</code>、<code>-XX:MaxMetaspaceSize</code>、<code>-XX:MaxDirectMemorySize</code> 这四项</strong>，其余按业务调。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 08 ==================== -->
+          <section class="chapter" id="ch-08">
+            <span class="chapter__kicker">CHAPTER 08</span>
+            <h2>实战：线程风暴实验</h2>
+            <p class="lede">抽象讲了这么多，不如自己跑一遍。这章给一个可执行的程序，用它亲眼看到「线程数 → 内存 → OOM 类型」的因果链。</p>
+
+            <h3>实验原理</h3>
+            <div class="figure-box">
+              <div class="mermaid-box">
+                <pre class="mermaid">
+flowchart LR
+  A["main 循环"] -->|"每轮 new Thread"| B["创建 Java Thread 对象<br/>占用堆内存"]
+  B --> C["分配线程栈<br/>-Xss 指定大小<br/>受 OS 限制"]
+  C --> D["线程内 new Payload<br/>64KB 占用堆"]
+  D --> E{"还能继续吗 ?"}
+  E -->|能| A
+  E -->|"堆满"| F1["OutOfMemoryError<br/>Java heap space"]
+  E -->|"Metaspace 满"| F2["OutOfMemoryError<br/>Metaspace"]
+  E -->|"线程数超 OS 上限"| F3["unable to create<br/>new native thread"]
+                </pre>
+              </div>
+              <figcaption><strong>图 8-1</strong>　线程风暴的三条终点。实验的价值在于：<strong>通过调整参数，你可以决定先撞到哪一条</strong>——这正是生产上规划内存配额的意义。</figcaption>
+            </div>
+
+            <h3>完整程序</h3>
+            <p>源码见 <code>examples/ThreadStorm.java</code>，核心逻辑如下：</p>
+            <div class="script">
+              <p class="script__label">ThreadStorm.java · 核心片段</p>
+              <pre><code>/** 每个线程持有的业务对象，用来消耗堆内存。 */
+static final class Payload {
+    final byte[] buffer = new byte[64 * 1024];  // 64 KB
+    final String name;
+    Payload(String name) { this.name = name; }
+}
+
+public static void main(String[] args) throws Exception {
+    int maxThreads = args.length &gt; 0 ? Integer.parseInt(args[0]) : 5000;
+
+    for (int i = 0; i &lt; maxThreads; i++) {
+        Thread t = new Thread(() -&gt; {
+            for (int k = 0; k &lt; 10; k++) {
+                new Payload("p-" + i);   // 持续消耗堆
+            }
+            while (true) {                // 保持存活，栈空间才真正占用
+                Thread.sleep(60_000);
+            }
+        }, "worker-" + i);
+        t.setDaemon(true);
+        t.start();
+    }
+}</code></pre>
+            </div>
+
+            <h3>编译与运行</h3>
+            <div class="script">
+              <p class="script__label">本地实验</p>
+              <pre><code># 1) 编译
+javac ThreadStorm.java
+
+# 2) 小堆 + 小栈：观察哪条线先到
+java -Xmx64m -Xms64m -Xss512k \
+     -XX:MaxMetaspaceSize=64m \
+     -XX:+HeapDumpOnOutOfMemoryError \
+     ThreadStorm 5000 10
+
+# 3) 大堆 + 小栈：堆撑得住，线程栈吃内存
+java -Xmx2g -Xms2g -Xss1m \
+     -XX:MaxMetaspaceSize=128m \
+     ThreadStorm 3000 1</code></pre>
+              <p class="script__label">容器实验（更接近生产）</p>
+              <pre><code>docker run --rm -it \
+  --memory=512m --memory-swap=512m \
+  --pids-limit=2000 \
+  -v "$PWD:/app" -w /app eclipse-temurin:21-jdk \
+  java -Xmx256m -Xms256m -Xss512k \
+       -XX:MaxMetaspaceSize=128m \
+       ThreadStorm 5000 10</code></pre>
+            </div>
+
+            <h3>观测：一边跑一边看</h3>
+            <div class="script">
+              <p class="script__label">观测命令</p>
+              <pre><code># 终端 1：看进程 RSS 和线程数
+top -H -p &lt;pid&gt;              # -H 显示每个线程
+watch -n 1 "cat /proc/&lt;pid&gt;/status | grep -E 'VmRSS|Threads'"
+
+# 终端 2：看 JVM 内部
+jcmd &lt;pid&gt; GC.heap_info
+jcmd &lt;pid&gt; Thread.print | grep -c 'java.lang.Thread.State'   # 线程总数
+jstat -gcutil &lt;pid&gt; 1000      # 每秒打印 GC 情况
+
+# 终端 3：看线程栈占了多少
+jcmd &lt;pid&gt; VM.native_memory summary   # 需要 NMT
+
+# 容器场景
+kubectl describe pod &lt;pod&gt; | grep -A5 'Limits'   # 看 limit
+kubectl top pod &lt;pod&gt;                            # 看实际用量</code></pre>
+            </div>
+
+            <h3>实验结论表</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>参数组合</th><th>先撞到的墙</th><th>典型异常</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row"><code>-Xmx64m -Xss512k</code></th>
+                    <td data-label="先撞到的墙">堆</td>
+                    <td data-label="典型异常"><code>OutOfMemoryError: Java heap space</code></td>
+                    <td data-label="说明">堆太小，线程还没建多少就 OOM</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-Xmx2g -Xss1m</code></th>
+                    <td data-label="先撞到的墙">线程数 / 容器 limit</td>
+                    <td data-label="典型异常"><code>unable to create new native thread</code> 或被 OOMKill</td>
+                    <td data-label="说明">堆很宽裕，但 3000 线程 × 1MB 栈 = 3GB 堆外，直接撑爆容器</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-Xmx64m -XX:MaxMetaspaceSize=32m</code></th>
+                    <td data-label="先撞到的墙">Metaspace</td>
+                    <td data-label="典型异常"><code>OutOfMemoryError: Metaspace</code></td>
+                    <td data-label="说明">堆还剩很多，Metaspace 先爆——演示这个能建立「两种 OOM 是独立的」认知</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>-Xmx2g</code>，容器 <code>--memory=512m</code></th>
+                    <td data-label="先撞到的墙">容器 limit</td>
+                    <td data-label="典型异常">进程被 kill，<code>exit code 137</code>，<strong>无 Java 异常栈</strong></td>
+                    <td data-label="说明">堆上限 2GB 超过容器 512MB，JVM 还没意识到就死了</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">安全提醒</p>
+              <p>这个程序会快速耗尽本机资源。<strong>务必在容器 / 虚拟机 / CI 沙箱中运行</strong>，不要在宿主机上直接跑。执行前用 <code>ulimit -u</code> 限制一下最大线程数更安全。</p>
+            </div>
+
+            <h3>实验要验证的四个认知</h3>
+            <ol>
+              <li><strong>线程栈不受 <code>-Xmx</code> 约束。</strong>把 <code>-Xmx</code> 从 64m 调到 2g，堆的 OOM 消失了，但 RSS 依然暴涨——因为栈在堆外。</li>
+              <li><strong>堆和 Metaspace 是两条独立的边界。</strong>把 <code>MaxMetaspaceSize</code> 调小，会先得到 <code>OutOfMemoryError: Metaspace</code>，此时堆可能还剩 80%。</li>
+              <li><strong>「-Xmx 设大点没事」是错的。</strong>容器里 <code>-Xmx</code> &gt; limit 会导致进程还没来得及 GC 就被内核杀掉，连 dump 都拿不到。</li>
+              <li><strong>线程数是内存的主要放大器。</strong>默认 <code>-Xss1m</code> 时，1000 个线程就是 1GB 堆外内存。线程池化不只是性能优化，更是内存管控手段。</li>
+            </ol>
+          </section>
+
+          <!-- ==================== 09 ==================== -->
+          <section class="chapter" id="ch-09">
+            <span class="chapter__kicker">CHAPTER 09</span>
+            <h2>外部 OOM vs 内部 OOM</h2>
+            <p class="lede">「内」「外」指的是<strong>相对于 JVM 的内存管理器</strong>而言：内部是 JVM 管的区域自己满了；外部是 JVM 管不到（或没管）的区域把整个进程撑爆了。</p>
+
+            <h3>一句话区分</h3>
+            <div class="mnem">
+              <div class="mnem__card">
+                <div class="mnem__t">内部 OOM</div>
+                <div class="mnem__v">OutOfMemoryError</div>
+                <div class="mnem__d">JVM 自己发现某个受管区域（堆 / Metaspace / 直接内存）分配失败，抛 Java 异常，<strong>有完整堆栈</strong>，进程还活着。</div>
+              </div>
+              <div class="mnem__card">
+                <div class="mnem__t">外部 OOM</div>
+                <div class="mnem__v">OOMKilled</div>
+                <div class="mnem__d">操作系统内核发现进程 RSS 超过 cgroup limit（或宿主机 OOM Killer 介入），<strong>直接 SIGKILL</strong>，<strong>没有异常栈、没有 dump</strong>，进程瞬间消失。</div>
+              </div>
+            </div>
+
+            <h3>完整对比表</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>维度</th><th>内部 OOM</th><th>外部 OOM（OOMKilled）</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">触发者</th>
+                    <td data-label="触发者">JVM 内存管理器</td>
+                    <td data-label="触发者">Linux 内核（cgroup memory controller / OOM Killer）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">典型报错</th>
+                    <td data-label="典型报错"><code>java.lang.OutOfMemoryError: Java heap space</code><br/><code>... : Metaspace</code><br/><code>... : Direct buffer memory</code><br/><code>... : unable to create new native thread</code></td>
+                    <td data-label="典型报错">无 Java 异常；<code>exit code 137</code>；<code>Reason: OOMKilled</code>；dmesg 有 <code>Out of memory: Killed process</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">进程状态</th>
+                    <td data-label="进程状态">进程存活，可继续运行（若未开启 ExitOnOutOfMemoryError）</td>
+                    <td data-label="进程状态">被 SIGKILL，瞬间消失</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">能否拿 dump</th>
+                    <td data-label="能否拿 dump">能（<code>-XX:+HeapDumpOnOutOfMemoryError</code>）</td>
+                    <td data-label="能否拿 dump"><strong>不能</strong>（进程已死，没有 dump 机制介入的机会）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">GC 日志</th>
+                    <td data-label="GC 日志">能看到 OOM 前的 GC 行为</td>
+                    <td data-label="GC 日志">可能显示「GC 还没来得及回收就被杀了」</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">根因方向</th>
+                    <td data-label="根因方向">堆内问题：内存泄漏、分配速率过快、参数不合理、Metaspace 泄漏</td>
+                    <td data-label="根因方向">堆外问题：<strong>-Xmx 超过容器 limit</strong>、线程数过多、直接内存未设限、Metaspace 无上限</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">常见诱因</th>
+                    <td data-label="常见诱因">缓存无界、<code>ThreadLocal</code> 泄漏、批量查询加载全量数据、动态代理泄漏</td>
+                    <td data-label="常见诱因">默认 <code>-Xmx</code> 按宿主机内存推断、Metaspace 默认无上限、<code>-Xss</code> × 线程数、直接内存默认 ≈ <code>-Xmx</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="figure-box">
+              <div class="chart-box" id="chart-oom"></div>
+              <figcaption><strong>图 9-1</strong>　两类 OOM 的可观测信号数量对比。外部 OOM 留给排查的线索更少，所以<strong>必须提前配好监控</strong>——这是「可观测性优先于排查」的现实理由。</figcaption>
+            </div>
+
+            <h3>判定流程</h3>
+            <div class="figure-box">
+              <div class="mermaid-box">
+                <pre class="mermaid">
+flowchart TB
+  START["容器 / 进程挂了"] --> Q1{"Pod 状态里有<br/>Reason: OOMKilled ?"}
+  Q1 -->|是| EXT["外部 OOM"]
+  Q1 -->|否| Q2{"日志里有<br/>OutOfMemoryError ?"}
+  Q2 -->|是| INT["内部 OOM"]
+  Q2 -->|否| Q3{"exit code == 137 ?"}
+  Q3 -->|是| EXT
+  Q3 -->|否| OTHER["其他原因：<br/>容器驱逐 / 健康检查失败 /<br/>应用主动退出 / SIGSEGV"]
+  EXT --> E1["看 dmesg：<br/>Out of memory: Killed process"]
+  E1 --> E2["对比 limit 与 RSS 曲线"]
+  E2 --> E3["查 jcmd VM.flags<br/>确认 -Xmx 实际生效值"]
+  E3 --> E4["用 NMT 定位堆外哪一块"]
+  INT --> I1["看 GC 日志：<br/>OOM 前是否有 Full GC"]
+  I1 --> I2["取 heap dump<br/>MAT 分析 Dominator Tree"]
+  I2 --> I3["看 Metaspace 用量<br/>与 LoadedClassCount 趋势"]
+                </pre>
+              </div>
+              <figcaption><strong>图 9-2</strong>　从「挂了」到「哪一类问题」的判定路径。第一步先看 Pod 状态，这是最快的分水岭。</figcaption>
+            </div>
+
+            <h3>外部 OOM 的证据采集清单</h3>
+            <div class="script">
+              <p class="script__label">按顺序执行</p>
+              <p><strong>1）Kubernetes 层</strong></p>
+              <pre><code>kubectl describe pod &lt;pod&gt; | grep -A8 'Limits'
+#   Limits:
+#     cpu: 2
+#     memory: 2Gi
+#   Last State:
+#     Terminated:
+#       Reason: OOMKilled
+#       Exit Code: 137
+
+kubectl get pod &lt;pod&gt; -o jsonpath='{.status.containerStatuses[0].lastState.terminated.reason}'
+kubectl get events --field-selector involvedObject.name=&lt;pod&gt; | grep -i oom</code></pre>
+              <p><strong>2）内核层</strong>（需要节点权限）</p>
+              <pre><code>dmesg -T | grep -i -E 'oom|killed process'
+# [1234567.890] Memory cgroup out of memory: Killed process 12345 (java) total-vm:... </code></pre>
+              <p><strong>3）进程内部（如果还活着 / 事后 core dump）</strong></p>
+              <pre><code>jcmd &lt;pid&gt; VM.flags          # 确认 -Xmx 到底是多少
+jcmd &lt;pid&gt; VM.native_memory summary   # 看堆外分布</code></pre>
+              <p><strong>4）对比监控曲线</strong></p>
+              <pre><code># 关键：看 RSS 曲线在什么水位触顶
+#   RSS 逼近 limit → 外部 OOM（容器打满）
+#   RSS 远低于 limit 但仍被杀 → 检查 cgroup 层级 / 宿主机压力</code></pre>
+            </div>
+
+            <div class="callout callout--warn">
+              <p class="callout__label">特别提醒：cgroup v2 的嵌套坑</p>
+              <p>JDK 10+ 的 <code>-XX:+UseContainerSupport</code>（默认开启）会读取 cgroup 限额计算默认堆大小。理论上 cgroup v2 下 JVM 会取<strong>所有父级 limit 的最小值</strong>，但在多层限制的集群环境（K8s limit + 节点级 limit + 命名空间级 limit）中，仍可能计算错误。<br/>
+              <strong>结论：容器环境永远显式指定 <code>-Xmx</code>，不要依赖默认值。</strong>这条结论在 2021 年 AWS 官方的 JVM 容器最佳实践里就被明确写出。</p>
+            </div>
+
+            <h3>还有第三类：宿主机 OOM</h3>
+            <p>区分两种外部 OOM：</p>
+            <ul class="flist">
+              <li><span class="flist__t">cgroup OOM（容器级）</span><span class="flist__d">容器自己的 limit 被打满，内核杀该容器内的进程。dmesg 里是 <code>Memory cgroup out of memory</code>。这是 K8s 环境的常态。</span></li>
+              <li><span class="flist__t">宿主机 OOM（节点级）</span><span class="flist__d">整个节点的物理内存耗尽，内核的 OOM Killer 选出牺牲品（按 <code>oom_score</code>）。dmesg 里是 <code>Out of memory: Killed process</code>。此时可能杀掉多个 Pod，也可能杀掉非 Java 进程。</span></li>
+            </ul>
+            <p>区分方法：看 dmesg 的措辞差异；看被杀进程的 <code>oom_score</code>；看节点上是否同时有多个 Pod 被杀。</p>
+          </section>
+
+          <!-- ==================== 10 ==================== -->
+          <section class="chapter" id="ch-10">
+            <span class="chapter__kicker">CHAPTER 10</span>
+            <h2>内存、堆内存与 RSS 的关系</h2>
+            <p class="lede">「内存」和「堆内存」不是并列关系，而是包含关系；而 RSS 和 <code>-Xmx</code> 的差距，是容器时代最常被误解的一件事。</p>
+
+            <h3>层级关系：从物理内存到 Java 对象</h3>
+            <div class="figure-box">
+              <div class="mermaid-box">
+                <pre class="mermaid">
+flowchart TB
+  PHYS["物理内存 / cgroup limit<br/>例：8 GiB"] --> RSS["进程 RSS<br/>实际占用的物理页"]
+  RSS --> HEAP["Java 堆<br/>committed ≤ -Xmx"]
+  RSS --> OFFHEAP["堆外内存<br/>线程栈 / Metaspace /<br/>直接内存 / CodeCache / GC 结构"]
+  HEAP --> YOUNG["新生代 Eden + Survivor"]
+  HEAP --> OLD["老年代"]
+  HEAP --> SURV["存活对象 live set<br/>通常只有 committed 的 30~60%"]
+                </pre>
+              </div>
+              <figcaption><strong>图 10-1</strong>　内存的包含关系。堆只是 RSS 的一部分；堆里真正活着的对象（live set）又只是 committed 的一部分。</figcaption>
+            </div>
+
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>概念</th><th>定义</th><th>怎么看</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">物理内存</th>
+                    <td data-label="定义">机器（或 cgroup limit）真正可用的 RAM</td>
+                    <td data-label="怎么看"><code>free -h</code>、<code>/proc/meminfo</code>、cgroup 的 <code>memory.limit_in_bytes</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">RSS<br/>（Resident Set Size）</th>
+                    <td data-label="定义">进程<strong>当前实际驻留在物理内存中</strong>的页数总和（含共享库分摊）</td>
+                    <td data-label="怎么看"><code>top</code> 的 RES 列、<code>/proc/&lt;pid&gt;/status</code> 的 <code>VmRSS</code>、cAdvisor</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">VSZ<br/>（Virtual Size）</th>
+                    <td data-label="定义">进程虚拟地址空间的总大小（<strong>包含未实际使用的预留</strong>）</td>
+                    <td data-label="怎么看"><code>/proc/&lt;pid&gt;/status</code> 的 <code>VmSize</code></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">堆 committed</th>
+                    <td data-label="定义">JVM 已向操作系统申请、且已「touch」过的堆页</td>
+                    <td data-label="怎么看"><code>jcmd &lt;pid&gt; GC.heap_info</code> 的 <code>garbage-first heap</code> 各项</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">堆 used</th>
+                    <td data-label="定义">堆中已被对象占用的字节（含垃圾）</td>
+                    <td data-label="怎么看"><code>jstat -gc</code> 的 <code>used</code> 列</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">live set</th>
+                    <td data-label="定义">堆中<strong>仍然存活</strong>的对象占用量</td>
+                    <td data-label="怎么看"><code>jmap -histo:live</code> 的结果，或 GC 日志的 Full GC 前后对比</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--info">
+              <p class="callout__label">VSZ 为什么经常是个天文数字</p>
+              <p>64 位 JVM 会为每个线程预留 1MB 栈地址空间，为堆预留大块连续地址，为 metaspace 预留 1TB 虚拟空间。这些大多<strong>没有实际占用物理页</strong>。所以 <code>top</code> 里看到 VSZ 20GB 而 RSS 只有 800MB 是完全正常的。<strong>判断内存用超了，要看 RSS，不要看 VSZ。</strong></p>
+            </div>
+
+            <h3>RSS 和 -Xmx 为什么不相等</h3>
+            <div class="figure-box">
+              <div class="chart-box" id="chart-rss"></div>
+              <figcaption><strong>图 10-2</strong>　一个 8GB 容器里各层级的典型数值。RSS 比 <code>-Xmx</code> 大，是常态而非异常。</figcaption>
+            </div>
+
+            <p>RSS &gt; <code>-Xmx</code> 的六个原因：</p>
+            <ol>
+              <li><strong>堆外内存</strong>：线程栈（线程数 × <code>-Xss</code>）、Metaspace、CodeCache、直接内存、GC 自身的 Remembered Set 等，全都不计入 <code>-Xmx</code>。</li>
+              <li><strong>堆的 committed 可能大于 used</strong>：JVM 已申请但当前没有对象占用的页，仍算在 RSS 里（除非被 unmap）。</li>
+              <li><strong>live set 小于 used</strong>：堆里 30%~70% 往往是垃圾，RSS 统计的是「已占用的页」，不区分里面有没有活对象。</li>
+              <li><strong>GC 不会立刻归还内存</strong>：Full GC 后 JVM 也不一定 shrink 堆；G1 的 Humongous Region 释放后可能保留为待复用状态。</li>
+              <li><strong>glibc malloc arena</strong>：多线程程序会创建多个 arena（默认最多 8 × CPU 核数），每个 arena 有自己的空闲链表，会造成显著的内存碎片浪费。这个在容器里尤其明显。</li>
+              <li><strong>JNI / native 库</strong>：Netty 的 <code>epoll</code>、压缩库、数据库驱动的 native 内存。</li>
+            </ol>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">推论：容器 limit 绝不能等于 -Xmx</p>
+              <p>如果 <code>limit == -Xmx</code>，那么<strong>堆还没满，进程就已经被内核杀了</strong>——因为堆外的部分还没算进去。常见的安全比例是 <strong><code>-Xmx</code> ≤ limit 的 50%~60%</strong>。这就是第 14 章要展开的核心问题。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 11 ==================== -->
+          <section class="chapter" id="ch-11">
+            <span class="chapter__kicker">CHAPTER 11</span>
+            <h2>线程数与内存的关系</h2>
+            <p class="lede">线程是 Java 内存占用的「放大器」。理解每个线程的真实成本，才能在容量规划时做出正确决策。</p>
+
+            <h3>一个线程的真实成本</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>组成</th><th>在哪里</th><th>大小</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">线程栈</th>
+                    <td data-label="在哪里">堆外</td>
+                    <td data-label="大小"><code>-Xss</code>，默认 1MB</td>
+                    <td data-label="说明"><strong>实际占用按需增长</strong>，但虚拟空间是全量预留</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>Thread</code> 对象</th>
+                    <td data-label="在哪里">堆内</td>
+                    <td data-label="大小">约 400~500 字节</td>
+                    <td data-label="说明">含 name、priority、group、target、栈指针等字段</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">TLAB</th>
+                    <td data-label="在哪里">堆内（Eden）</td>
+                    <td data-label="大小">默认几十 KB ~ 几百 KB</td>
+                    <td data-label="说明">每线程一块，大对象多时可调 <code>-XX:-UseTLAB</code> 关闭</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">ThreadLocal 及其 Entry</th>
+                    <td data-label="在哪里">堆内</td>
+                    <td data-label="大小">不定</td>
+                    <td data-label="说明">每个线程一份，<strong>未 remove 会成为泄漏源</strong></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">native 线程结构</th>
+                    <td data-label="在哪里">内核</td>
+                    <td data-label="大小">约 8~16KB（pthread + TLS）</td>
+                    <td data-label="说明">受 <code>pids.max</code> / <code>threads-max</code> 限制</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="figure-box">
+              <div class="chart-box chart-box--tall" id="chart-thread-memory"></div>
+              <figcaption><strong>图 11-1</strong>　线程数增长带来的内存放大。1000 个线程在 <code>-Xss1m</code> 下意味着 1GB 纯堆外内存——这是 <code>-Xmx</code> 完全看不见的部分。</figcaption>
+            </div>
+
+            <h3>估算公式</h3>
+            <div class="script">
+              <p class="script__label">堆外内存估算</p>
+              <pre><code>堆外内存 ≈ 线程数 × (-Xss + TLAB + Thread 对象 + native 结构)
+         ≈ 线程数 × (-Xss + 0.5MB)      # 粗略估算
+
+举例：2000 线程，-Xss1m
+  线程栈   = 2000 × 1MB   = 2000 MB
+  TLAB     = 2000 × 0.1MB =  200 MB
+  Thread   = 2000 × 0.5KB =    1 MB
+  合计                        ≈ 2.2 GB  ← 全部在堆外！</code></pre>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">线程数失控的典型症状</p>
+              <p><code>java.lang.OutOfMemoryError: unable to create new native thread</code> —— 这个异常<strong>不是</strong>堆不够，而是操作系统拒绝创建新线程。常见原因：</p>
+              <ul>
+                <li>线程数超过 <code>pids.max</code>（K8s 默认 limit 无限制，但 <code>--pids-limit</code> 会限制）</li>
+                <li>超过 <code>vm.max_map_count</code> 或虚拟内存限制</li>
+                <li>宿主机 <code>threads-max</code> 或 <code>ulimit -u</code> 达到上限</li>
+                <li>内存已经紧张，内核无法为新线程分配栈页</li>
+              </ul>
+              <p>注意：这个异常常被误判为「内存不足」，实际根因往往是<strong>内存不足导致的线程创建失败</strong>——修内存比改线程池更有效。</p>
+            </div>
+
+            <h3>线程池怎么定大小</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>任务类型</th><th>核心线程数</th><th>依据</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">CPU 密集型（计算、加密、序列化）</th><td data-label="核心线程数">N + 1</td><td data-label="依据">N = CPU 核数；上下文切换成本高，不宜过多</td></tr>
+                  <tr><th scope="row">IO 密集型（数据库、RPC、文件）</th><td data-label="核心线程数">N × (1 + W/C)</td><td data-label="依据">W=等待时间，C=计算时间；实践中常简化为 2N ~ 4N</td></tr>
+                  <tr><th scope="row">Netty EventLoop</th><td data-label="核心线程数">2 × N</td><td data-label="依据">一个 Boss + 一个 Worker；<strong>绝不能改成阻塞池</strong></td></tr>
+                  <tr><th scope="row">Dubbo / gRPC 线程池</th><td data-label="核心线程数">按 CPU × 2~4</td><td data-label="依据">底层有 Netty 支撑，注意两池叠加的总线程数</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--info">
+              <p class="callout__label">别忘了 Tomcat / Tomcat 之外的框架线程</p>
+              <p>一个 Spring Boot 应用的实际线程数 = Tomcat 工作线程（默认 200）+ Tomcat acceptor（默认 10）+ JVM 后台线程（GC ~ 10 + JIT ~ 10）+ 业务线程池 + 各种中间件客户端线程 + APM 探针线程。真实场景里 500~800 线程很常见。</p>
+              <p><strong>压测时必须打开线程快照确认</strong>：<code>jcmd &lt;pid&gt; Thread.print | grep -c '"'</code>，或者用 Arthas 的 <code>thread -n 3</code> 看最耗时的线程。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 12 ==================== -->
+          <section class="chapter" id="ch-12">
+            <span class="chapter__kicker">CHAPTER 12</span>
+            <h2>Linux 排查命令与 PID</h2>
+            <p class="lede">这一章是「常用命令速查」，按排查顺序组织，每条都标注了它能回答什么问题。</p>
+
+            <h3>先说 PID</h3>
+            <div class="callout callout--info">
+              <p class="callout__label">PID 是什么</p>
+              <p><strong>PID（Process ID，进程标识符）</strong>是操作系统为每个进程分配的唯一数字编号。同一时刻同一台机器上 PID 唯一。</p>
+              <p>在 Linux 中，PID 的实际含义是<strong>线程 ID</strong>：进程本身占用一个 PID（就是主线程的 TID），每个线程也有一个 TID，而 TID 的取值空间和 PID 共用同一个池。内核用 <code>TGID</code>（线程组 ID）来标识「进程」，用 <code>TID</code> 标识「线程」。</p>
+              <p>这就解释了为什么 <code>kill -9 &lt;pid&gt;</code> 能杀线程也能杀进程，而 <code>kill -9 &lt;tid&gt;</code> 只杀那一个线程（在某些实现里会杀整个线程组，行为略有差异）。</p>
+            </div>
+
+            <h3>进程与线程</h3>
+            <div class="script">
+              <p class="script__label">查看进程</p>
+              <pre><code>ps aux | grep java              # 所有进程，找 java
+ps -ef | grep java              # 带父子关系
+ps -o pid,ppid,nlwp,rss,vsz,cmd -p &lt;pid&gt;   # nlwp=线程数, rss=KB
+top -H -p &lt;pid&gt;               # 按线程展开，H 大写是关键
+htop -t                         # 树状视图看线程
+
+# 找 Java 进程（最常用）
+jps -lvm                        # pid + 主类 + 启动参数 + JVM 参数
+jcmd -l                         # 只列 pid</code></pre>
+              <p class="script__label">查看线程</p>
+              <pre><code>ls /proc/&lt;pid&gt;/task | wc -l        # 线程数（最直接）
+top -H -p &lt;pid&gt;                  # 每个线程的 CPU 占用
+jcmd &lt;pid&gt; Thread.print | head -50   # Java 线程栈
+cat /proc/&lt;pid&gt;/status | grep Threads</code></pre>
+            </div>
+
+            <h3>内存</h3>
+            <div class="script">
+              <p class="script__label">内存观测</p>
+              <pre><code>free -h                          # 总量/已用/可用（重点看 available）
+vmstat 1 5                      # 每秒采样，看 si/so（换页）是否非 0
+cat /proc/&lt;pid&gt;/status | grep -E 'VmRSS|VmSize|Threads'
+cat /proc/meminfo | head -5
+
+# 定位 RSS 的大头（排查堆外内存的关键命令）
+pmap -x &lt;pid&gt; | sort -k3 -n | tail -20   # 按 RSS 排序的内存映射
+cat /proc/&lt;pid&gt;/smaps_rollup              # 汇总视图
+grep -E 'Rss|Pss' /proc/&lt;pid&gt;/smaps | head -30
+
+# 容器场景
+cat /sys/fs/cgroup/memory.max            # cgroup v2 limit
+cat /sys/fs/cgroup/memory.current        # 当前用量
+cat /sys/fs/cgroup/memory.events          # oom / oom_kill 计数 ★</code></pre>
+              <p class="script__label">重点：<code>memory.events</code> 里的 <code>oom_kill</code> 计数 &gt; 0 就说明这个容器里确实发生过 OOMKill</p>
+              <pre><code>cat /sys/fs/cgroup/memory.events
+# low 0
+# high 0
+# max 3      ← 触碰 limit 次数
+# oom 3
+# oom_kill 1 ← 被杀次数 ★ 这个数字是最直接的证据</code></pre>
+            </div>
+
+            <h3>JVM 专用诊断工具</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>命令</th><th>作用</th><th>典型用法</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row"><code>jps -lvm</code></th>
+                    <td data-label="作用">列出 JVM 进程及其启动参数</td>
+                    <td data-label="典型用法">确认 <code>-Xmx</code> 是否生效的第一站</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jstat -gcutil &lt;pid&gt; 1000</code></th>
+                    <td data-label="作用">每秒打印 GC 与内存使用率</td>
+                    <td data-label="典型用法">看 GC 频率、老年代使用率趋势</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jstat -gccause &lt;pid&gt;</code></th>
+                    <td data-label="作用">显示最后一次 GC 的触发原因</td>
+                    <td data-label="典型用法">区分「分配速率触发」和「晋升失败触发」</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; GC.heap_info</code></th>
+                    <td data-label="作用">堆各分区的使用量</td>
+                    <td data-label="典型用法">确认 Metaspace 实际用量</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.flags</code></th>
+                    <td data-label="作用">打印生效的 JVM 参数</td>
+                    <td data-label="典型用法">排查参数被覆盖</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory summary</code></th>
+                    <td data-label="作用">NMT 汇总（堆外内存）</td>
+                    <td data-label="典型用法">定位堆外内存去向（见第 15 章）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jmap -histo:live &lt;pid&gt;</code></th>
+                    <td data-label="作用">按类统计存活对象</td>
+                    <td data-label="典型用法">找内存泄漏的大对象类型</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jmap -dump:live,format=b,file=x.hprof &lt;pid&gt;</code></th>
+                    <td data-label="作用">导出堆快照</td>
+                    <td data-label="典型用法">用 MAT 分析 Dominator Tree</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jstack &lt;pid&gt;</code> / <code>jcmd &lt;pid&gt; Thread.print</code></th>
+                    <td data-label="作用">打印线程栈</td>
+                    <td data-label="典型用法">找死锁、找阻塞点</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; JFR.start name=x duration=300s filename=x.jfr</code></th>
+                    <td data-label="作用">启动 Flight Recorder 录制</td>
+                    <td data-label="典型用法">低开销采集生产性能数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--warn">
+              <p class="callout__label"><code>jmap -histo:live</code> 的副作用</p>
+              <p><code>live</code> 参数会<strong>强制触发一次 Full GC</strong>，才能统计出「存活对象」。代价：</p>
+              <ul>
+                <li>停顿时间可能达到<strong>数秒到数十秒</strong>（取决于堆大小和存活对象量）；</li>
+                <li>对延迟敏感的生产服务，<strong>高峰期绝对不能执行</strong>；</li>
+                <li>如果对象存活率高，Full GC 也回收不了多少内存，白白付出停顿代价。</li>
+              </ul>
+              <p>替代方案：<code>jmap -histo:&lt;pid&gt;</code>（不带 live）不触发 GC，统计的是「已分配对象」，数值偏大但零影响，适合高频采样做趋势观察。</p>
+            </div>
+
+            <h3>文件、日志、网络</h3>
+            <div class="script">
+              <p class="script__label">常用组合</p>
+              <pre><code># 日志排查三连
+tail -f app.log | grep -i 'error'
+tail -n 10000 app.log | grep -E 'OOM|ERROR' | tail -50
+grep -C 5 'OutOfMemoryError' app.log     # 看上下文
+
+# 目录体积（找大文件）
+du -sh * | sort -h | tail -10
+du -sh /var/lib/* | sort -h | tail
+df -h                                    # 磁盘使用
+
+# 找文件
+find / -name '*.hprof' -size +100M 2&gt;/dev/null
+
+# 网络
+ss -tlnp                 # 监听端口 + 进程
+ss -s                    # 连接统计（看 TIME_WAIT 堆积）
+curl -s localhost:8080/actuator/health
+netstat -anp | grep 8080
+
+# 杀进程（先礼后兵）
+kill &lt;pid&gt;            # SIGTERM，让 JVM 优雅退出（触发 shutdown hook）
+kill -9 &lt;pid&gt;         # SIGKILL，强制杀（不释放资源，但容器会回收）
+
+# 文件句柄（OOMKilled 时也要查）
+ls /proc/&lt;pid&gt;/fd | wc -l
+cat /proc/&lt;pid&gt;/limits | grep -i 'open files'</code></pre>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">JVM 停机用 SIGTERM，不要用 SIGKILL</p>
+              <p><code>kill -9</code> 会让 JVM 没有机会执行 shutdown hook：<strong>优雅停机注册的数据源、线程池、MQ 消费者都不会被清理</strong>，可能导致消息丢失、连接泄漏、下次启动端口被占用。K8s 的 <code>preStop</code> hook 和 <code>terminationGracePeriodSeconds</code> 就是为这个设计的。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 13 ==================== -->
+          <section class="chapter" id="ch-13">
+            <span class="chapter__kicker">CHAPTER 13</span>
+            <h2>Kubernetes 是什么</h2>
+            <p class="lede">K8s 不是「云服务器」，它是一个<strong>声明式的容器编排系统</strong>。它解决的核心问题是：如何让一堆容器在集群里自动地、持续地、按照你声明的状态运行。</p>
+
+            <h3>它要解决什么问题</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>没有编排时的问题</th><th>K8s 的解法</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">容器挂了没人管</th><td data-label="K8s 的解法">健康检查 + 自动重启 + Deployment 维持副本数</td></tr>
+                  <tr><th scope="row">流量高峰扛不住</th><td data-label="K8s 的解法">HPA（Horizontal Pod Autoscaler）按指标自动扩缩容</td></tr>
+                  <tr><th scope="row">发版要手动一个个更新</th><td data-label="K8s 的解法">滚动更新（RollingUpdate）+ 优雅停机 + 自动回滚</td></tr>
+                  <tr><th scope="row">Pod IP 每次重建都变</th><td data-label="K8s 的解法">Service 提供稳定的虚拟 IP 与 DNS</td></tr>
+                  <tr><th scope="row">配置和镜像写死在镜像里</th><td data-label="K8s 的解法">ConfigMap / Secret 独立管理，Pod 挂载引用</td></tr>
+                  <tr><th scope="row">需要按 CPU/内存调度到合适的机器</th><td data-label="K8s 的解法">Scheduler 根据 requests/limits 找节点</td></tr>
+                  <tr><th scope="row">多副本要保证一致</th><td data-label="K8s 的解法">StatefulSet 提供稳定网络标识与有序部署</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>核心机制：声明式 + 调谐循环</h3>
+            <div class="figure-box">
+              <div class="mermaid-box">
+                <pre class="mermaid">
+flowchart LR
+  YAML["YAML 声明<br/>期望状态<br/>replicas: 3"] --> API["API Server<br/>etcd 存储"]
+  API --> CTRL["Deployment Controller<br/>调谐循环"]
+  CTRL --> RS["创建 / 更新 ReplicaSet"]
+  RS --> SCHED["Scheduler 选节点"]
+  SCHED --> KUBELET["kubelet 拉起容器"]
+  KUBELET --> STATUS["上报实际状态"]
+  STATUS --> API
+  API -->|"实际 ≠ 期望<br/>则继续调谐"| CTRL
+                </pre>
+              </div>
+              <figcaption><strong>图 13-1</strong>　K8s 的核心是「声明期望状态 + 持续调谐」。你只声明要 3 个副本，控制器负责保证最终有 3 个可用——不管中间死了几个。</figcaption>
+            </div>
+
+            <h3>核心对象</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>对象</th><th>作用</th><th>和 Java 应用的关系</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Pod</th><td data-label="作用">最小调度单位，一个或多个容器共享网络与卷</td><td data-label="和 Java 应用的关系">通常一个 Pod = 一个 JVM 进程</td></tr>
+                  <tr><th scope="row">Deployment</th><td data-label="作用">管理无状态应用的副本与滚动更新</td><td data-label="和 Java 应用的关系">Java 服务最常用的工作负载</td></tr>
+                  <tr><th scope="row">StatefulSet</th><td data-label="作用">稳定标识、有序部署、持久卷</td><td data-label="和 Java 应用的关系">有状态中间件、数据库</td></tr>
+                  <tr><th scope="row">Service</th><td data-label="作用">稳定的访问入口与负载均衡</td><td data-label="和 Java 应用的关系">注册到 Eureka/Nacos 后仍需 Service 打通</td></tr>
+                  <tr><th scope="row">ConfigMap / Secret</th><td data-label="作用">配置与密钥</td><td data-label="和 Java 应用的关系">配合 <code>JAVA_TOOL_OPTIONS</code> 环境变量注入 JVM 参数</td></tr>
+                  <tr><th scope="row">Ingress</th><td data-label="作用">七层 HTTP 路由</td><td data-label="和 Java 应用的关系">前端 + 后端分离时的入口</td></tr>
+                  <tr><th scope="row">HPA</th><td data-label="作用">按指标自动扩缩容</td><td data-label="和 Java 应用的关系">需要 <code>metrics-server</code>；Java 应用的 CPU 指标受 GC 影响</td></tr>
+                  <tr><th scope="row">ResourceQuota / LimitRange</th><td data-label="作用">命名空间级资源配额</td><td data-label="和 Java 应用的关系">可能给你的 Pod 强加你没设的 limit</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>QoS 等级：K8s 怎么决定谁先被杀</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>QoS 等级</th><th>条件</th><th>被驱逐优先级</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Guaranteed</th><td data-label="条件">所有容器的 requests == limits（CPU 和内存都设）</td><td data-label="被驱逐优先级">最低（最后被驱逐）</td></tr>
+                  <tr><th scope="row">Burstable</th><td data-label="条件">至少一个容器设了 requests，但不完全相等</td><td data-label="被驱逐优先级">中等</td></tr>
+                  <tr><th scope="row">BestEffort</th><td data-label="条件">完全不设 requests/limits</td><td data-label="被驱逐优先级">最高（最先被驱逐）</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout callout--info">
+              <p class="callout__label">给 Java 应用的实践建议</p>
+              <p>生产环境的 Java 服务应当设成 <strong>Guaranteed</strong>：<code>requests.cpu == limits.cpu</code> 且 <code>requests.memory == limits.memory</code>。这既保证了 QoS 优先级（节点资源紧张时不会被优先杀掉），也让调度器更准确地判断节点能否承载你的 Pod。</p>
+              <p>另外，<strong><code>requests.memory</code> 应该等于 <code>limits.memory</code></strong>——否则节点按 requests 调度，调度完再超用，会造成节点内存压力。</p>
+            </div>
+
+            <h3>Java 应用在 K8s 上的四个必知点</h3>
+            <ol class="flist">
+              <li><span class="flist__t">优雅停机</span><span class="flist__d">K8s 发 SIGTERM 后，容器有 <code>terminationGracePeriodSeconds</code>（默认 30s）完成清理。JVM 收到 SIGTERM 会执行 shutdown hook。必须配合 <code>preStop</code> hook（如先 sleep 5s 让流量摘除）。</span></li>
+              <li><span class="flist__t">就绪探针与存活探针要分开</span><span class="flist__d"><code>readinessProbe</code> 决定是否接流量，<code>livenessProbe</code> 决定是否重启。Spring Boot Actuator 的 <code>/actuator/health/readiness</code> 和 <code>/actuator/health/liveness</code> 正好对应。</span></li>
+              <li><span class="flist__t">内存 limit 是硬约束</span><span class="flist__d">超过 limit 会被内核直接杀掉，没有任何 Java 层的机会。这是最需要防守的地方。</span></li>
+              <li><span class="flist__t">CPU limit 会导致节流</span><span class="flist__d">超过 CPU limit 会被 CFS 限流（throttling），表现为 P99 毛刺但 CPU 使用率看起来不高。用 <code>container_cpu_cfs_throttled_seconds_total</code> 指标排查。</span></li>
+            </ol>
+          </section>
+
+          <!-- ==================== 14 ==================== -->
+          <section class="chapter" id="ch-14">
+            <span class="chapter__kicker">CHAPTER 14</span>
+            <h2>容器内存规划：堆内 + 堆外</h2>
+            <p class="lede">直接回答你的问题：<strong>是的，容器 limit 必须大于 JVM 的堆内 + 堆外内存之和</strong>。而且要留出足够的安全缓冲。</p>
+
+            <h3>完整的内存清单</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>区域</th><th>在堆内还是堆外</th><th>怎么控制</th><th>典型大小</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Java 堆</th>
+                    <td data-label="在堆内还是堆外">堆内</td>
+                    <td data-label="怎么控制"><code>-Xmx</code> / <code>-Xms</code></td>
+                    <td data-label="典型大小">limit 的 50~60%</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">线程栈</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制"><code>-Xss</code> × 线程数</td>
+                    <td data-label="典型大小">0.5~1GB（1000 线程）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Metaspace + 压缩类空间</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制"><code>-XX:MaxMetaspaceSize</code></td>
+                    <td data-label="典型大小">150~300MB</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">直接内存</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制"><code>-XX:MaxDirectMemorySize</code></td>
+                    <td data-label="典型大小">按业务，Netty 场景可能几百 MB</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Code Cache</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制"><code>-XX:ReservedCodeCacheSize</code></td>
+                    <td data-label="典型大小">100~250MB</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">GC 自身结构</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制">间接（与堆大小、Region 数相关）</td>
+                    <td data-label="典型大小">200~500MB</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">JIT 编译器线程</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制"><code>-XX:CICompilerCount</code></td>
+                    <td data-label="典型大小">线程数 × 栈</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">malloc arena / 碎片</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制">设 <code>MALLOC_ARENA_MAX=2</code></td>
+                    <td data-label="典型大小">几十~几百 MB</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">JNI / native 库</th>
+                    <td data-label="在堆内还是堆外">堆外</td>
+                    <td data-label="怎么控制">应用侧</td>
+                    <td data-label="典型大小">不定</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>计算公式与实例</h3>
+            <div class="script">
+              <p class="script__label">规划公式</p>
+              <pre><code>容器 limit ≥ -Xmx
+         + 线程数 × -Xss
+         + MaxMetaspaceSize
+         + MaxDirectMemorySize
+         + ReservedCodeCacheSize
+         + GC 预留（堆的 5~10%）
+         + 安全缓冲（limit 的 10~15%）
+
+【实例】8GB 容器，1000 线程，-Xss512k
+  -Xmx                        4.0 GB   (50%)
+  线程栈   1000 × 512k         0.5 GB
+  Metaspace                    0.3 GB
+  直接内存                     0.5 GB
+  Code Cache                   0.25 GB
+  GC 预留                       0.4 GB
+  ------------------------------------
+  小计                         5.95 GB  (74%)
+  安全缓冲                      2.05 GB  (26%)
+  ====================================
+  容器 limit                    8.0 GB   ✓</code></pre>
+            </div>
+
+            <div class="callout callout--danger">
+              <p class="callout__label">最常见的三个配置错误</p>
+              <ol>
+                <li><strong><code>-Xmx</code> 设成 limit 的 90%+</strong> → 堆外一点波动就 OOMKilled。至少留 30%。</li>
+                <li><strong>完全不设 <code>-XX:MaxMetaspaceSize</code></strong> → 泄漏时无声地吃掉整个容器，最终 OOMKilled 而非可诊断的 <code>OutOfMemoryError</code>。</li>
+                <li><strong>不设 <code>-XX:MaxDirectMemorySize</code></strong> → 默认值接近 <code>-Xmx</code>，等于堆外空间完全失控。</li>
+              </ol>
+            </div>
+
+            <h3>用 NMT 验证实际占用</h3>
+            <p>规划是估算，验证靠实测。启动参数加上 NMT：</p>
+            <div class="script">
+              <p class="script__label">验证</p>
+              <pre><code>java -Xmx4g -Xms4g -Xss512k \
+     -XX:MaxMetaspaceSize=512m \
+     -XX:MaxDirectMemorySize=512m \
+     -XX:NativeMemoryTracking=summary \
+     -jar app.jar
+
+# 运行中查看
+jcmd &lt;pid&gt; VM.native_memory summary
+
+# 输出里关键看这几行
+# Total: reserved=8.0GB, committed=2.1GB
+#   -                 Java Heap (reserved=4GB, committed=4GB)
+#   -                 Class (reserved=310MB, committed=310MB)      ← Metaspace
+#   -                 Thread (reserved=550MB, committed=550MB)     ← 线程栈
+#   -                 Code (reserved=250MB, committed=150MB)
+#   -                 GC (reserved=320MB, committed=80MB)
+#   -                 Internal (reserved=50MB, committed=50MB)</code></pre>
+              <p>把 reserved 加起来和容器 limit 对比，就能知道缓冲够不够。详见第 15 章。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 15 ==================== -->
+          <section class="chapter" id="ch-15">
+            <span class="chapter__kicker">CHAPTER 15</span>
+            <h2>NMT：原生内存追踪完全手册</h2>
+            <p class="lede">NMT（Native Memory Tracking，原生内存追踪）是 HotSpot 内建的<strong>堆外内存记账系统</strong>。它解决一个具体问题：<strong>RSS 比堆大出来的那部分，到底花在哪了？</strong></p>
+
+            <h3>它解决什么问题</h3>
+            <p>JVM 只精确知道堆的用量。线程栈、直接内存、CodeCache、GC 的内部结构、malloc arena——这些都算在 RSS 里，但 JVM 默认不告诉你各占多少。NMT 就是给 JVM 内部加上了一本账。</p>
+            <div class="callout callout--info">
+              <p class="callout__label">一句话</p>
+              <p>堆内用 <code>jstat</code> / <code>GC.heap_info</code> 看，堆外用 NMT 看。两者合起来才能解释 RSS。</p>
+            </div>
+
+            <h3>原理与限制</h3>
+            <ul class="flist">
+              <li><span class="flist__t">原理</span><span class="flist__d">JVM 内部的内存分配点（malloc、mmap、线程栈创建）被插桩，每次分配都记到对应「分类」的计数器里。查询时遍历这些计数器求和，所以是<strong>精确的分配量</strong>，不是采样估算。</span></li>
+              <li><span class="flist__t">必须在启动时开启</span><span class="flist__d">参数是 <code>-XX:NativeMemoryTracking=summary</code> 或 <code>detail</code>。<strong>运行中的进程无法后补开启</strong>——这是它最大的局限，意味着「等出问题了再开」这条路走不通。</span></li>
+              <li><span class="flist__t">两种级别</span><span class="flist__d"><code>summary</code> 只按分类汇总（开销小，~1%）；<code>detail</code> 追踪到每个分配点（开销大，~5%，且会保留更多元数据）。日常用 summary，出疑难再上 detail。</span></li>
+              <li><span class="flist__t">无法追踪非 JVM 的 malloc</span><span class="flist__d">如果 native 库（Netty 的 <code>epoll</code>、压缩库、JDBC native 部分）直接调用 glibc 的 malloc，这部分<strong>不计入 NMT</strong>。NMT 只能解释 JVM 自己的开销。</span></li>
+              <li><span class="flist__t">attach 机制要求</span><span class="flist__d">需要 <code>jcmd</code> attach 到目标进程，某些精简镜像或安全策略下会被拦截。镜像里要有完整 JDK。</span></li>
+              <li><span class="flist__t">不能和 heap dump 同时用</span><span class="flist__d">两者都会触发 safepoint 并占用大量资源，官方建议错开执行。</span></li>
+            </ul>
+
+            <h3>常用命令完全手册</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>命令</th><th>作用</th><th>什么时候用</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory summary</code></th>
+                    <td data-label="作用">打印当前各分类的 reserved / committed 总量</td>
+                    <td data-label="什么时候用"><strong>最常用。</strong>先看总量，判断堆外是否异常</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory scale=MB</code></th>
+                    <td data-label="作用">同上，但单位改成 MB（默认是 KB，可读性更好）</td>
+                    <td data-label="什么时候用">输出数字太大时</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory baseline</code></th>
+                    <td data-label="作用">记录一个基线快照</td>
+                    <td data-label="什么时候用">怀疑有内存<strong>增长</strong>时，先打基线</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory baseline &lt;file&gt;</code></th>
+                    <td data-label="作用">把基线存到文件</td>
+                    <td data-label="什么时候用">需要多次对比时</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory summary.diff</code></th>
+                    <td data-label="作用">当前值与基线做 diff</td>
+                    <td data-label="什么时候用"><strong>核心用法。</strong>看哪一块在涨</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory summary.diff &lt;file&gt;</code></th>
+                    <td data-label="作用">当前值与指定文件基线做 diff</td>
+                    <td data-label="什么时候用">跨时间点对比（比如 1 小时前 vs 现在）</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory detail</code></th>
+                    <td data-label="作用">逐个分配点明细</td>
+                    <td data-label="什么时候用">summary 看不出所以然时，定位到具体调用点</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory detail.diff</code></th>
+                    <td data-label="作用">明细 diff</td>
+                    <td data-label="什么时候用">找出「谁在持续分配」</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><code>jcmd &lt;pid&gt; VM.native_memory scale=MB</code></th>
+                    <td data-label="作用">配合 base/diff 使用</td>
+                    <td data-label="什么时候用">读 diff 输出时</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>分类含义表</h3>
+            <div class="table-wrap">
+              <table class="stack">
+                <thead>
+                  <tr><th>分类</th><th>包含什么</th><th>怎么控制</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Java Heap</th><td data-label="包含什么">堆本身</td><td data-label="怎么控制"><code>-Xmx</code></td></tr>
+                  <tr><th scope="row">Class</th><td data-label="包含什么">Metaspace + 压缩类空间</td><td data-label="怎么控制"><code>-XX:MaxMetaspaceSize</code></td></tr>
+                  <tr><th scope="row">Thread</th><td data-label="包含什么">线程栈 + TLS</td><td data-label="怎么控制"><code>-Xss</code> × 线程数</td></tr>
+                  <tr><th scope="row">Code</th><td data-label="包含什么">Code Cache + 内部代码</td><td data-label="怎么控制"><code>-XX:ReservedCodeCacheSize</code></td></tr>
+                  <tr><th scope="row">GC</th><td data-label="包含什么">G1 的 Region 结构、Remembered Set、Card Table、并发标记线程栈</td><td data-label="怎么控制">间接：<code>-Xmx</code> 越大越多</td></tr>
+                  <tr><th scope="row">Compiler</th><td data-label="包含什么">JIT 编译器线程的内存</td><td data-label="怎么控制"><code>-XX:CICompilerCount</code>、<code>-XX:TieredStopAtLevel</code></td></tr>
+                  <tr><th scope="row">Internal</th><td data-label="包含什么">系统字典、符号表、线程本地 HandBlock 等</td><td data-label="怎么控制"><code>-XX:NativeMemoryTracking</code> 之外基本不可调</td></tr>
+                  <tr><th scope="row">Other</th><td data-label="包含什么">上述之外的杂项（Symbols、Native Memory Tracking 自身开销等）</td><td data-label="怎么控制">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="figure-box">
+              <div class="chart-box" id="chart-nmt"></div>
+              <figcaption><strong>图 15-1</strong>　典型 Spring Boot 应用的 NMT 分类占比示意。注意 <code>Thread</code> 和 <code>Class</code> 两块——它们正是 <code>-Xmx</code> 管不到、却常常吃掉 1GB+ 的部分。</figcaption>
+            </div>
+
+            <h3>完整实战流程</h3>
+            <div class="script">
+              <p class="script__label">排查 RSS 超标</p>
+              <pre><code># 步骤 1：开启 NMT（必须在启动参数里）
+#   -XX:NativeMemoryTracking=summary
+
+# 步骤 2：确认已启用
+jcmd &lt;pid&gt; VM.native_memory summary | head -5
+# 若提示 "Native memory tracking is not enabled"，说明启动时没开
+
+# 步骤 3：看总量，找出大头
+jcmd &lt;pid&gt; VM.native_memory summary scale=MB
+# 关注：Total: reserved=X, committed=Y
+# 以及各分类的 committed
+
+# 步骤 4：怀疑有增长 → 打基线
+jcmd &lt;pid&gt; VM.native_memory baseline /tmp/nmt-base.txt
+
+# 步骤 5：等一段时间（1 小时 / 一个业务高峰）
+
+# 步骤 6：做 diff，看哪块在涨
+jcmd &lt;pid&gt; VM.native_memory summary.diff scale=MB
+# 输出中 -/+ 表示增减，括号里是总量
+#   -                     Thread (reserved=550MB, committed=550MB) (+120MB)
+
+# 步骤 7：如果 Thread 在涨 → 线程数涨了
+jcmd &lt;pid&gt; Thread.print | grep -c '^"'
+# 确认：是不是线程池没设上限 / 有死循环建线程
+
+# 步骤 8：如果 Class 在涨 → 类加载泄漏
+jcmd &lt;pid&gt; VM.classloader_stats
+jcmd &lt;pid&gt; GC.class_histogram | head -20</code></pre>
+            </div>
+
+            <h3>输出解读</h3>
+            <div class="script">
+              <p class="script__label">典型输出与判读</p>
+              <pre><code>Native Memory Tracking:
+
+Total: reserved=8743347KB, committed=3671347KB
+-                 Java Heap (reserved=4194304KB, committed=4194304KB)
+                            (mmap: reserved=4194304KB, committed=4194304KB)
+-                     Class (reserved=1079553KB, committed=294913KB)
+                            (malloc=1048577KB #16384, mmap: reserved=30976KB, committed=30848KB)
+-                    Thread (reserved=560020KB, committed=560020KB)
+                            (mmap: reserved=560020KB, committed=560020KB)
+-                      Code (reserved=262144KB, committed=152576KB)
+-                        GC (reserved=417792KB, committed=82240KB)
+-                  Compiler (reserved=270336KB, committed=270336KB)
+-                   Internal (reserved=75008KB, committed=75008KB)
+-                     Other (reserved=1258291KB, committed=248020KB)
+
+解读要点：
+1. reserved = 虚拟地址空间预留量（可能远大于实际）
+2. committed = 实际已提交（更接近真实占用）
+3. Thread 的 committed 560MB → 约 1000 个线程 × 512k，与 -Xss 完全吻合
+4. Class 的 committed 294MB → Metaspace 使用量偏高，查类加载泄漏
+5. Total committed 3.6GB vs 堆 4GB → 说明堆占大头，堆外只有约 0.9GB</code></pre>
+            </div>
+
+            <div class="callout callout--warn">
+              <p class="callout__label">重要局限</p>
+              <p>NMT 的 <code>Total</code> <strong>不等于</strong> RSS。差距来自：</p>
+              <ul>
+                <li>非 JVM 的 native malloc（glibc arena、Netty、JDBC native 库）；</li>
+                <li>glibc 自身的元数据与内存碎片；</li>
+                <li>可执行文件、共享库（<code>libjvm.so</code>、<code>libc.so</code>）的映射页；</li>
+                <li>线程栈的实际使用量通常小于 <code>-Xss</code>（页是按需 fault-in 的）。</li>
+              </ul>
+              <p>所以正确用法是：<strong>用 NMT 判断「JVM 内部各部分的相对占比和增长趋势」，用 RSS 判断「总量是否超了容器 limit」。</strong>两者配合，而不是互相替代。</p>
+            </div>
+
+            <div class="callout callout--ok">
+              <p class="callout__label">生产环境建议</p>
+              <p>在所有 Java 服务的启动参数里常驻 <code>-XX:NativeMemoryTracking=summary</code>。开销约 1%，但让你在半夜被叫起来时能立刻回答「这 2GB 堆外内存去哪了」。相比一次 OOMKilled 事故的排查成本，这个开销可以忽略。</p>
+            </div>
+          </section>
+
+          <!-- ==================== 16 ==================== -->
+          <section class="chapter" id="ch-16">
+            <span class="chapter__kicker">CHAPTER 16</span>
+            <h2>自测清单：22 题与标准答案</h2>
+            <p class="lede">每一条都是面试官真实会问的。<strong>合上文档先答一遍，再对照答案。</strong>能答出就算掌握。答案是可以直接背的完整版——面试时按这个结构说，逻辑链完整，基本不会被打断。</p>
+
+            <div class="callout callout--info">
+              <p class="callout__label">使用方法</p>
+              <p>点开每题看答案。答不出来的题，回到对应章节重读。三档的分界线：<strong>基础分必须全对</strong>（答错说明知识有硬伤），<strong>进阶分要能结合案例</strong>（答不出说明只会背不会用），<strong>拉分题要能给出取舍</strong>（答不出不影响过初面，但决定能不能进终面）。</p>
+            </div>
+
+            <h3>基础分（必须全对）</h3>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">1</span>JVM 内存分哪几块？哪些是线程私有的？哪些会被 GC？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>JVM 的运行时数据区分五大区 + 两大区外内存。</p>
+                <p><strong>线程私有的三块</strong>（每线程一份，随线程生灭）：</p>
+                <ul>
+                  <li><strong>程序计数器（PC Register）</strong>：记录当前线程执行的字节码行号，是唯一不会 OOM 的区域。</li>
+                  <li><strong>虚拟机栈</strong>：存放方法栈帧（局部变量表、操作数栈、动态链接、返回地址）。每个方法调用压一个栈帧，返回即弹出。</li>
+                  <li><strong>本地方法栈</strong>：为 Native 方法（JNI）服务的栈，与虚拟机栈类似（HotSpot 中两者合二为一）。</li>
+                </ul>
+                <p><strong>线程共享的两块</strong>：</p>
+                <ul>
+                  <li><strong>堆（Heap）</strong>：存放几乎所有对象实例和数组，是 GC 的主战场。</li>
+                  <li><strong>方法区（Metaspace）</strong>：JDK 8 起在堆外，存放类元数据、运行时常量池、方法字节码。</li>
+                </ul>
+                <p><strong>堆外但线程共享的</strong>：直接内存（<code>ByteBuffer.allocateDirect</code>）、Code Cache、GC 内部结构、malloc arena。</p>
+                <p><strong>会被 GC 的</strong>：主要是堆。Metaspace 不走常规 GC，但会在类加载器卸载时释放内存。栈不需要 GC，因为栈帧的生命周期是确定的——方法返回必然销毁，栈上的引用随之失效，GC 没有介入的必要。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">2</span>为什么说「只有堆和 Metaspace 有 GC」？栈为什么不需要 GC？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>这句话是对标准答案的精炼，但更严谨的表述是：<strong>GC 只管理堆里的对象</strong>。</p>
+                <p><strong>为什么栈不需要 GC</strong>：GC 的前提是「无法静态判断对象是否还活着」，需要从 GC Roots 做可达性分析。而栈上的对象生命周期是<strong>确定性</strong>的——方法进入压栈、方法返回出栈，必然销毁。栈帧结构由编译器静态确定，可以像函数调用一样精确管理。用 tracing GC 去扫栈既无意义，开销又巨大。</p>
+                <p>栈上只存基本类型的值和堆对象的引用，引用指向的对象被回收后，这些引用自然变成 null，栈帧本身也随之销毁。</p>
+                <p><strong>Metaspace 的特殊性</strong>：它没有专门的 GC 线程，而是靠「类卸载」释放——当一个 ClassLoader 加载的所有类都不再可达、且该 ClassLoader 本身也不可达时，它占用的 Metaspace 被回收。所以 Metaspace 泄漏的根因永远是<strong>类加载器泄漏</strong>。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">3</span>一个普通 Java 对象占多少字节？为什么要考虑对齐填充？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>对象大小 = <strong>对象头 + 字段数据 + 对齐填充</strong>。</p>
+                <p>64 位 JVM、开启压缩指针（<code>-XX:+UseCompressedOops</code>，默认开启）的典型情况：</p>
+                <ul>
+                  <li><strong>对象头 12 字节</strong>：Mark Word 8 字节（存哈希码、GC 分代年龄、锁状态）+ 类型指针 4 字节（压缩指针）。不开启压缩指针则是 8 + 8 = 16 字节。</li>
+                  <li><strong>字段数据</strong>：按字段类型累加，<code>boolean/byte</code> 1 字节，<code>char/short</code> 2 字节，<code>int/float</code> 4 字节，<code>long/double</code> 8 字节。</li>
+                  <li><strong>对齐填充</strong>：0~7 字节，把对象总大小补齐到 8 字节的整数倍（<code>-XX:ObjectAlignmentInBytes</code> 默认 8）。</li>
+                </ul>
+                <p><strong>具体例子</strong>：<code>new Object()</code> = 12 + 0 + 4（填充）= <strong>16 字节</strong>，不是 0 字节。带 1 个 int 字段 = 12 + 4 = 16 字节。带 1 个 long 字段 = 12 + 8 = 20 → 填充 4 → <strong>24 字节</strong>。</p>
+                <p><strong>为什么必须考虑对齐</strong>：一是保证 CPU 按机器字长（8 字节）访问内存，避免跨字长读取降低性能；二是 JVM 的指针压缩（<code>-XX:+UseCompressedOops</code>）依赖 8 字节对齐才能用 4 字节表示堆内偏移量；三是某些硬件平台要求原子访问必须对齐。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">4</span>进程的 RSS 和 -Xmx 是什么关系？为什么不等？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>RSS（Resident Set Size）是进程<strong>当前实际驻留在物理内存中的页数总和</strong>。<code>-Xmx</code> 限制的是<strong>堆的上限</strong>。两者是「包含」关系，不是「相等」关系：<strong>RSS ⊃ 堆 committed ⊃ 存活对象</strong>，堆只是 RSS 的一部分。</p>
+                <p>RSS 大于 <code>-Xmx</code> 的原因有六：</p>
+                <ol>
+                  <li>堆外内存：线程栈、Metaspace、Code Cache、直接内存、GC 内部结构，全都不计入 <code>-Xmx</code>。</li>
+                  <li>堆的 committed 可能大于 used——已申请但没有对象占用的页仍算在 RSS 里。</li>
+                  <li>used 里包含垃圾，live set 通常只有 used 的 30%~70%。</li>
+                  <li>GC 不一定及时归还内存给操作系统。</li>
+                  <li>glibc 的 malloc arena 与内存碎片（多线程程序尤其明显）。</li>
+                  <li>JNI 与 native 库分配的内存。</li>
+                </ol>
+                <p><strong>推论</strong>：容器 limit 必须显著大于 <code>-Xmx</code>（经验值 50%~60%），否则堆还没满进程就被内核杀了。这就是「为什么不能把 -Xmx 设成等于容器 limit」的答案。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">5</span>-Xms 和 -Xmx 为什么建议设成一样？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong><code>-Xms</code> 是「已向操作系统申请并映射的物理页」，<code>-Xmx</code> 只是「JVM 允许增长的上限」。两者不等会带来三个问题：</p>
+                <ol>
+                  <li><strong>扩缩容造成延迟毛刺</strong>：堆需要增长时，JVM 必须向 OS 申请新内存并逐页 touch（触发缺页中断），这个过程是 STW 的，会在流量高峰打出毛刺。</li>
+                  <li><strong>RSS 曲线锯齿</strong>：缩容时归还内存给 OS，再扩容又要重新申请，<code>oom_score</code> 随之变化，在容器里可能导致<strong>还没到 limit 就被提前 OOMKill</strong>。</li>
+                  <li><strong>RSS 不可预测</strong>：运维无法准确预估容器内存占用。</li>
+                </ol>
+                <p><strong>结论</strong>：生产环境一律 <code>-Xms = -Xmx</code>。唯一例外是「快速失败」场景——故意把 <code>-Xmx</code> 设得很小，让 OOM 尽早暴露，属于特殊用途。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">6</span>G1、ZGC、ParallelGC 各自的适用场景？CMS 为什么被移除了？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong></p>
+                <p><strong>Parallel GC</strong>（<code>-XX:+UseParallelGC</code>）：吞吐优先，全部用并行线程做 GC，不追求低停顿。适合批处理、离线任务、大数据计算等延迟不敏感的场景。缺点是 Full GC 停顿长。</p>
+                <p><strong>G1</strong>（JDK 9+ 默认）：把堆切成 Region 统一管理，年轻代老年代不再是物理分界，通过「Remembered Set」追踪跨代引用，可以只回收部分老年代而不需要 Full GC。通过 <code>-XX:MaxGCPauseMillis</code>（默认 200ms）作为暂停时间目标。适合 4GB~64GB 堆、延迟要求中等偏严的通用场景。</p>
+                <p><strong>ZGC</strong>（<code>-XX:+UseZGC</code>）：用染色指针（colored pointers）和读屏障实现并发标记与并发压缩，停顿时间与堆大小无关（亚毫秒级），支持 TB 级堆。代价是额外 10%~20% 的 CPU 开销和一定内存开销。适合大堆（&gt;100GB）、超低延迟要求、内存成本可接受的场景。</p>
+                <p><strong>CMS 为什么被移除</strong>，三个原因：</p>
+                <ol>
+                  <li><strong>碎片化</strong>：CMS 用标记-清除算法，不整理内存。并发标记期间新对象持续分配，会触发 promotion failed，被迫执行 Full GC——而且此时已降级为单线程压缩式 Full GC，停顿极长。</li>
+                  <li><strong>浮动垃圾</strong>：CMS 只能清除已标记的对象，标记结束后进入并发清扫阶段的对象会堆积到下次 GC，表现为内存占用先涨后降。</li>
+                  <li><strong>维护成本</strong>：调优参数众多且与其他收集器行为差异大，存量代码里的 CMS 参数无法平滑迁移。</li>
+                </ol>
+                <p>时间线：JDK 8 与 CMS + Parallel Old 的组合共存；JDK 9 G1 成为默认；JDK 14 正式弃用 CMS；<strong>JDK 17 彻底移除</strong>，<code>-XX:+UseConcMarkSweepGC</code> 会直接启动失败。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">7</span>什么是 Humongous 对象？阈值怎么算？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>Humongous（巨型）是 <strong>G1 特有的对象分类</strong>。G1 把堆切分成等大的 Region，<strong>对象大小 ≥ Region 大小的一半</strong> 时，被判定为 Humongous 对象，直接分配在连续的 Humongous Region 上。</p>
+                <p><strong>阈值计算</strong>：Region 大小由 <code>-XX:G1HeapRegionSize</code> 指定，必须是 1 的幂，范围 1MB ~ 32MB，且不超过堆大小的 1/2048。默认是堆大小的 1/2048，向上取到 2 的幂。例如 8GB 堆 → Region = 4MB → Humongous 阈值 = 2MB。</p>
+                <p><strong>为什么要有这个分类</strong>：G1 的 Region 是固定大小的，普通小对象如果跨 Region 分配会产生大量碎片引用。G1 选择让大对象独占连续 Region，牺牲一点外部碎片来换取引用管理简单。</p>
+                <p><strong>风险</strong>：</p>
+                <ul>
+                  <li>Humongous 对象只能分配在连续空闲 Region 上，分配失败会触发并发失败（Concurrent Cycle）甚至 Full GC。</li>
+                  <li>大数组（比如 2MB 的 <code>byte[]</code>）很容易踩线，导致明明堆还有很多空闲却频繁 Full GC。</li>
+                  <li>默认 Region 越小，Humongous 阈值越低，踩线概率越高。4GB 堆默认 Region = 2MB，阈值 1MB，一个 1MB 的数组就成了 Humongous。</li>
+                </ul>
+                <p><strong>应对</strong>：调大 <code>-XX:G1HeapRegionSize</code>（比如 16MB）抬高阈值；或避免创建巨型数组（分块处理）。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">8</span>什么是晋升失败？会带来什么后果？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong><strong>晋升失败（Promotion Failure）</strong>指：Minor GC 结束时，需要晋升到老年代的对象无法被放入（Survivor 放不下、或老年代剩余空间不足）。它的直接后果是触发 <strong>Full GC</strong>。</p>
+                <p><strong>成因</strong>：老年代被长期存活对象占满（缓存、连接池、大 session），而 GC 后仍腾不出空间；或同年龄对象总量过大，超过 Survivor 空间；或 Humongous 对象分配失败。</p>
+                <p><strong>后果链条</strong>：晋升失败 → Full GC → 回收后仍放不下 → 堆重构（Heap Retrashing，把存活对象重新整理压缩）→ CPU 飙高 + 停顿数秒 → 请求堆积超时 → 上游雪崩。这正是「明明堆内存还剩很多，却频繁 Full GC」的典型解释。</p>
+                <p><strong>排查</strong>：</p>
+                <ul>
+                  <li>GC 日志里搜 <code>to-space exhausted</code> 或 <code>promotion failed</code>；</li>
+                  <li><code>jstat -gccause &lt;pid&gt;</code> 看最后一次 Full GC 的原因是否为 <code>promotion failure</code> 或 <code>G1 Evacuation Pause</code>；</li>
+                  <li>看老年代使用率是否长期高于 80%；</li>
+                  <li>用 <code>jmap -histo:live</code> 找出到底什么对象占着老年代不放。</li>
+                </ul>
+              </div>
+            </details>
+
+            <h3>进阶分（要能结合案例）</h3>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">9</span>容器里为什么会出现 OOMKilled 而不是 OutOfMemoryError？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>因为<strong>触发者不同</strong>。</p>
+                <p><code>OutOfMemoryError</code> 是 JVM 自己抛的：JVM 尝试分配内存失败，且它管理这个区域，知道原因，于是在堆栈里抛出带明确信息的异常——<code>Java heap space</code> / <code>Metaspace</code> / <code>Direct buffer memory</code> / <code>unable to create new native thread</code>。</p>
+                <p><code>OOMKilled</code> 是 Linux 内核干的：进程的 RSS 超过了 cgroup memory limit，cgroup 的 memory controller 触发 OOM killer，直接给进程发 SIGKILL。<strong>内核不理解也不关心这是 Java 还是 Nginx，它只知道「这个进程占的物理内存超了」。</strong></p>
+                <p><strong>为什么容器里更容易遇到 OOMKilled</strong>：容器有硬性 limit，物理内存用完就立刻被杀；而裸机通常有 swap，JVM 有机会先抛 OOM、GC 也能喘口气。容器里没有这个缓冲。</p>
+                <p><strong>典型场景</strong>：JDK 8 的 JVM 看到的是<strong>宿主机</strong>内存（比如 64GB），按 1/4 算出 16GB 堆，但容器 limit 只有 2GB —— 进程刚启动就超过 limit 被杀，JVM 根本还没来得及做任何 GC。</p>
+                <p><strong>判定</strong>：<code>kubectl describe pod</code> 里 <code>Reason: OOMKilled</code>、<code>Exit Code: 137</code>、<code>dmesg</code> 里的 <code>Memory cgroup out of memory</code>、cgroup 的 <code>memory.events</code> 里 <code>oom_kill</code> 计数大于 0。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">10</span>JVM 感知 cgroup 的机制是什么？什么版本开始支持？有什么坑？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong></p>
+                <p><strong>机制</strong>：JDK 10 引入 <code>-XX:+UseContainerSupport</code>（默认开启），JVM 启动时读取 cgroup 的内存限额文件（v1 的 <code>memory.limit_in_bytes</code>，v2 的 <code>memory.max</code>），用它来计算默认堆大小（<code>-XX:MaxRAMPercentage</code> 默认 25%，即堆默认取 limit 的 1/4），而不是按宿主机物理内存。同时也会感知可用处理器数（<code>UseContainerSupport</code> 同样影响 <code>active_processor_count</code>）。</p>
+                <p><strong>版本</strong>：</p>
+                <ul>
+                  <li><strong>JDK 8u191 起</strong>回移植了容器感知能力（当年主要是为了跑在容器里的性能优化）。</li>
+                  <li><strong>JDK 10 正式引入</strong>并成为默认行为。</li>
+                  <li>JDK 8 早期版本（<code>8u191</code> 之前）完全没有这个机制，默认堆按宿主机内存算，这是容器时代最早的 OOMKilled 根因。</li>
+                </ul>
+                <p><strong>坑</strong>：</p>
+                <ol>
+                  <li><strong>cgroup v2 的嵌套层级</strong>：理论上 JVM 应取所有父级 limit 的<strong>最小值</strong>。但在多层限制的环境（K8s limit + 节点级 limit + 命名空间 limit）中，JVM 可能计算错误——这是 OpenJDK 的已知问题（JDK-8322420）。</li>
+                  <li><strong>只影响默认值，不影响显式配置</strong>：如果你显式设了 <code>-Xmx</code>，容器感知的结果就不参与计算了。</li>
+                  <li><strong>只管堆，不管堆外</strong>：容器感知只影响堆大小的默认值，直接内存、线程栈、Metaspace 都不受它约束。</li>
+                  <li><strong>与 <code>-XX:MaxRAMPercentage</code> 混淆</strong>：<code>MaxRAMPercentage</code> 是基于容器 limit 的百分比，<code>InitialRAMPercentage</code> 是初始堆百分比。</li>
+                </ol>
+                <p><strong>结论</strong>：<strong>容器环境永远显式指定 <code>-Xmx</code>，不要依赖默认值。</strong>这是 AWS 官方《JVM 内存、CPU 与 Classpath 在 AWS 容器上的最佳实践》里明确给出的结论。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">11</span>怎么区分「内存泄漏」和「分配速率过快」？给出判据。</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>核心判据是<strong>「GC 之后能不能降下来」</strong>。</p>
+                <p><strong>方法 1：观察 GC 后的基线（最可靠）</strong></p>
+                <ul>
+                  <li><strong>泄漏</strong>：每次 Full GC 后，老年代使用量<strong>呈阶梯式单调上升</strong>，基线不断抬高。例如 2GB → 2.5GB → 3GB → 3.5GB。说明有东西永远不释放。</li>
+                  <li><strong>分配速率过快</strong>：Full GC 后老年代<strong>回落到稳定的低位</strong>（比如始终在 1GB 上下），只是<strong>两次 GC 之间涨得很快</strong>。说明没有泄漏，只是产生垃圾的速度超过了回收速度。</li>
+                </ul>
+                <p><strong>方法 2：看 GC 频率与回收量的比值</strong></p>
+                <ul>
+                  <li>泄漏：GC 越来越频繁，但每次回收的量<strong>越来越少</strong>（能回收的都回收了，剩下的都活着）。</li>
+                  <li>速率过快：GC 频繁，但每次回收量<strong>基本稳定</strong>，堆的使用率在「低位 → 高位」之间周期性震荡。</li>
+                </ul>
+                <p><strong>方法 3：看对象年龄分布</strong>　用 <code>jmap -histo:live</code>：泄漏场景下，<strong>老年代对象数量持续增长</strong>；速率过快场景下，对象数量稳定，只是周转快。</p>
+                <p><strong>方法 4：压测对照实验</strong>　用固定的内存配置跑压测，如果<strong>降低 QPS 后内存能稳定下来</strong>，那是速率问题；<strong>无论 QPS 多低内存都单调上涨</strong>，那是泄漏。</p>
+                <p><strong>处置方向完全不同</strong>：速率过快 → 调大堆、换更高效的 GC、减少中间对象；泄漏 → 找到那个不放手的东西（静态集合、ThreadLocal、类加载器、缓存无界）。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">12</span>什么是类加载器泄漏？为什么它会同时污染堆和 Metaspace？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong><strong>类加载器泄漏</strong>是指某个 ClassLoader 已经「逻辑上该死了」——它加载的所有类都不再被业务引用——但它自己仍然被某个强引用链吊住，导致它加载的所有类元数据永远无法卸载。</p>
+                <p><strong>为什么同时污染堆和 Metaspace</strong>：</p>
+                <ul>
+                  <li><strong>Metaspace 侧</strong>：类的元数据、方法字节码、常量池都在 Metaspace。ClassLoader 不可达 → 它的 Metaspace 才能被释放。被吊住 → Metaspace 无限增长。</li>
+                  <li><strong>堆侧</strong>：<strong>静态字段</strong>。一个类的静态字段持有它引用的对象，而这些对象可能又引用更多对象。只要类的 ClassLoader 还活着，这个「静态字段 → 对象图」就是 GC Root 可达的，整条链上的对象<strong>都不能被回收</strong>。典型例子：动态代理类的静态字段缓存了 handler，handler 又持有整个应用的上下文。</li>
+                </ul>
+                <p><strong>常见来源</strong>：动态代理/CGLIB 每次生成新类 + 新 ClassLoader；频繁热部署；JDBC 驱动被注册进 DriverManager（持有定义它的 ClassLoader）；Lambda 隐藏类过多；Tomcat 的 WebAppClassLoader 在重载时未卸载。</p>
+                <p><strong>识别方法</strong>：</p>
+              <ul>
+                <li><code>jcmd &lt;pid&gt; VM.classloader_stats</code> —— 看各 ClassLoader 加载的类数量，是否有 ClassLoader 加载了类但类已被卸载；</li>
+                <li><code>jcmd &lt;pid&gt; VM.classloaders</code> —— 列 ClassLoader 实例及存活状态；</li>
+                <li><code>jcmd &lt;pid&gt; GC.class_histogram | head -30</code> —— 看代理类数量是否异常；</li>
+                <li>关键指标：<strong><code>LoadedClassCount</code> 单调递增</strong>，而堆使用率几乎不动。</li>
+              </ul>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">13</span>LoadedClassCount 是什么？为什么它比堆使用率更灵敏？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong></p>
+                <p><code>LoadedClassCount</code> 是 JVM 已加载的类的总数，可以通过 <code>jstat -class</code> 或 Micrometer 的 <code>jvm.classes.loaded</code> 指标获取。它是<strong>单调递增</strong>的（除非发生 Full GC 触发的类卸载）。</p>
+                <p><strong>为什么比堆使用率更灵敏</strong>：</p>
+                <ol>
+                  <li><strong>每个类的成本是几十到几百 KB</strong>（元数据 + 方法字节码 + 调试信息），但一个类的元数据在堆的统计里<strong>几乎看不见</strong>——它在 Metaspace，堆使用率完全反映不出来。</li>
+                  <li><strong>类加载是「单向」的</strong>：每加载一个新类，Metaspace 占用就增加一点。堆使用率会因为 GC 波动而上下起伏，而类数量只增不减，<strong>趋势线非常干净</strong>，容易识别异常。</li>
+                  <li><strong>泄漏的早期阶段堆完全正常</strong>。典型场景：<code>LoadedClassCount</code> 30 分钟内从 8000 涨到 60000，堆使用率纹丝不动，Metaspace 却从 200MB 涨到 480MB。等到 Metaspace 满了报警，已经太晚了。</li>
+                </ol>
+                <p><strong>实战用法</strong>：把 <code>jvm.classes.loaded</code> 和 <code>jvm.memory.used</code>（nonheap）一起做监控告警。经验阈值：<strong>加载类总数超过 15000 就要警惕，超过 30000 基本可以确认有类加载泄漏</strong>（不同应用基线不同，需要自己建立基线）。</p>
+                <p>判断「持续增长」而不是「绝对值」：连续 3 个采样窗口递增超过 10%，就是信号。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">14</span>jmap -histo:live 有什么副作用？什么时候不能执行？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong><code>-histo:live</code> 的 <code>live</code> 参数要求 JVM <strong>先执行一次 Full GC</strong>，才能统计出真正存活的对象（不带 <code>live</code> 统计的是「已分配过的对象」，包含垃圾）。</p>
+                <p><strong>副作用</strong>：</p>
+                <ul>
+                  <li><strong>停顿</strong>：Full GC 的耗时与堆大小和存活对象量正相关。8GB 堆、存活 4GB 的应用，Full GC 可能停顿 3~10 秒；32GB 堆可能几十秒。</li>
+                  <li><strong>吞吐损失</strong>：Full GC 期间所有业务线程 STW，请求全部挂起。</li>
+                  <li><strong>可能触发连锁反应</strong>：Full GC 后堆内存归还，可能引发后续的重新分配；某些应用在 Full GC 后行为会变（如缓存被清空）。</li>
+                  <li><strong>可能失败</strong>：Full GC 期间如果应用有自己的逻辑（比如在 <code>finalize</code> 里做重活），会放大停顿。</li>
+                </ul>
+                <p><strong>什么时候不能执行</strong>：</p>
+                <ol>
+                  <li><strong>业务高峰期</strong>——绝不能执行。1 分钟的全局停顿在流量高峰就是事故。</li>
+                  <li><strong>延迟敏感的服务</strong>（交易、支付、实时音视频）——任何时候都不合适。</li>
+                  <li><strong>堆特别大</strong>（&gt;16GB）——停顿不可控。</li>
+                  <li><strong>磁盘空间不足</strong>的机器——dump 会写满磁盘。</li>
+                </ol>
+                <p><strong>安全替代方案</strong>：</p>
+                <ul>
+                  <li>用 <code>jmap -histo:&lt;pid&gt;</code>（不带 live）——不触发 GC，零停顿，数值偏大但可做趋势分析；</li>
+                  <li>用 <code>jcmd &lt;pid&gt; GC.class_histogram</code>（JDK 9+）——同样不触发 GC；</li>
+                  <li>用 JFR 的 <code>OldObjectSample</code> 事件采样——开销约 1%，能拿到存活对象样本；</li>
+                  <li>在预发环境复现，用 <code>-XX:+HeapDumpOnOutOfMemoryError</code> 自动 dump。</li>
+                </ul>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">15</span>JFR 的开销大概多少？适合什么场景？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>JFR（Java Flight Recorder）是 JDK 11+ 内建的<strong>低开销生产级性能剖析器</strong>。</p>
+                <p><strong>开销</strong>：</p>
+                <ul>
+                  <li><strong>default 配置：约 1%</strong>（官方数据，通常在 0.5%~2% 之间）</li>
+                  <li><strong>profile 配置：约 2%</strong>（更细的事件采样，官方文档给出的典型值）</li>
+                  <li>典型场景下 <strong>&lt; 1.5%</strong>，可以作为常驻配置</li>
+                </ul>
+                <p>关键在于它用<strong>环形缓冲区 + 采样 + 事件驱动</strong>的技术，而不是全量追踪；数据在 JVM 内存中，超过缓冲区就覆盖最老的记录，不会无限增长。</p>
+                <p><strong>适合什么场景</strong>：</p>
+                <ul>
+                  <li><strong>生产环境的常规采集</strong>——这是它最大的价值。Arthas、async-profiler 需要额外 agent，JFR 是 JVM 原生的。</li>
+                  <li><strong>CPU 热点定位</strong>——<code>jdk.ExecutionSample</code> 给出方法级火焰图。</li>
+                  <li><strong>内存分析</strong>——<code>jdk.OldObjectSample</code> 可以近似替代 <code>jmap -histo:live</code>，但无停顿。</li>
+                  <li><strong>分配分析</strong>——<code>jdk.ObjectAllocationSample</code> 定位大对象分配点，这是找内存泄漏的利器。</li>
+                  <li><strong>GC 与锁竞争</strong>——<code>jdk.GCPhasePause</code>、<code>jdk.JavaMonitorEnter</code>。</li>
+                  <li><strong>IO 异常</strong>——<code>jdk.FileRead</code>、<code>jdk.SocketRead</code> 能看到慢调用。</li>
+                </ul>
+                <p><strong>使用方式</strong>：</p>
+                <pre><code># 启动时录制
+java -XX:StartFlightRecording=duration=300s,filename=app.jfr,settings=profile -jar app.jar
+
+# 运行时动态开启（不需要重启）
+jcmd &lt;pid&gt; JFR.start name=diag duration=300s filename=/data/app.jfr settings=profile
+jcmd &lt;pid&gt; JFR.dump name=diag filename=/data/app.jfr   # 提前落盘
+jcmd &lt;pid&gt; JFR.stop name=diag
+
+# JDK 11+ 也可以用 jfr 命令分析
+jfr summary app.jfr
+jfr print --events jdk.OldObjectSample app.jfr</code></pre>
+                <p><strong>注意事项</strong>：<code>settings=profile</code> 开销更高（约 2%），但事件更全；<code>duration</code> 到期后录制自动停止并落盘；容器里要确保 <code>filename</code> 指向挂载的持久卷，否则 Pod 一重建文件就没了。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">16</span>什么是 NMT？它解决什么问题？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>NMT（Native Memory Tracking，原生内存追踪）是 HotSpot 内建的<strong>堆外内存记账系统</strong>。</p>
+                <p><strong>解决什么问题</strong>：JVM 只精确知道堆的用量。线程栈、直接内存、CodeCache、GC 内部结构、Metaspace 这些都在 RSS 里，但默认不告诉你各占多少。当你在容器里看到「RSS 7GB，堆只用了 2GB」时，NMT 是唯一能告诉你这 5GB 去向的工具。</p>
+                <p><strong>工作原理</strong>：JVM 内部的内存分配点被插桩，每次分配都记入对应分类的计数器。查询时遍历计数器求和，所以是<strong>精确的分配量</strong>而非采样估算。分为几个大类：Java Heap、Class（Metaspace）、Thread（栈 + TLS）、Code、GC、Compiler、Internal、Other。</p>
+                <p><strong>用法</strong>：</p>
+                <pre><code># 启动时开启（必须，无法后补）
+-XX:NativeMemoryTracking=summary    # 开销 ~1%
+-XX:NativeMemoryTracking=detail    # 开销 ~5%，更细
+
+# 查询
+jcmd &lt;pid&gt; VM.native_memory summary scale=MB
+jcmd &lt;pid&gt; VM.native_memory baseline /tmp/base.txt
+jcmd &lt;pid&gt; VM.native_memory summary.diff scale=MB</code></pre>
+                <p><strong>局限</strong>：必须在启动时开启；无法追踪非 JVM 的 native malloc（Netty 的 epoll、glibc arena、JDBC native 部分）；<code>Total</code> 不等于 RSS；<code>detail</code> 模式开销明显。</p>
+                <p><strong>生产建议</strong>：常驻开 <code>summary</code> 模式。开销可忽略，但能让你在半夜被叫醒时立刻回答「堆外这 2GB 是什么」。</p>
+              </div>
+            </details>
+
+            <h3>拉分题（要能给出取舍）</h3>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">17</span>遇到 P99 毛刺，你的排查顺序是什么？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>我按「先分清是延迟还是错误，再定位在哪一层，最后找根因」的顺序走。给一个可执行的 checklist：</p>
+                <ol>
+                  <li><strong>确认毛刺是真实的</strong>：是不是客户端超时设得太短？网络抖动？先看全局 P99 和 P999 的曲线形状——<strong>是尖峰还是台阶</strong>。尖峰通常是单次事件（GC、部署、慢查询），台阶通常是持续性问题（流量上涨、缓存失效、锁竞争）。</li>
+                  <li><strong>确认在哪一层</strong>：区分是 JVM 停顿、下游依赖慢、还是自身线程池排队。看 <code>http_request_duration_seconds</code> 的服务端耗时 vs 客户端耗时；看应用自身的 <code>tomcat_threads_busy</code>。</li>
+                  <li><strong>看 GC</strong>：<code>jstat -gcutil</code> 看 Full GC 频率和停顿；<code>jstat -gccause</code> 看触发原因。<strong>Full GC 是第一嫌疑人</strong>，但不要一上来就认定——先确认时间戳是否对得上。</li>
+                  <li><strong>看线程状态</strong>：<code>jstack</code> 多采几次（间隔 5~10 秒），看是否大量线程 BLOCKED 在同一把锁上，或者 WAITING 在下游连接上。</li>
+                  <li><strong>看下游</strong>：数据库慢查询日志、Redis 延迟、第三方接口。Java 服务里 70% 以上的「毛刺」根因在下游。</li>
+                  <li><strong>看资源</strong>：CPU 是否打满？是否被 CFS 限流（<code>container_cpu_cfs_throttled_seconds_total</code>）？网络重传？磁盘 IO 延迟？</li>
+                  <li><strong>采样剖析</strong>：以上都正常，用 JFR 录一段（<code>settings=profile</code>，开销 2%），看火焰图里 CPU 到底花在哪；再看 <code>jdk.ObjectAllocationSample</code> 是否有异常分配。</li>
+                  <li><strong>区分「偶发」与「必然」</strong>：能否在预发复现？能否用压测放大？</li>
+                </ol>
+                <p><strong>关键是「时间对齐」</strong>：所有证据必须能对齐到同一个时间轴。毛刺排查失败的最常见原因，不是不会用工具，而是<strong>看了不同时间窗的数据</strong>（比如 GC 日志看的是今天，监控看的是昨天）。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">18</span>如果要调 Region 大小，代价是什么？为什么不能只调参数？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong></p>
+                <p><strong>Region 大小怎么定的</strong>：<code>-XX:G1HeapRegionSize</code>，必须是 1 的幂，范围 1MB ~ 32MB，且不超过堆大小的 1/2048。默认取堆的 1/2048 向上取整到 2 的幂。Region 是 G1 的基本管理单位—— Eden、Survivor、老年代都只是「Region 的逻辑标签」，Region 可以整体被回收复用。</p>
+                <p><strong>调大的代价</strong>：</p>
+                <ul>
+                  <li><strong>Humongous 阈值抬高</strong>（Region/2），巨型对象问题缓解——这是主要收益。</li>
+                  <li><strong>Region 数量减少</strong>：8GB 堆 + 4MB Region = 2048 个 Region；改成 16MB = 1024 个。Remembered Set 的条目数减少，扫描效率提升。</li>
+                  <li><strong>但堆的「最小回收单位」变粗</strong>：Mixed GC 回收粒度变大，<strong>回收更不精确</strong>，可能出现「回收了 4 个 Region 但只有一个有垃圾」的浪费。</li>
+                  <li><strong>空闲 Region 的碎片风险上升</strong>：G1 优先使用连续空闲 Region，大 Region 下更难找到合适的连续空间。</li>
+                  <li><strong>停顿时间变长</strong>：单次回收涉及的 Region 更大，<code>MaxGCPauseMillis</code> 目标更难达成。</li>
+                </ul>
+                <p><strong>调小的代价</strong>：Region 变小 → 数量变多 → Remembered Set 内存和 CPU 开销上升；Humongous 阈值降低，<strong>更容易踩线</strong>（比如 Region=2MB 时，1MB 的数组就成了 Humongous）；单次回收粒度小，停顿更短但更频繁。</p>
+                <p><strong>为什么不能只调参数</strong>：</p>
+                <ol>
+                  <li><strong>Region 大小是「因」不是「果」</strong>。它由堆大小和 G1 的自动设计决定。如果真正的问题是「堆太小导致 GC 过于频繁」，调 Region 大小只会掩盖症状，GC 次数不会减少。</li>
+                  <li><strong>它只是三个杠杆之一</strong>。影响 GC 效率的至少还有：堆大小（决定分配速率与 GC 频率的比值）、<code>MaxGCPauseMillis</code>（决定暂停目标，进而决定 Mixed GC 的激进程度）、以及<strong>应用本身的分配速率</strong>。真正高杠杆的往往是减少分配（对象池、避免不必要的装箱、复用缓冲区）。</li>
+                  <li><strong>参数之间会互相牵制</strong>。比如把 <code>MaxGCPauseMillis</code> 调小到 50ms，G1 会更保守（每次只回收少量 Region），可能导致回收跟不上分配速度，反而增加 Full GC 频率。</li>
+                  <li><strong>必须用数据验证</strong>。调整后要看：GC 总时间占比、Full GC 次数与原因、老年代回收效率、P99 延迟。<strong>没有这些数据支撑的调参是玄学。</strong></li>
+                </ol>
+                <p><strong>我的做法</strong>：先问「GC 总时间占 CPU 的百分之多少、Full GC 频率是多少」，如果 GC 总开销 &lt; 5% 且无 Full GC，就<strong>不动 GC 参数</strong>——此时毛刺多半不是 GC 造成的。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">19</span>什么情况下你会从 G1 换到 ZGC？换的代价怎么评估？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong></p>
+                <p><strong>什么情况下换</strong>（按收益从大到小）：</p>
+                <ol>
+                  <li><strong>堆很大（&gt; 100GB）且延迟要求严</strong>——这是最典型的场景。G1 在大堆上的 Mixed GC 扫描成本随堆增长，停顿难以稳定控制；ZGC 的停顿时间与堆大小无关（亚毫秒级）。</li>
+                  <li><strong>Full GC 频繁且不可接受</strong>——G1 的并发失败在大堆 + 高分配速率下容易触发，退化成 Full GC 后停顿数秒；ZGC 基本没有 Full GC。</li>
+                  <li><strong>业务对尾延迟极敏感</strong>——金融交易、实时音视频、对超时有严格 SLA 的接口。</li>
+                  <li><strong>内存成本可以接受</strong>——ZGC 需要额外的元数据和并发线程。</li>
+                </ol>
+                <p><strong>什么情况下不该换</strong>：堆小于 16GB（G1 已经足够好，ZGC 优势不明显）；CPU 紧张（ZGC 额外开销 10%~20% CPU）；吞吐优先的批处理（Parallel GC 更合适）。</p>
+                <p><strong>换的代价怎么评估</strong>：</p>
+                <ol>
+                  <li><strong>先确认瓶颈真的在 GC</strong>。用 <code>jstat</code> 和 GC 日志量化：GC 总时间占 CPU 的比例、Full GC 次数与停顿、P99 与 GC 停顿时长的相关性。<strong>如果 GC 只占 3% 的 CPU，换收集器不会有任何效果</strong>。</li>
+                  <li><strong>在预发环境做对照压测</strong>。同一份压测脚本，分别用 G1 和 ZGC 跑，比较：吞吐、P50/P99/P999、最大停顿、GC CPU 占比、RSS 峰值。</li>
+                  <li><strong>在生产做灰度</strong>。先 1 个 Pod 切 ZGC，对比同期的 GC 指标、延迟指标、内存指标。<strong>不要一次全切。</strong></li>
+                  <li><strong>量化 CPU 成本</strong>。ZGC 的并发线程会占用 CPU，在 CPU limit 严格的容器里可能触发 CFS 限流，反而拖累延迟——这是最容易被忽略的代价。</li>
+                  <li><strong>量化内存成本</strong>。ZGC 有额外的元数据开销和更大的堆占用，需要相应调大容器 limit。</li>
+                  <li><strong>考虑回滚方案</strong>。保留 G1 的启动参数配置，确保能快速切回。</li>
+                </ol>
+                <p><strong>我的取舍倾向</strong>：没有明确的延迟 SLA 要求就不换。G1 的默认配置已经能覆盖绝大多数业务。换收集器是有成本的技术债，不是免费的性能提升。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">20</span>如何设计一套「让内存问题可控失败」的机制？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>核心理念：<strong>让故障以「可诊断、可恢复、低影响」的方式暴露，而不是以「静默被杀、影响面不可控」的方式崩溃。</strong>从五层设计：</p>
+                <ol>
+                  <li><strong>预防层：把内存预算写清楚并强制执行</strong></li>
+                  <ul>
+                    <li>容器 limit &gt; <code>-Xmx</code> + 堆外预估 + 15% 缓冲；</li>
+                    <li>显式设置 <code>-XX:MaxMetaspaceSize</code>、<code>-XX:MaxDirectMemorySize</code>、<code>-XX:ReservedCodeCacheSize</code>；</li>
+                    <li>堆外预算用 NMT 实测校准，不是拍脑袋。</li>
+                  </ul>
+                  <li><strong>观测层：让泄漏在变成事故之前被发现</strong></li>
+                  <ul>
+                    <li>监控 <code>LoadedClassCount</code> 增速（类加载泄漏的最灵敏指标）；</li>
+                    <li>监控 <code>jvm_memory_bytes_used{area="nonheap"}</code> 斜率；</li>
+                    <li>监控 <code>process_resident_memory_bytes</code> 与 limit 的比值；</li>
+                    <li>监控 GC 频率、Full GC 次数、老年代使用率；</li>
+                    <li>预警要基于<strong>斜率</strong>而非绝对值。</li>
+                  </ul>
+                  <li><strong>诊断层：出问题时能拿到证据</strong></li>
+                  <ul>
+                    <li><code>-XX:+HeapDumpOnOutOfMemoryError</code> + <code>-XX:HeapDumpPath</code> 指向持久卷；</li>
+                    <li>开启 GC 日志（<code>-Xlog:gc*:file=/data/gc.log:time,uptime:filecount=10,filesize=50M</code>）；</li>
+                    <li>常驻 <code>-XX:NativeMemoryTracking=summary</code>；</li>
+                    <li>JFR 常驻或可快速动态开启；</li>
+                    <li>镜像里要有完整 JDK，<code>jcmd</code>/<code>jstack</code> 可用。</li>
+                  </ul>
+                  <li><strong>失败层：崩溃方式要可控</strong></li>
+                  <ul>
+                    <li><strong>无状态服务</strong>：<code>-XX:+ExitOnOutOfMemoryError</code> + K8s 自动重建。比半死不活好。</li>
+                    <li><strong>有状态服务</strong>：不要立刻退出，先限流/降级，等 K8s 的 readiness 探测失败再摘流量。</li>
+                    <li><strong>配置</strong>：堆、Metaspace、直接内存<strong>全部设上限</strong>，让每种溢出都以明确的 <code>OutOfMemoryError</code> 形式出现，而不是被内核杀掉。</li>
+                  </ul>
+                  <li><strong>兜底层：外部资源也要有边界</strong></li>
+                  <ul>
+                    <li>线程池全部有界（<code>ThreadPoolExecutor</code> 的 maxPoolSize、队列容量都要设）；</li>
+                    <li>数据库连接池设上限（<code>maxPoolSize</code>），<strong>连接池无限是最常见的雪崩源</strong>；</li>
+                    <li>MQ 消费者要限流，防止拉垮下游；</li>
+                    <li>缓存要有最大容量和淘汰策略（<code>expireAfterWrite</code> + <code>maximumSize</code>）。</li>
+                  </ul>
+                </ol>
+                <p><strong>一句话总结</strong>：<strong>让 OOM 变成一个带着堆栈和 dump 的 Java 异常，而不是一个没有线索的 exit 137。</strong>前者 5 分钟定位，后者可能查一夜。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">21</span>容器里堆外的每一块内存，你打算怎么分配和监控？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>我按「先测量、再分配、再验证」的思路做。</p>
+                <p><strong>第一步：测量</strong>——不猜，先测。在预发和生产开 <code>-XX:NativeMemoryTracking=summary</code>，用 <code>jcmd &lt;pid&gt; VM.native_memory summary scale=MB</code> 拿到每个分类的真实 committed 值。这是唯一可靠的基线。</p>
+                <p><strong>第二步：分配</strong>——用测量值反推预算：</p>
+                <div class="table-wrap">
+                  <table class="stack">
+                    <thead><tr><th>块</th><th>分配方式</th><th>监控</th></tr></thead>
+                    <tbody>
+                      <tr><th scope="row">线程栈</th><td data-label="分配方式"><code>-Xss512k</code> + 线程数上限（线程池必须设界）</td><td data-label="监控">NMT 的 Thread 分类 + <code>process_threads</code></td></tr>
+                      <tr><th scope="row">Metaspace</th><td data-label="分配方式"><code>-XX:MaxMetaspaceSize</code>（实测值 × 1.5）</td><td data-label="监控">NMT 的 Class 分类 + <code>jvm.classes.loaded</code> 增速</td></tr>
+                      <tr><th scope="row">直接内存</th><td data-label="分配方式"><code>-XX:MaxDirectMemorySize</code>（按业务量估）</td><td data-label="监控">NMT 的 Other/Internal 分类 + 应用埋点</td></tr>
+                      <tr><th scope="row">Code Cache</th><td data-label="分配方式"><code>-XX:ReservedCodeCacheSize=256m</code></td><td data-label="监控">NMT 的 Code 分类</td></tr>
+                      <tr><th scope="row">GC 结构</th><td data-label="分配方式">间接控制（堆的 5~10%）</td><td data-label="监控">NMT 的 GC 分类</td></tr>
+                      <tr><th scope="row">malloc arena</th><td data-label="分配方式">环境变量 <code>MALLOC_ARENA_MAX=2</code></td><td data-label="监控">RSS 与 NMT Total 的差额（就是 arena + 非 JVM 部分）</td></tr>
+                      <tr><th scope="row">安全缓冲</th><td data-label="分配方式">limit 的 10~15%</td><td data-label="监控"><code>container_memory_working_set_bytes / limit</code> 告警</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p><strong>第三步：验证</strong>——上线后用 NMT 的 <code>baseline</code> + <code>summary.diff</code> 做周期性 diff，确认没有意外增长项。同时压测到极限，看 RSS 峰值离 limit 还有多少余量。</p>
+                <p><strong>核心监控指标（4 个 + 1 个兜底）</strong>：</p>
+                <ol>
+                  <li><code>jvm_memory_used_bytes{area="heap"}</code> + GC 后基线</li>
+                  <li><code>jvm_memory_used_bytes{area="nonheap"}</code>（Metaspace）</li>
+                  <li><code>jvm_classes_loaded</code>（<strong>斜率告警</strong>）</li>
+                  <li><code>process_resident_memory_bytes</code>（RSS）</li>
+                  <li>兜底：<code>container_memory_working_set_bytes</code> / limit 的比值 &gt; 80% 告警</li>
+                </ol>
+                <p><strong>为什么 NMT 必须常开</strong>：它必须在启动时启用，无法后补。如果不常开，凌晨告警时你想查「堆外这 2GB 是什么」，只能靠猜。这 1% 的开销换确定性，非常值。</p>
+              </div>
+            </details>
+
+            <details class="qa__fold">
+              <summary><span class="qa__num">22</span>一个系统从 G1 换成 ZGC，你怎么说服团队？</summary>
+              <div class="qa__fold-body">
+                <p><strong>答：</strong>我不会用「ZGC 更好」来说服，而是用<strong>业务指标 + 可回滚的灰度方案</strong>来说服。</p>
+                <p><strong>第一步：先证明瓶颈在 GC（这是能否说服的关键）</strong></p>
+                <p>拿出数据：GC 总耗时占 CPU 的比例、Full GC 次数与平均停顿、P99 延迟与 GC 停顿时长的相关性曲线。<strong>如果 GC 只占 3% 的 CPU，我主动放弃这个提案</strong>——因为换了不会有任何收益，团队凭什么承担风险？</p>
+                <p>反过来说，如果数据是「GC 占 18% CPU，每月 3 次 Full GC 造成 20 秒的服务不可用，P99 有 4 个尖峰与 GC 停顿完全对齐」，那这就是一个<strong>有明确损失、有明确归因</strong>的问题，技术方案自然好谈。</p>
+                <p><strong>第二步：把问题翻译成业务语言</strong></p>
+                <p>不说「G1 的 Mixed GC 在大堆上效率下降」，说「每月有 3 次服务降级，每次影响约 X 个请求、Y 分钟，估算业务损失 Z 万元」。<strong>让团队能拿这个数字去和其他需求排优先级。</strong></p>
+                <p><strong>第三步：给出保守的方案</strong></p>
+                <ul>
+                  <li><strong>灰度范围</strong>：先 1 个 Pod（1/10 流量），观察 1~2 周；</li>
+                  <li><strong>回滚方式</strong>：改一行环境变量，Pod 重建即回滚，<strong>不需要发版</strong>（所以参数要放在 ConfigMap 里，不进镜像）；</li>
+                  <li><strong>对比方法</strong>：<strong>同期对比</strong>（同一时间段、同一流量比例），而不是历史对比；</li>
+                  <li><strong>成功标准</strong>：事先写死——Full GC 归零、P99 下降 ≥ X%、GC CPU 占比下降 ≥ Y%、错误率无上升。<strong>没有预设标准就没有说服力。</strong></li>
+                </ul>
+                <p><strong>第四步：主动讲代价</strong></p>
+                <p>我会主动说清 ZGC 的成本：CPU 开销增加 10%~20%、内存占用上升、需要重新校准容器 limit、ZGC 的调优经验比 G1 少（踩坑时能参考的案例也少）。<strong>把风险摊开讲，反而更能建立信任。</strong></p>
+                <p><strong>第五步：兜底</strong></p>
+                <p>如果灰度一周后指标没达到预期，<strong>我主动提出回滚</strong>，并且不会为此感到遗憾——技术实验本来就允许失败，怕的是没有预设退出标准、硬撑着上线。</p>
+                <p><strong>总结</strong>：说服团队靠的不是「新技术更好」，而是「<strong>问题有据可依、方案可回滚、代价已摊开、成功标准已约定</strong>」。</p>
+              </div>
+            </details>
+
+            <div class="takeaway">
+              <p><b>最后一句提醒：</b>这份文档覆盖的是「机制与认知」。真正的掌握标准是——下次遇到线上内存告警时，你能<strong>在 5 分钟内说出「这是内部 OOM 还是外部 OOM，证据在哪一块，下一步做什么」</strong>。能做到这一点，这 16 章就真的变成你的了。</p>
+            </div>
+          </section>
+
+          <footer>
+            <h2>参考资料</h2>
+            <div class="sources">
+              <ol>
+                <li><a href="https://docs.oracle.com/en/java/javase/21/gctuning/index.html" target="_blank" rel="noopener">Oracle JDK 21 GC Tuning Guide</a> —— G1 / ZGC 的官方调优说明</li>
+                <li><a href="https://docs.oracle.com/en/java/javase/21/troubleshoot/diagnostic-tools.html" target="_blank" rel="noopener">Oracle JDK 21 Troubleshooting Guide</a> —— JFR、jcmd、NMT 的官方文档</li>
+                <li><a href="https://docs.oracle.com/en/java/javase/21/specs/man/java.html" target="_blank" rel="noopener">Java 命令行参数参考</a> —— 所有 JVM 参数的权威说明</li>
+                <li><a href="https://aws.amazon.com/blogs/containers/jvm-memory-cpu-and-classpath-best-practices-for-java-containers-on-aws/" target="_blank" rel="noopener">AWS：JVM 内存、CPU 与 Classpath 在容器中的最佳实践</a> —— 容器内存规划的经典参考</li>
+                <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/" target="_blank" rel="noopener">Kubernetes 官方文档 · Pod</a> —— 资源 requests/limits 语义</li>
+                <li><a href="https://kubernetes.io/docs/concepts/policy/resource-quality-pod-qos/" target="_blank" rel="noopener">Kubernetes 官方文档 · QoS 等级</a> —— Guaranteed / Burstable / BestEffort</li>
+                <li><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/management/ManagementFactory.html" target="_blank" rel="noopener">JVM Management API</a> —— MXBean 编程获取内存指标</li>
+              </ol>
+            </div>
+          </footer>
+        </main>
+      </div>
+    </div>
+  </article>
+
+  <script src="./_shared/js/echarts.min.js"></script>
+  <script src="./_shared/js/mermaid.min.js"></script>
+  <script src="./assets/charts.js"></script>
+  <script src="./assets/mermaid-init.js"></script>
+</body>
+</html>

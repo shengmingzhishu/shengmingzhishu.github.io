@@ -42,7 +42,8 @@
     fortune:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M17.66 6.34l-2.83 2.83"/><path d="M20 12h-4"/><path d="M17.66 17.66l-2.83-2.83"/><path d="M12 20v-4"/><path d="M6.34 17.66l2.83-2.83"/><path d="M4 12h4"/><path d="M6.34 6.34l2.83 2.83"/></svg>',
     book:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     code:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-    gauge:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0-9-9"/><path d="M3 12h2"/><path d="M12 3v2"/><path d="M12 12l4.5-4.5"/></svg>'
+    gauge:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0-9-9"/><path d="M3 12h2"/><path d="M12 3v2"/><path d="M12 12l4.5-4.5"/></svg>',
+    layers:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>'
   };
 
   /** 工具清单：{id, cat, name, desc, icon, link} */
@@ -58,6 +59,7 @@
     { id: 'skills-doc',  cat: 'doc',      name: 'Skills 技能文档',  desc: 'AI 写作工作流与多平台发布技能完整文档',     icon: 'book',     link: 'src/tools/skills/skill.html' },
     { id: 'java-chapters', cat: 'doc',    name: 'Java 面试资料',    desc: '18 章拆解 JVM 内存、GC、并发、分布式与架构方法论', icon: 'code',  link: 'src/tools/notes/java-interview-chapters/index.html' },
     { id: 'jvm-case-lab', cat: 'doc',     name: 'JVM 调优案例实验室', desc: '三个线上故障复盘：OOMKilled、Metaspace 泄漏与晋升失败', icon: 'gauge', link: 'src/tools/notes/java-jvm-tuning-case-lab/java-jvm-tuning-case-lab.html' },
+    { id: 'jvm-runtime-guide', cat: 'doc', name: 'JVM 运行机制与内存原理', desc: '17 章讲透内存分布、参数体系、OOM 排查、NMT 与容器内存规划', icon: 'layers', link: 'src/tools/notes/jvm-runtime-guide/jvm-runtime-guide.html' },
     { id: 'fortune',     cat: 'fun',      name: '上上签',           desc: '随机抽签小工具，给你一个好彩头',           icon: 'fortune',  link: 'src/tools/fun/fortune.html' }
   ];
 
